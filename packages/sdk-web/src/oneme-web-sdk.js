@@ -52,7 +52,69 @@ export class OnemeClient {
     return response.parts ?? [];
   }
 
-  async #requestJson(path) {
+  async createFaceAnalysisJob(payload) {
+    return this.#requestJson("/api/face_analysis_jobs", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createAvatarFromFaceAnalysis(payload) {
+    return this.#requestJson("/api/avatars/from_face_analysis", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createAiGenerationJob(payload) {
+    return this.#requestJson("/api/ai_generation_jobs", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createAvatarFromAiCandidate(payload) {
+    return this.#requestJson("/api/avatars/from_ai_candidate", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createRecommendationFeedback(payload) {
+    return this.#requestJson("/api/recommendation_feedback", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createExportJob(payload, options = {}) {
+    const path = options.format === "vrm" ? "/api/vrm_export_jobs" : "/api/export_jobs";
+    return this.#requestJson(path, {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async fetchExportJob(jobId, options = {}) {
+    const collection = options.format === "vrm" ? "vrm_export_jobs" : "export_jobs";
+    return this.#requestJson(`/api/${collection}/${encodeURIComponent(jobId)}`);
+  }
+
+  async createWidgetApp(payload) {
+    return this.#requestJson("/api/apps", {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async createAppApiKey(appId, payload) {
+    return this.#requestJson(`/api/apps/${encodeURIComponent(appId)}/api_keys`, {
+      method: "POST",
+      body: payload
+    });
+  }
+
+  async #requestJson(path, options = {}) {
     if (!this.apiBaseUrl) {
       throw new Error("OnemeClient requires apiBaseUrl for API requests");
     }
@@ -60,10 +122,19 @@ export class OnemeClient {
       throw new Error("OnemeClient requires a fetch implementation");
     }
 
+    const headers = {
+      accept: "application/json"
+    };
+    if (options.body !== undefined) {
+      headers["content-type"] = "application/json";
+    }
+
     const response = await this.fetch(`${this.apiBaseUrl}${path}`, {
+      method: options.method ?? "GET",
       headers: {
-        accept: "application/json"
-      }
+        ...headers
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
 
     if (!response.ok) {

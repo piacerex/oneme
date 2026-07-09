@@ -45,8 +45,15 @@ def assert_sdk_surface() -> None:
         "async fetchAvatar(",
         "async fetchModel(",
         "async fetchParts(",
+        "async createFaceAnalysisJob(",
+        "async createAiGenerationJob(",
+        "async createExportJob(",
+        "async createWidgetApp(",
+        "async createAppApiKey(",
         "apiBaseUrl",
         "#requestJson(",
+        "method: options.method",
+        "JSON.stringify(options.body)",
     ]
     missing = [token for token in expected if token not in source]
     if missing:
@@ -72,6 +79,7 @@ def main() -> int:
         avatar = request_json(base_url, "/api/avatars/demo-avatar")
         model = request_json(base_url, "/api/avatars/demo-avatar/model?format=vrm")
         parts = request_json(base_url, "/api/parts")
+        animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
     finally:
         process.terminate()
         try:
@@ -86,6 +94,8 @@ def main() -> int:
         raise AssertionError("API mock did not return the requested VRM model response")
     if not parts.get("parts"):
         raise AssertionError("API mock did not return parts for SDK fetchParts")
+    if animation["status"] != "contract_ready":
+        raise AssertionError("API mock did not return animation compatibility for SDK clients")
 
     print("ok: Web SDK API smoke")
     return 0

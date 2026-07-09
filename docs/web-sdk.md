@@ -52,6 +52,45 @@ Options:
 
 Fetches available avatar parts from `/api/parts`.
 
+### `client.createFaceAnalysisJob(payload)`
+
+Creates a face analysis job through `/api/face_analysis_jobs`.
+
+### `client.createAvatarFromFaceAnalysis(payload)`
+
+Creates an editable avatar from a face analysis job through
+`/api/avatars/from_face_analysis`.
+
+### `client.createAiGenerationJob(payload)`
+
+Creates deterministic local AI-style candidates through `/api/ai_generation_jobs`.
+
+### `client.createAvatarFromAiCandidate(payload)`
+
+Creates an editable avatar from an approved AI candidate through
+`/api/avatars/from_ai_candidate`.
+
+### `client.createRecommendationFeedback(payload)`
+
+Records candidate feedback through `/api/recommendation_feedback`.
+
+### `client.createExportJob(payload, options)`
+
+Creates a GLB export job through `/api/export_jobs`, or a VRM job through
+`/api/vrm_export_jobs` when `options.format` is `vrm`.
+
+### `client.fetchExportJob(jobId, options)`
+
+Fetches a GLB or VRM export job by id.
+
+### `client.createWidgetApp(payload)`
+
+Creates a widget app configuration through `/api/apps`.
+
+### `client.createAppApiKey(appId, payload)`
+
+Creates an API key for a widget app through `/api/apps/:id/api_keys`.
+
 ### `client.listExportJobs()`
 
 Returns known export jobs.
