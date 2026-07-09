@@ -40,6 +40,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     audit_logs: list[dict] = []
     monitoring_alerts: list[dict] = []
     incidents: dict[str, dict] = {}
+    legal_records: dict[str, dict] = {}
     webhook_endpoints: dict[str, dict] = {}
     webhook_deliveries: list[dict] = []
     rate_limits: dict[str, dict] = {}
@@ -67,6 +68,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"monitoringAlerts": self.monitoring_alerts})
         elif path == "/api/incidents":
             self.send_json({"incidents": list(self.incidents.values())})
+        elif path == "/api/legal_records":
+            self.send_json({"legalRecords": list(self.legal_records.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -75,6 +78,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_asset_review(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "incidents"]:
             self.send_incident(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "legal_records"]:
+            self.send_legal_record(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -162,6 +167,21 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.incidents[incident["id"]] = incident
             self.record_audit("incident.created", "incident", incident["id"], {"status": incident["status"]})
             self.send_json(incident, status=201)
+        elif path == "/api/legal_records":
+            payload = self.read_json_body()
+            record = {
+                "id": payload.get("id") or now_id("legal"),
+                "kind": payload.get("kind", "asset_license"),
+                "version": payload.get("version", "2026-07-09"),
+                "status": payload.get("status", "draft"),
+                "effectiveAt": payload.get("effectiveAt", "2026-07-09T00:00:00.000Z"),
+            }
+            for key in ("sourceUrl", "usageRights", "retentionDays"):
+                if key in payload:
+                    record[key] = payload[key]
+            self.legal_records[record["id"]] = record
+            self.record_audit("legal_record.created", "legal_record", record["id"], {"kind": record["kind"]})
+            self.send_json(record, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
@@ -188,6 +208,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 return
             if len(parts) == 3 and parts[:2] == ["api", "incidents"]:
                 self.patch_incident(parts[2])
+                return
+            if len(parts) == 3 and parts[:2] == ["api", "legal_records"]:
+                self.patch_legal_record(parts[2])
                 return
             self.send_error_json(404, "not_found")
             return
@@ -268,6 +291,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.record_audit("incident.updated", "incident", incident_id, {"status": incident["status"]})
         self.send_json(incident)
 
+    def patch_legal_record(self, record_id: str) -> None:
+        record = self.legal_records.get(record_id)
+        if not record:
+            self.send_error_json(404, "legal_record_not_found")
+            return
+
+        patch = self.read_json_body()
+        for key in ("kind", "version", "status", "sourceUrl", "usageRights", "retentionDays", "effectiveAt"):
+            if key in patch:
+                record[key] = patch[key]
+        self.legal_records[record_id] = record
+        self.record_audit("legal_record.updated", "legal_record", record_id, {"status": record["status"]})
+        self.send_json(record)
+
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
         self.send_common_headers()
@@ -328,6 +365,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "incident_not_found")
             return
         self.send_json(incident)
+
+    def send_legal_record(self, record_id: str) -> None:
+        record = self.legal_records.get(record_id)
+        if not record:
+            self.send_error_json(404, "legal_record_not_found")
+            return
+        self.send_json(record)
 
     def send_model(self, avatar_id: str, model_format: str) -> None:
         if avatar_id not in self.avatars:
@@ -522,6 +566,7 @@ def main() -> int:
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []
     OnemeMockApi.incidents = {}
+    OnemeMockApi.legal_records = {}
     OnemeMockApi.webhook_endpoints = {}
     OnemeMockApi.webhook_deliveries = []
     OnemeMockApi.rate_limit_max_requests = args.rate_limit

@@ -160,3 +160,8 @@ Commercial operation keeps structured records for:
 - asset license source and usage rights
 - consent requirements for face-photo analysis
 - retention policy for generated artifacts
+
+The local API mock supports `POST /api/legal_records`,
+`GET /api/legal_records`, `GET /api/legal_records/:id`, and
+`PATCH /api/legal_records/:id` so legal, consent, retention, and asset-license
+state can be reviewed by operations flows before production storage exists.

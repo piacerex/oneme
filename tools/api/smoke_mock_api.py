@@ -138,6 +138,34 @@ def run_smoke(base_url: str) -> None:
     if "resolvedAt" not in resolved_incident:
         raise AssertionError("resolved incident did not include resolvedAt")
 
+    legal_record = request_json(
+        base_url,
+        "/api/legal_records",
+        method="POST",
+        payload={
+            "id": "legal-smoke",
+            "kind": "asset_license",
+            "version": "2026-07-09",
+            "status": "draft",
+            "sourceUrl": "https://example.com/licenses/oneme-placeholder-assets",
+            "usageRights": ["commercial", "redistribution", "modification"],
+        },
+    )
+    assert_equal(legal_record["status"], "draft", "created legal record status")
+
+    legal_records = request_json(base_url, "/api/legal_records")
+    legal_ids = {item["id"] for item in legal_records.get("legalRecords", [])}
+    if "legal-smoke" not in legal_ids:
+        raise AssertionError("legal records did not include legal-smoke")
+
+    active_legal_record = request_json(
+        base_url,
+        "/api/legal_records/legal-smoke",
+        method="PATCH",
+        payload={"status": "active"},
+    )
+    assert_equal(active_legal_record["status"], "active", "active legal record status")
+
     created = request_json(
         base_url,
         "/api/avatars",
@@ -207,6 +235,8 @@ def run_smoke(base_url: str) -> None:
         "avatar.updated",
         "incident.created",
         "incident.updated",
+        "legal_record.created",
+        "legal_record.updated",
         "model.exported",
         "webhook_endpoint.created",
     }:
