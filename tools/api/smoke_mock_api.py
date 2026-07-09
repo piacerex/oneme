@@ -483,6 +483,8 @@ def run_smoke(base_url: str) -> None:
         payload={"avatarConfig": config, "simulateFailure": True},
     )
     assert_equal(failed_export_job["status"], "failed", "failed glb export status")
+    assert_equal(failed_export_job["errorCode"], "asset_missing", "failed glb export error code")
+    assert_equal(failed_export_job["retryable"], True, "failed glb export retryable")
     retried_export_job = request_json(
         base_url,
         f"/api/export_jobs/{failed_export_job['id']}",
@@ -492,6 +494,8 @@ def run_smoke(base_url: str) -> None:
     assert_equal(retried_export_job["status"], "succeeded", "retried glb export status")
     if "modelUrl" not in retried_export_job:
         raise AssertionError("retried export job did not include modelUrl")
+    if "errorCode" in retried_export_job:
+        raise AssertionError("retried export job still included errorCode")
 
     vrm_job = request_json(base_url, "/api/vrm_export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(vrm_job["status"], "succeeded", "vrm export status")

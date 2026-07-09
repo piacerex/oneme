@@ -46,7 +46,7 @@ when a later GLB export resolves to an existing cache key.
 ## Error Policy
 
 - Keep failed jobs in the local job list.
-- Store a short error message.
+- Store a short error message, machine-readable `errorCode`, and retry hints.
 - Allow users to retry by pressing export again.
 
 ## API Shape

@@ -56,6 +56,17 @@
     "error": {
       "type": "string"
     },
+    "errorCode": {
+      "type": "string",
+      "enum": ["asset_missing", "invalid_avatar_config", "export_timeout", "unknown"]
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "retryAfterSeconds": {
+      "type": "integer",
+      "minimum": 0
+    },
     "createdAt": {
       "type": "string",
       "format": "date-time"

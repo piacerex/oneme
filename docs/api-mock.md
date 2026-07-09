@@ -114,8 +114,9 @@ operations flows can inspect async job state before a hosted queue exists.
 Repeated GLB exports for the same mock cache key return `cacheHit: true` and
 link to the original job with `cachedExportJobId`.
 `POST /api/export_jobs` with `simulateFailure` creates a local failed GLB job,
-and `PATCH /api/export_jobs/:id` with `{"action":"retry"}` marks it succeeded
-for incident recovery testing.
+including `errorCode`, `retryable`, and `retryAfterSeconds`; `PATCH
+/api/export_jobs/:id` with `{"action":"retry"}` clears the structured error
+fields and marks it succeeded for incident recovery testing.
 Widget apps are stored in memory through `POST /api/apps`. App API keys can be
 added with `POST /api/apps/:id/api_keys` and revoked with
 `DELETE /api/apps/:id/api_keys/:key`, which lets widget embed flows test app

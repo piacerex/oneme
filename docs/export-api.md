@@ -125,4 +125,5 @@ Response:
 - The API mock reports repeated GLB cache reuse with `cacheHit: true` and
   `cachedExportJobId`.
 - VRM MVP exports are GLB containers with VRM-shaped metadata, not final rigged VRM 1.0 assets.
-- Failed jobs retain an error message and can be retried by creating another job.
+- Failed jobs retain an error message plus `errorCode`, `retryable`, and
+  `retryAfterSeconds` fields.

@@ -545,6 +545,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         job["finishedAt"] = patch.get("finishedAt", "2026-07-09T00:00:02.000Z")
         job["cacheHit"] = False
         job.pop("error", None)
+        job.pop("errorCode", None)
+        job.pop("retryable", None)
+        job.pop("retryAfterSeconds", None)
         self.export_jobs[job_id] = job
         self.record_usage("model_exported", {"avatarId": avatar_id, "format": "glb", "exportJobId": job_id, "retry": True})
         self.record_audit("model.exported", "export_job", job_id, {"avatarId": avatar_id, "format": "glb", "retry": True})
@@ -1212,6 +1215,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         }
         if simulate_failure:
             job["error"] = "simulated_export_failure"
+            job["errorCode"] = "asset_missing"
+            job["retryable"] = True
+            job["retryAfterSeconds"] = 60
             job.pop("modelUrl", None)
             job.pop("finishedAt", None)
         if model_format == "glb":
