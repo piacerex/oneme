@@ -30,7 +30,7 @@ PHASES = [
             "apps/web/src/three-preview.js",
             "docs/three-preview.md",
         ],
-        "checks": ["widget_api_smoke"],
+        "checks": ["web_builder_smoke", "widget_api_smoke"],
     },
     {
         "phase": "phase_2",
