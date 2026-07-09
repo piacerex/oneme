@@ -54,6 +54,7 @@ body {
 .avatar-preview {
   width: min(420px, 80vw);
   aspect-ratio: 3 / 4;
+  display: block;
 }
 
 .editor-panel {
