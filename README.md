@@ -33,6 +33,8 @@ Useful companion pages:
 
 To point the SDK example at the local API mock, run `python3 apps/api/mock_server.py`
 and open `apps/web/sdk-example.html?api=http://127.0.0.1:8765`.
+The widget supports the same API parameter:
+`apps/web/widget.html?app_id=demo-app&api_key=demo-key&api=http://127.0.0.1:8765`.
 
 ## Local Verification
 

@@ -100,6 +100,11 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.avatars[parts[2]] = avatar
         self.send_json(avatar)
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self.send_response(204)
+        self.send_common_headers()
+        self.end_headers()
+
     def send_avatar(self, avatar_id: str) -> None:
         avatar = self.avatars.get(avatar_id)
         if not avatar:
@@ -160,6 +165,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     def send_json(self, payload: dict, status: int = 200) -> None:
         body = json.dumps(payload, indent=2).encode("utf-8")
         self.send_response(status)
+        self.send_common_headers()
         self.send_header("content-type", "application/json; charset=utf-8")
         self.send_header("content-length", str(len(body)))
         self.end_headers()
@@ -167,6 +173,11 @@ class OnemeMockApi(BaseHTTPRequestHandler):
 
     def send_error_json(self, status: int, code: str) -> None:
         self.send_json({"error": code}, status=status)
+
+    def send_common_headers(self) -> None:
+        self.send_header("access-control-allow-origin", "*")
+        self.send_header("access-control-allow-methods", "GET, POST, PATCH, OPTIONS")
+        self.send_header("access-control-allow-headers", "content-type, accept")
 
 
 def main() -> int:

@@ -3,6 +3,7 @@ const appId = params.get("app_id") ?? "";
 const apiKey = params.get("api_key") ?? "";
 const requestedTheme = params.get("theme");
 const resumeAvatarId = params.get("resume");
+const apiBaseUrl = params.get("api")?.replace(/\/$/, "") ?? "";
 
 const apps = window.onemeWidgetApps ?? [];
 const app = apps.find((item) => item.id === appId && item.apiKeys.includes(apiKey));
@@ -61,9 +62,10 @@ if (!app) {
   boot();
 }
 
-function boot() {
+async function boot() {
   card.dataset.theme = requestedTheme || app.theme;
   appName.textContent = app.name;
+  await loadApiOptions();
   populate("hair");
   populate("top");
   populate("accessory");
@@ -72,6 +74,33 @@ function boot() {
   statusText.textContent = "Ready";
   render();
   post("oneme.widget.ready", { appId: app.id });
+}
+
+async function loadApiOptions() {
+  if (!apiBaseUrl) return;
+
+  try {
+    const response = await fetchJson("/api/parts");
+    const grouped = groupParts(response.parts ?? []);
+    for (const name of Object.keys(options)) {
+      if (grouped[name]?.length) options[name] = grouped[name];
+    }
+  } catch (error) {
+    statusText.textContent = "Using local widget parts";
+    post("oneme.widget.warning", {
+      appId: app.id,
+      warning: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+function groupParts(parts) {
+  return parts.reduce((grouped, part) => {
+    if (!options[part.category]) return grouped;
+    grouped[part.category] = grouped[part.category] ?? [];
+    grouped[part.category].push([part.id, part.label ?? part.id]);
+    return grouped;
+  }, {});
 }
 
 function fail(error) {
@@ -109,18 +138,51 @@ function updateState(event) {
   render();
 }
 
-function saveAvatar() {
+async function saveAvatar() {
   state = {
     ...state,
     avatarId: `widget-${Date.now()}`
   };
-  window.localStorage.setItem(`oneme.widget.${state.avatarId}`, JSON.stringify(state));
+  if (apiBaseUrl) {
+    state = await createRemoteAvatar(state);
+  } else {
+    window.localStorage.setItem(`oneme.widget.${state.avatarId}`, JSON.stringify(state));
+  }
   statusText.textContent = `Saved ${state.avatarId}`;
   post("oneme.avatar.saved", {
     appId: app.id,
     avatarId: state.avatarId,
     config: state
   });
+}
+
+async function createRemoteAvatar(config) {
+  try {
+    return await fetchJson("/api/avatars", {
+      method: "POST",
+      body: JSON.stringify({ avatarConfig: config })
+    });
+  } catch (error) {
+    statusText.textContent = "Remote save failed";
+    post("oneme.widget.error", {
+      appId: app.id,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+async function fetchJson(path, options = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      ...options.headers
+    }
+  });
+  if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+  return response.json();
 }
 
 function post(type, payload) {

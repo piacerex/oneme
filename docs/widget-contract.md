@@ -12,6 +12,7 @@ Optional parameters:
 
 - `theme`: `light`, `mint`, or `mono`
 - `resume`: avatar id to resume from local storage
+- `api`: optional API base URL for loading parts and saving avatars through the API mock
 
 ## App Configuration
 
@@ -36,6 +37,9 @@ Each app can limit choices by category:
 ```
 
 Missing categories allow all MVP options.
+
+When `api` is present, the widget calls `/api/parts` and uses matching returned
+parts for supported categories.
 
 ## postMessage Events
 
@@ -76,3 +80,13 @@ The widget sends messages to `window.parent`.
 The static MVP cannot enforce server CORS. It simulates embed policy by checking
 `document.referrer` against the configured `allowedOrigins` list where available.
 Production must enforce this server-side.
+
+## API Mock Save
+
+With `api=http://127.0.0.1:8765`, the widget saves through:
+
+```http
+POST /api/avatars
+```
+
+Without `api`, it keeps the static MVP behavior and writes to `localStorage`.

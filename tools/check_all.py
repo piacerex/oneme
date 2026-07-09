@@ -21,6 +21,7 @@ PYTHON_FILES = [
     "tools/roadmap/check_progress.py",
     "tools/schemas/validate_examples.py",
     "tools/sdk/smoke_web_sdk.py",
+    "tools/widget/smoke_widget_api.py",
     "tools/check_all.py",
 ]
 
@@ -97,6 +98,14 @@ def check_web_sdk() -> None:
     )
 
 
+def check_widget_api() -> None:
+    subprocess.run(
+        [sys.executable, "tools/widget/smoke_widget_api.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
@@ -105,6 +114,7 @@ def main() -> int:
         ("python", check_python_files),
         ("api mock", check_api_mock),
         ("web sdk", check_web_sdk),
+        ("widget api", check_widget_api),
         ("roadmap", check_roadmap_progress),
     ]
 
