@@ -12,6 +12,7 @@ The check runner covers:
 - one `.example.json` for every `.schema.json`
 - example files matching the supported JSON Schema subset
 - Python syntax for local tooling
+- API mock smoke test
 - roadmap evidence coverage through `tools/roadmap/check_progress.py`
 
 This is the local MVP gate. It does not replace browser, Unity, hosted API, GLB,

@@ -25,3 +25,12 @@ Implemented endpoints:
 The server stores avatars in memory and resets on restart. It is not a
 production backend, but it gives SDK, widget, and API contract work a real HTTP
 target before the hosted service exists.
+
+Smoke test:
+
+```bash
+python3 tools/api/smoke_mock_api.py
+```
+
+The smoke test starts the mock on a temporary local port and verifies avatar,
+parts, model URL, GLB export, and VRM export endpoints.

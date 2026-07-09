@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 PYTHON_FILES = [
     "apps/api/mock_server.py",
+    "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",
@@ -79,12 +80,21 @@ def check_schema_example_validation() -> None:
     )
 
 
+def check_api_mock() -> None:
+    subprocess.run(
+        [sys.executable, "tools/api/smoke_mock_api.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
         ("schema examples", check_schema_examples),
         ("schema example validation", check_schema_example_validation),
         ("python", check_python_files),
+        ("api mock", check_api_mock),
         ("roadmap", check_roadmap_progress),
     ]
 
