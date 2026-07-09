@@ -1244,6 +1244,7 @@ function syncForm() {
 
 function render() {
   drawAvatar();
+  window.onemeThreePreview?.sync(cloneConfig());
   renderConfig();
   renderExportJob();
   renderAiCandidates();

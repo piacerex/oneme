@@ -51,8 +51,32 @@ body {
   overflow: hidden;
 }
 
-.avatar-preview {
+.preview-stack {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) minmax(220px, 320px);
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 18px;
+}
+
+.three-preview {
   width: min(420px, 80vw);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eef2ee;
+}
+
+.three-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-preview {
+  width: min(320px, 80vw);
   aspect-ratio: 3 / 4;
   display: block;
 }
@@ -358,6 +382,10 @@ pre {
 
   .preview-panel {
     min-height: 420px;
+  }
+
+  .preview-stack {
+    grid-template-columns: 1fr;
   }
 
   .editor-panel {

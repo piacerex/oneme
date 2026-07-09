@@ -10,13 +10,16 @@
     <main class="app-shell">
       <section class="workspace" aria-label="Avatar builder">
         <div class="preview-panel">
-          <canvas
-            id="avatar-preview"
-            class="avatar-preview"
-            width="720"
-            height="960"
-            aria-label="Avatar preview"
-          ></canvas>
+          <div class="preview-stack">
+            <div id="three-preview" class="three-preview" aria-label="3D avatar preview"></div>
+            <canvas
+              id="avatar-preview"
+              class="avatar-preview"
+              width="720"
+              height="960"
+              aria-label="Canvas avatar preview"
+            ></canvas>
+          </div>
         </div>
 
         <aside class="editor-panel" aria-label="Avatar editor">
@@ -124,6 +127,7 @@
       </section>
     </main>
 
+    <script type="module" src="./src/three-preview.js"></script>
     <script defer src="./src/app.js"></script>
   </body>
 </html>
