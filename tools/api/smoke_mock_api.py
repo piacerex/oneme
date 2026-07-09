@@ -96,6 +96,36 @@ def run_smoke(base_url: str) -> None:
     fetched_team = request_json(base_url, "/api/teams/team-smoke")
     assert_equal(fetched_team["id"], "team-smoke", "fetched team id")
 
+    billing_plan = request_json(
+        base_url,
+        "/api/billing_plans",
+        method="POST",
+        payload={
+            "id": "plan-smoke",
+            "name": "Smoke Pro",
+            "currency": "USD",
+            "monthlyPriceCents": 9900,
+            "limits": {
+                "apps": 5,
+                "members": 10,
+                "monthlyApiRequests": 100000,
+                "monthlyModelExports": 5000,
+                "storageBytes": 10737418240,
+                "webhookDeliveries": 50000,
+            },
+        },
+    )
+    assert_equal(billing_plan["limits"]["apps"], 5, "billing plan app limit")
+    fetched_plan = request_json(base_url, "/api/billing_plans/plan-smoke")
+    assert_equal(fetched_plan["id"], "plan-smoke", "fetched billing plan id")
+    patched_team = request_json(
+        base_url,
+        "/api/teams/team-smoke",
+        method="PATCH",
+        payload={"planId": "plan-smoke"},
+    )
+    assert_equal(patched_team["planId"], "plan-smoke", "patched team billing plan")
+
     widget_app = request_json(
         base_url,
         "/api/apps",
@@ -377,6 +407,7 @@ def run_smoke(base_url: str) -> None:
         "api_key.created",
         "team.member.invited",
         "team.member.role_changed",
+        "billing.plan_changed",
         "incident.created",
         "incident.updated",
         "face_analysis.deleted",

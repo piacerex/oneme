@@ -41,6 +41,8 @@ Implemented endpoints:
 - `GET /api/teams/:id`
 - `GET /api/team_members`
 - `GET /api/team_members/:id`
+- `GET /api/billing_plans`
+- `GET /api/billing_plans/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -57,6 +59,7 @@ Implemented endpoints:
 - `PATCH /api/incidents/:id`
 - `PATCH /api/legal_records/:id`
 - `PATCH /api/team_members/:id`
+- `PATCH /api/teams/:id`
 - `DELETE /api/face_analysis_jobs/:id`
 - `POST /api/avatars/from_face_analysis`
 - `POST /api/avatars/from_ai_candidate`
@@ -67,6 +70,7 @@ Implemented endpoints:
 - `POST /api/apps/:id/api_keys`
 - `POST /api/teams`
 - `POST /api/team_members`
+- `POST /api/billing_plans`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -99,6 +103,9 @@ configuration and credential lifecycle before production auth exists.
 Teams and members are stored in memory through `/api/teams` and
 `/api/team_members`. Member creation and role changes append audit log records
 for local role and access-control workflow testing.
+Billing plans are stored in memory through `/api/billing_plans`. Updating a
+team's `planId` with `PATCH /api/teams/:id` records a `billing.plan_changed`
+audit event.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.

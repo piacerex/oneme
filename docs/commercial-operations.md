@@ -58,6 +58,10 @@ Plans define soft and hard limits for:
 - storage bytes
 - webhook deliveries
 
+The local API mock supports `POST /api/billing_plans`,
+`GET /api/billing_plans/:id`, and `PATCH /api/teams/:id` for plan assignment.
+Plan changes create `billing.plan_changed` audit records.
+
 ## Operations Dashboard
 
 The admin dashboard should expose:

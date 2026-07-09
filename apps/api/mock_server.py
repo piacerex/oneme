@@ -37,6 +37,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
     teams: dict[str, dict] = {}
     team_members: dict[str, dict] = {}
+    billing_plans: dict[str, dict] = {}
     face_analysis_jobs: dict[str, dict] = {}
     ai_generation_jobs: dict[str, dict] = {}
     recommendation_feedback: list[dict] = []
@@ -96,6 +97,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"teams": list(self.teams.values())})
         elif path == "/api/team_members":
             self.send_json({"teamMembers": list(self.team_members.values())})
+        elif path == "/api/billing_plans":
+            self.send_json({"billingPlans": list(self.billing_plans.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -120,6 +123,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_team(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "team_members"]:
             self.send_team_member(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "billing_plans"]:
+            self.send_billing_plan(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -178,6 +183,27 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.team_members[member["id"]] = member
             self.record_audit("team.member.invited", "member", member["id"], {"role": member["role"]})
             self.send_json(member, status=201)
+        elif path == "/api/billing_plans":
+            payload = self.read_json_body()
+            plan = {
+                "id": payload.get("id") or now_id("plan"),
+                "name": payload.get("name", "Pro"),
+                "currency": payload.get("currency", "USD"),
+                "monthlyPriceCents": payload.get("monthlyPriceCents", 4900),
+                "limits": payload.get(
+                    "limits",
+                    {
+                        "apps": 10,
+                        "members": 20,
+                        "monthlyApiRequests": 1000000,
+                        "monthlyModelExports": 50000,
+                        "storageBytes": 107374182400,
+                        "webhookDeliveries": 250000,
+                    },
+                ),
+            }
+            self.billing_plans[plan["id"]] = plan
+            self.send_json(plan, status=201)
         elif path == "/api/webhook_endpoints":
             payload = self.read_json_body()
             endpoint = {
@@ -337,6 +363,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         parts = path.strip("/").split("/")
 
         if len(parts) != 3 or parts[:2] != ["api", "avatars"]:
+            if len(parts) == 3 and parts[:2] == ["api", "teams"]:
+                self.patch_team(parts[2])
+                return
             if len(parts) == 3 and parts[:2] == ["api", "team_members"]:
                 self.patch_team_member(parts[2])
                 return
@@ -425,6 +454,30 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 {"previousRole": previous_role, "role": member["role"]},
             )
         self.send_json(member)
+
+    def patch_team(self, team_id: str) -> None:
+        team = self.teams.get(team_id)
+        if not team:
+            self.send_error_json(404, "team_not_found")
+            return
+
+        patch = self.read_json_body()
+        previous_plan = team["planId"]
+        if "name" in patch:
+            team["name"] = patch["name"]
+        if "planId" in patch:
+            team["planId"] = patch["planId"]
+        if patch:
+            team["updatedAt"] = "2026-07-09T00:00:01.000Z"
+        self.teams[team_id] = team
+        if team["planId"] != previous_plan:
+            self.record_audit(
+                "billing.plan_changed",
+                "billing_plan",
+                team["planId"],
+                {"teamId": team_id, "previousPlanId": previous_plan},
+            )
+        self.send_json(team)
 
     def patch_monitoring_alert(self, alert_id: str) -> None:
         alert = next((item for item in self.monitoring_alerts if item["id"] == alert_id), None)
@@ -661,6 +714,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "team_member_not_found")
             return
         self.send_json(member)
+
+    def send_billing_plan(self, plan_id: str) -> None:
+        plan = self.billing_plans.get(plan_id)
+        if not plan:
+            self.send_error_json(404, "billing_plan_not_found")
+            return
+        self.send_json(plan)
 
     def create_app_api_key(self, app_id: str) -> None:
         app = self.apps.get(app_id)
@@ -998,6 +1058,7 @@ def main() -> int:
     OnemeMockApi.rate_limits = {}
     OnemeMockApi.teams = {}
     OnemeMockApi.team_members = {}
+    OnemeMockApi.billing_plans = {}
     OnemeMockApi.face_analysis_jobs = {}
     OnemeMockApi.ai_generation_jobs = {}
     OnemeMockApi.recommendation_feedback = []
