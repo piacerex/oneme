@@ -38,6 +38,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     face_analysis_jobs: dict[str, dict] = {}
     ai_generation_jobs: dict[str, dict] = {}
     recommendation_feedback: list[dict] = []
+    export_jobs: dict[str, dict] = {}
+    vrm_export_jobs: dict[str, dict] = {}
     asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
@@ -81,6 +83,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"aiGenerationJobs": list(self.ai_generation_jobs.values())})
         elif path == "/api/recommendation_feedback":
             self.send_json({"recommendationFeedback": self.recommendation_feedback})
+        elif path == "/api/export_jobs":
+            self.send_json({"exportJobs": list(self.export_jobs.values())})
+        elif path == "/api/vrm_export_jobs":
+            self.send_json({"vrmExportJobs": list(self.vrm_export_jobs.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -95,6 +101,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_face_analysis_job(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "ai_generation_jobs"]:
             self.send_ai_generation_job(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "export_jobs"]:
+            self.send_export_job(parts[2], "glb")
+        elif len(parts) == 3 and parts[:2] == ["api", "vrm_export_jobs"]:
+            self.send_export_job(parts[2], "vrm")
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -249,10 +259,14 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json(feedback, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
-            self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
+            job = self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb")
+            self.export_jobs[job["id"]] = job
+            self.send_json(job, status=201)
         elif path == "/api/vrm_export_jobs":
             payload = self.read_json_body()
-            self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "vrm"), status=201)
+            job = self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "vrm")
+            self.vrm_export_jobs[job["id"]] = job
+            self.send_json(job, status=201)
         else:
             self.send_error_json(404, "not_found")
 
@@ -534,6 +548,14 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         job = self.ai_generation_jobs.get(job_id)
         if not job:
             self.send_error_json(404, "ai_generation_job_not_found")
+            return
+        self.send_json(job)
+
+    def send_export_job(self, job_id: str, model_format: str) -> None:
+        jobs = self.export_jobs if model_format == "glb" else self.vrm_export_jobs
+        job = jobs.get(job_id)
+        if not job:
+            self.send_error_json(404, "export_job_not_found")
             return
         self.send_json(job)
 
@@ -829,6 +851,8 @@ def main() -> int:
     OnemeMockApi.face_analysis_jobs = {}
     OnemeMockApi.ai_generation_jobs = {}
     OnemeMockApi.recommendation_feedback = []
+    OnemeMockApi.export_jobs = {}
+    OnemeMockApi.vrm_export_jobs = {}
     OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []

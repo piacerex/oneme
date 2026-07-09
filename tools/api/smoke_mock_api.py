@@ -286,11 +286,18 @@ def run_smoke(base_url: str) -> None:
 
     export_job = request_json(base_url, "/api/export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(export_job["status"], "succeeded", "glb export status")
+    fetched_export_job = request_json(base_url, f"/api/export_jobs/{export_job['id']}")
+    assert_equal(fetched_export_job["id"], export_job["id"], "fetched glb export job id")
+    export_jobs = request_json(base_url, "/api/export_jobs")
+    if export_job["id"] not in {job["id"] for job in export_jobs.get("exportJobs", [])}:
+        raise AssertionError("export jobs did not include created GLB job")
 
     vrm_job = request_json(base_url, "/api/vrm_export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(vrm_job["status"], "succeeded", "vrm export status")
     if "vrm" not in vrm_job:
         raise AssertionError("vrm export job did not include VRM metadata")
+    fetched_vrm_job = request_json(base_url, f"/api/vrm_export_jobs/{vrm_job['id']}")
+    assert_equal(fetched_vrm_job["id"], vrm_job["id"], "fetched vrm export job id")
 
     usage = request_json(base_url, "/api/usage_events")
     metrics = {event["metric"] for event in usage.get("usageEvents", [])}

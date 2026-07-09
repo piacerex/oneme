@@ -31,6 +31,10 @@ Implemented endpoints:
 - `GET /api/ai_generation_jobs`
 - `GET /api/ai_generation_jobs/:id`
 - `GET /api/recommendation_feedback`
+- `GET /api/export_jobs`
+- `GET /api/export_jobs/:id`
+- `GET /api/vrm_export_jobs`
+- `GET /api/vrm_export_jobs/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -75,6 +79,9 @@ current avatar config and safe hints only. `POST /api/avatars/from_ai_candidate`
 turns an approved candidate into an editable avatar, and
 `POST /api/recommendation_feedback` records whether the user applied, rejected,
 or saved a candidate after edits.
+Export jobs are stored in memory after `POST /api/export_jobs` and
+`POST /api/vrm_export_jobs`. They can be listed or fetched by id so SDK and
+operations flows can inspect async job state before a hosted queue exists.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.
