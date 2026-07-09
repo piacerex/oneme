@@ -1,6 +1,6 @@
 # Export Pipeline
 
-Phase 3 starts with a local MVP exporter and keeps the contract compatible with a later server-side Blender pipeline.
+Phase 4 starts with a local MVP exporter and keeps the contract compatible with a later server-side Blender pipeline.
 
 ## MVP Export Contract
 
@@ -45,3 +45,14 @@ The same visual avatar should reuse the same generated GLB.
 - Keep failed jobs in the local job list.
 - Store a short error message.
 - Allow users to retry by pressing export again.
+
+## API Shape
+
+The browser MVP simulates these API responses locally:
+
+- `POST /api/export_jobs`
+- `GET /api/export_jobs/:id`
+- `GET /api/avatars/:id/model`
+
+Production should preserve the same response shape and replace local blob URLs
+with signed or public CDN URLs.

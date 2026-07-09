@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Placeholder entrypoint for the future Blender-based avatar composer.
 
-The current Phase 3 MVP exports a valid GLB container in the browser. Once real
+The current Phase 4 MVP exports a valid GLB container in the browser. Once real
 part assets exist, this script should be run inside Blender Python to merge
 resolved parts into a mesh-backed GLB.
 """
