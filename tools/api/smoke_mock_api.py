@@ -253,6 +253,28 @@ def run_smoke(base_url: str) -> None:
     if "incident-smoke" not in incident_ids:
         raise AssertionError("incidents did not include incident-smoke")
 
+    status_update = request_json(
+        base_url,
+        "/api/status_page_updates",
+        method="POST",
+        payload={
+            "id": "status-update-smoke",
+            "incidentId": "incident-smoke",
+            "status": "monitoring",
+            "message": "Model exports are recovering in the smoke test.",
+            "customerImpact": "Delayed exports are catching up.",
+        },
+    )
+    assert_equal(status_update["status"], "monitoring", "created status page update status")
+
+    status_updates = request_json(base_url, "/api/status_page_updates")
+    status_update_ids = {item["id"] for item in status_updates.get("statusPageUpdates", [])}
+    if "status-update-smoke" not in status_update_ids:
+        raise AssertionError("status page updates did not include status-update-smoke")
+
+    fetched_status_update = request_json(base_url, "/api/status_page_updates/status-update-smoke")
+    assert_equal(fetched_status_update["incidentId"], "incident-smoke", "fetched status page update incident id")
+
     resolved_incident = request_json(
         base_url,
         "/api/incidents/incident-smoke",

@@ -147,6 +147,8 @@ Failed validations create open `asset_validation_failure` monitoring alerts.
 Incidents are stored in memory and can be created, listed, fetched, and resolved
 through `/api/incidents`. Incident creation and updates append audit log records
 so recovery workflows can be inspected locally.
+Status page updates are stored in memory through `/api/status_page_updates` and
+can be linked to incident recovery flows before resolution.
 Legal records are stored in memory and can be created, listed, fetched, and
 updated through `/api/legal_records`. This covers terms, privacy, asset license,
 face-photo consent, and retention-policy records for local operations testing.
@@ -167,5 +169,5 @@ python3 tools/api/smoke_mock_api.py
 The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
 event, audit log, face analysis, AI generation, asset review, incident recovery,
-legal record, monitoring alert, operations summary, rate limit, and webhook
-delivery endpoints.
+status page update, legal record, monitoring alert, operations summary, rate
+limit, and webhook delivery endpoints.

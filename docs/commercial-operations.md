@@ -170,6 +170,9 @@ The local API mock supports `POST /api/incidents`,
 `GET /api/incidents`, `GET /api/incidents/:id`, and
 `PATCH /api/incidents/:id` so incident detection, mitigation, resolution, and
 audit history can be tested locally.
+Status page publishing is covered by `POST /api/status_page_updates`,
+`GET /api/status_page_updates`, and `GET /api/status_page_updates/:id`, with
+each update linked to the incident being communicated.
 
 ## Legal and License Records
 

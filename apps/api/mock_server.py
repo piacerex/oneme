@@ -51,6 +51,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     audit_logs: list[dict] = []
     monitoring_alerts: list[dict] = []
     incidents: dict[str, dict] = {}
+    status_page_updates: dict[str, dict] = {}
     legal_records: dict[str, dict] = {}
     webhook_endpoints: dict[str, dict] = {}
     webhook_deliveries: list[dict] = []
@@ -79,6 +80,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"monitoringAlerts": self.monitoring_alerts})
         elif path == "/api/incidents":
             self.send_json({"incidents": list(self.incidents.values())})
+        elif path == "/api/status_page_updates":
+            self.send_json({"statusPageUpdates": list(self.status_page_updates.values())})
         elif path == "/api/legal_records":
             self.send_json({"legalRecords": list(self.legal_records.values())})
         elif path == "/api/ops/summary":
@@ -121,6 +124,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_webhook_delivery(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "incidents"]:
             self.send_incident(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "status_page_updates"]:
+            self.send_status_page_update(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "legal_records"]:
             self.send_legal_record(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "face_analysis_jobs"]:
@@ -293,6 +298,18 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.incidents[incident["id"]] = incident
             self.record_audit("incident.created", "incident", incident["id"], {"status": incident["status"]})
             self.send_json(incident, status=201)
+        elif path == "/api/status_page_updates":
+            payload = self.read_json_body()
+            update = {
+                "id": payload.get("id") or now_id("status-update"),
+                "incidentId": payload.get("incidentId", "incident-demo"),
+                "status": payload.get("status", "investigating"),
+                "message": payload.get("message", "We are investigating an operational issue."),
+                "customerImpact": payload.get("customerImpact", "Impact is under investigation."),
+                "publishedAt": payload.get("publishedAt", "2026-07-09T00:00:00.000Z"),
+            }
+            self.status_page_updates[update["id"]] = update
+            self.send_json(update, status=201)
         elif path == "/api/legal_records":
             payload = self.read_json_body()
             record = {
@@ -714,6 +731,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "incident_not_found")
             return
         self.send_json(incident)
+
+    def send_status_page_update(self, update_id: str) -> None:
+        update = self.status_page_updates.get(update_id)
+        if not update:
+            self.send_error_json(404, "status_page_update_not_found")
+            return
+        self.send_json(update)
 
     def send_legal_record(self, record_id: str) -> None:
         record = self.legal_records.get(record_id)
@@ -1200,6 +1224,7 @@ def main() -> int:
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []
     OnemeMockApi.incidents = {}
+    OnemeMockApi.status_page_updates = {}
     OnemeMockApi.legal_records = {}
     OnemeMockApi.webhook_endpoints = {}
     OnemeMockApi.webhook_deliveries = []

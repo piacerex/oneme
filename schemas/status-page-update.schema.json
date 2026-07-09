@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "oneme Status Page Update",
+  "type": "object",
+  "required": ["id", "incidentId", "status", "message", "publishedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "incidentId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["investigating", "identified", "monitoring", "resolved"]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "customerImpact": {
+      "type": "string"
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
