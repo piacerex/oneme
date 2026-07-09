@@ -26,8 +26,10 @@ Implemented endpoints:
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
 - `GET /api/usage_events`
+- `GET /api/webhook_deliveries`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
+- `POST /api/webhook_endpoints`
 
 The server stores avatars in memory and resets on restart. It is not a
 production backend, but it gives SDK, widget, and API contract work a real HTTP
@@ -41,6 +43,10 @@ Responses include:
 - `x-ratelimit-remaining`
 - `x-ratelimit-reset`
 
+Webhook endpoints are stored in memory. When matching events occur, the mock
+creates queued delivery records that can be inspected with
+`GET /api/webhook_deliveries`.
+
 Smoke test:
 
 ```bash
@@ -48,4 +54,5 @@ python3 tools/api/smoke_mock_api.py
 ```
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
-parts, model URL, GLB export, VRM export, and usage event endpoints.
+parts, model URL, GLB export, VRM export, usage event, rate limit, and webhook
+delivery endpoints.

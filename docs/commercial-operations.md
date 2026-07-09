@@ -80,6 +80,8 @@ Minimum events:
 
 Deliveries use signed JSON payloads and exponential retry. Failed deliveries stay
 queryable from the operations dashboard.
+The local API mock supports `POST /api/webhook_endpoints` and records queued
+deliveries at `GET /api/webhook_deliveries`.
 
 ## Audit Logs
 

@@ -36,6 +36,8 @@ def now_id(prefix: str) -> str:
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
     usage_events: list[dict] = []
+    webhook_endpoints: dict[str, dict] = {}
+    webhook_deliveries: list[dict] = []
     rate_limits: dict[str, dict] = {}
     rate_limit_window_seconds = 60
     rate_limit_max_requests = 600
@@ -55,6 +57,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"parts": PARTS})
         elif path == "/api/usage_events":
             self.send_json({"usageEvents": self.usage_events})
+        elif path == "/api/webhook_deliveries":
+            self.send_json({"webhookDeliveries": self.webhook_deliveries})
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -83,7 +87,21 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             avatar["avatarId"] = avatar.get("avatarId") or now_id("avatar")
             self.avatars[avatar["avatarId"]] = avatar
             self.record_usage("avatar_created", {"avatarId": avatar["avatarId"]})
+            self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
             self.send_json(avatar, status=201)
+        elif path == "/api/webhook_endpoints":
+            payload = self.read_json_body()
+            endpoint = {
+                "id": payload.get("id") or now_id("webhook"),
+                "teamId": payload.get("teamId", "team-demo"),
+                "appId": payload.get("appId", "app-demo"),
+                "url": payload.get("url", "https://example.com/oneme/webhooks"),
+                "events": payload.get("events", ["avatar.created", "model.exported", "export.failed"]),
+                "status": payload.get("status", "active"),
+                "createdAt": "2026-07-09T00:00:00.000Z",
+            }
+            self.webhook_endpoints[endpoint["id"]] = endpoint
+            self.send_json(endpoint, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
@@ -207,6 +225,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "springBones": ["hair", "accessory"],
             }
         self.record_usage("model_exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
+        self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
         return job
 
     def record_usage(self, metric: str, metadata: dict) -> None:
@@ -222,6 +241,22 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "occurredAt": "2026-07-09T00:00:00.000Z",
             }
         )
+
+    def queue_webhooks(self, event: str, payload: dict) -> None:
+        for endpoint in self.webhook_endpoints.values():
+            if endpoint["status"] != "active" or event not in endpoint["events"]:
+                continue
+            self.webhook_deliveries.append(
+                {
+                    "id": now_id("delivery"),
+                    "endpointId": endpoint["id"],
+                    "event": event,
+                    "payload": payload,
+                    "status": "queued",
+                    "attempt": 1,
+                    "createdAt": "2026-07-09T00:00:00.000Z",
+                }
+            )
 
     def read_json_body(self) -> dict:
         length = int(self.headers.get("content-length", "0"))
@@ -265,6 +300,8 @@ def main() -> int:
     args = parser.parse_args()
 
     OnemeMockApi.rate_limits = {}
+    OnemeMockApi.webhook_endpoints = {}
+    OnemeMockApi.webhook_deliveries = []
     OnemeMockApi.rate_limit_max_requests = args.rate_limit
     OnemeMockApi.rate_limit_window_seconds = args.rate_limit_window
 

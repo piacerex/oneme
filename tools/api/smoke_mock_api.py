@@ -70,6 +70,18 @@ def run_smoke(base_url: str) -> None:
     if not parts.get("parts"):
         raise AssertionError("/api/parts returned no parts")
 
+    webhook = request_json(
+        base_url,
+        "/api/webhook_endpoints",
+        method="POST",
+        payload={
+            "id": "webhook-smoke",
+            "url": "https://example.com/oneme/webhooks",
+            "events": ["avatar.created", "model.exported"],
+        },
+    )
+    assert_equal(webhook["status"], "active", "webhook endpoint status")
+
     created = request_json(
         base_url,
         "/api/avatars",
@@ -115,6 +127,12 @@ def run_smoke(base_url: str) -> None:
     for metric in {"avatar_created", "model_downloaded", "model_exported", "api_request"}:
         if metric not in metrics:
             raise AssertionError(f"usage events did not include {metric}")
+
+    deliveries = request_json(base_url, "/api/webhook_deliveries")
+    events = {delivery["event"] for delivery in deliveries.get("webhookDeliveries", [])}
+    for event in {"avatar.created", "model.exported"}:
+        if event not in events:
+            raise AssertionError(f"webhook deliveries did not include {event}")
 
 
 def main() -> int:
