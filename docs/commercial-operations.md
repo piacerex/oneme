@@ -46,6 +46,9 @@ Limit decisions must return the remaining quota and reset time so SDKs can back
 off without guessing.
 The local API mock implements this with `x-ratelimit-limit`,
 `x-ratelimit-remaining`, and `x-ratelimit-reset` headers.
+It also supports `POST /api/rate_limit_policies`,
+`GET /api/rate_limit_policies`, and `GET /api/rate_limit_policies/:id` for
+plan-scoped policy records.
 
 ## Billing Plans
 

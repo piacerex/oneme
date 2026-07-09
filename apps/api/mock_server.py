@@ -38,6 +38,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     teams: dict[str, dict] = {}
     team_members: dict[str, dict] = {}
     billing_plans: dict[str, dict] = {}
+    rate_limit_policies: dict[str, dict] = {}
     face_analysis_jobs: dict[str, dict] = {}
     ai_generation_jobs: dict[str, dict] = {}
     recommendation_feedback: list[dict] = []
@@ -99,6 +100,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"teamMembers": list(self.team_members.values())})
         elif path == "/api/billing_plans":
             self.send_json({"billingPlans": list(self.billing_plans.values())})
+        elif path == "/api/rate_limit_policies":
+            self.send_json({"rateLimitPolicies": list(self.rate_limit_policies.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -125,6 +128,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_team_member(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "billing_plans"]:
             self.send_billing_plan(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "rate_limit_policies"]:
+            self.send_rate_limit_policy(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -204,6 +209,19 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             }
             self.billing_plans[plan["id"]] = plan
             self.send_json(plan, status=201)
+        elif path == "/api/rate_limit_policies":
+            payload = self.read_json_body()
+            policy = {
+                "id": payload.get("id") or now_id("rate-limit"),
+                "planId": payload.get("planId", "plan-pro"),
+                "scope": payload.get("scope", "api_key"),
+                "windowSeconds": payload.get("windowSeconds", self.rate_limit_window_seconds),
+                "limit": payload.get("limit", self.rate_limit_max_requests),
+            }
+            if "burstLimit" in payload:
+                policy["burstLimit"] = payload["burstLimit"]
+            self.rate_limit_policies[policy["id"]] = policy
+            self.send_json(policy, status=201)
         elif path == "/api/webhook_endpoints":
             payload = self.read_json_body()
             endpoint = {
@@ -722,6 +740,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             return
         self.send_json(plan)
 
+    def send_rate_limit_policy(self, policy_id: str) -> None:
+        policy = self.rate_limit_policies.get(policy_id)
+        if not policy:
+            self.send_error_json(404, "rate_limit_policy_not_found")
+            return
+        self.send_json(policy)
+
     def create_app_api_key(self, app_id: str) -> None:
         app = self.apps.get(app_id)
         if not app:
@@ -1059,6 +1084,7 @@ def main() -> int:
     OnemeMockApi.teams = {}
     OnemeMockApi.team_members = {}
     OnemeMockApi.billing_plans = {}
+    OnemeMockApi.rate_limit_policies = {}
     OnemeMockApi.face_analysis_jobs = {}
     OnemeMockApi.ai_generation_jobs = {}
     OnemeMockApi.recommendation_feedback = []

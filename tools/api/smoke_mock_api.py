@@ -126,6 +126,26 @@ def run_smoke(base_url: str) -> None:
     )
     assert_equal(patched_team["planId"], "plan-smoke", "patched team billing plan")
 
+    rate_policy = request_json(
+        base_url,
+        "/api/rate_limit_policies",
+        method="POST",
+        payload={
+            "id": "rate-policy-smoke",
+            "planId": "plan-smoke",
+            "scope": "api_key",
+            "windowSeconds": 60,
+            "limit": 120,
+            "burstLimit": 180,
+        },
+    )
+    assert_equal(rate_policy["limit"], 120, "rate limit policy limit")
+    fetched_rate_policy = request_json(base_url, "/api/rate_limit_policies/rate-policy-smoke")
+    assert_equal(fetched_rate_policy["burstLimit"], 180, "fetched rate limit policy burst")
+    rate_policies = request_json(base_url, "/api/rate_limit_policies")
+    if "rate-policy-smoke" not in {policy["id"] for policy in rate_policies.get("rateLimitPolicies", [])}:
+        raise AssertionError("rate limit policies did not include rate-policy-smoke")
+
     widget_app = request_json(
         base_url,
         "/api/apps",

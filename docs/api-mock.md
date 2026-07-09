@@ -43,6 +43,8 @@ Implemented endpoints:
 - `GET /api/team_members/:id`
 - `GET /api/billing_plans`
 - `GET /api/billing_plans/:id`
+- `GET /api/rate_limit_policies`
+- `GET /api/rate_limit_policies/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -71,6 +73,7 @@ Implemented endpoints:
 - `POST /api/teams`
 - `POST /api/team_members`
 - `POST /api/billing_plans`
+- `POST /api/rate_limit_policies`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -106,6 +109,9 @@ for local role and access-control workflow testing.
 Billing plans are stored in memory through `/api/billing_plans`. Updating a
 team's `planId` with `PATCH /api/teams/:id` records a `billing.plan_changed`
 audit event.
+Rate limit policies are stored in memory through `/api/rate_limit_policies`.
+The runtime limiter still uses the mock server flags, while policy records let
+plan and dashboard flows inspect intended limits by plan and scope.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.
