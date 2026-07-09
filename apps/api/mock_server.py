@@ -46,6 +46,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     vrm_export_jobs: dict[str, dict] = {}
     apps: dict[str, dict] = {}
     asset_reviews: dict[str, dict] = {}
+    asset_validations: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
     monitoring_alerts: list[dict] = []
@@ -104,12 +105,16 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"rateLimitPolicies": list(self.rate_limit_policies.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
+        elif path == "/api/asset_validations":
+            self.send_json({"assetValidations": list(self.asset_validations.values())})
         elif path == "/api/webhook_deliveries":
             self.send_json({"webhookDeliveries": self.webhook_deliveries})
         elif path == "/api/webhook_endpoints":
             self.send_json({"webhookEndpoints": list(self.webhook_endpoints.values())})
         elif len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
             self.send_asset_review(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "asset_validations"]:
+            self.send_asset_validation(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "webhook_endpoints"]:
             self.send_webhook_endpoint(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "webhook_deliveries"]:
@@ -263,6 +268,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.record_audit("asset.reviewed", "asset", review["assetId"], {"status": review["status"]})
             self.queue_webhooks("asset.reviewed", {"assetReview": review})
             self.send_json(review, status=201)
+        elif path == "/api/asset_validations":
+            payload = self.read_json_body()
+            validation = self.create_asset_validation(payload)
+            self.asset_validations[validation["id"]] = validation
+            if validation["status"] == "failed":
+                self.record_alert("warning", "asset_validation_failure")
+            self.send_json(validation, status=201)
         elif path == "/api/incidents":
             payload = self.read_json_body()
             incident = {
@@ -652,6 +664,35 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "asset_review_not_found")
             return
         self.send_json(review)
+
+    def send_asset_validation(self, validation_id: str) -> None:
+        validation = self.asset_validations.get(validation_id)
+        if not validation:
+            self.send_error_json(404, "asset_validation_not_found")
+            return
+        self.send_json(validation)
+
+    def create_asset_validation(self, payload: dict) -> dict:
+        checks = payload.get(
+            "checks",
+            [
+                {
+                    "name": "file_present",
+                    "status": "failed",
+                    "message": "Placeholder asset file is not present in assets/parts.",
+                },
+                {"name": "license_recorded", "status": "passed"},
+            ],
+        )
+        status = "failed" if any(check["status"] == "failed" for check in checks) else "passed"
+        return {
+            "id": payload.get("id") or now_id("asset-validation"),
+            "assetId": payload.get("assetId", "asset-demo"),
+            "teamId": payload.get("teamId", "team-demo"),
+            "status": payload.get("status", status),
+            "checks": checks,
+            "createdAt": "2026-07-09T00:00:00.000Z",
+        }
 
     def send_webhook_endpoint(self, endpoint_id: str) -> None:
         endpoint = self.webhook_endpoints.get(endpoint_id)
@@ -1155,6 +1196,7 @@ def main() -> int:
     OnemeMockApi.vrm_export_jobs = {}
     OnemeMockApi.apps = {}
     OnemeMockApi.asset_reviews = {}
+    OnemeMockApi.asset_validations = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []
     OnemeMockApi.incidents = {}

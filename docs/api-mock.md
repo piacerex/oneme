@@ -56,6 +56,8 @@ Implemented endpoints:
 - `GET /api/ops/summary`
 - `GET /api/asset_reviews`
 - `GET /api/asset_reviews/:id`
+- `GET /api/asset_validations`
+- `GET /api/asset_validations/:id`
 - `GET /api/incidents/:id`
 - `GET /api/legal_records/:id`
 - `GET /api/webhook_deliveries`
@@ -82,6 +84,7 @@ Implemented endpoints:
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
+- `POST /api/asset_validations`
 - `POST /api/incidents`
 - `POST /api/legal_records`
 - `POST /api/webhook_endpoints`
@@ -139,6 +142,8 @@ and rate limits, create open `api_error_rate` alerts that can be resolved with
 `PATCH /api/monitoring_alerts/:id`.
 Asset reviews are stored in memory and can be submitted or approved through
 `/api/asset_reviews`.
+Asset validations are stored in memory through `/api/asset_validations`.
+Failed validations create open `asset_validation_failure` monitoring alerts.
 Incidents are stored in memory and can be created, listed, fetched, and resolved
 through `/api/incidents`. Incident creation and updates append audit log records
 so recovery workflows can be inspected locally.

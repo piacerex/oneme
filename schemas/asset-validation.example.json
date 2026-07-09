@@ -1,0 +1,18 @@
+{
+  "id": "asset-validation-demo",
+  "assetId": "hair-short-placeholder",
+  "teamId": "team-demo",
+  "status": "failed",
+  "checks": [
+    {
+      "name": "file_present",
+      "status": "failed",
+      "message": "Placeholder asset file is not present in assets/parts."
+    },
+    {
+      "name": "license_recorded",
+      "status": "passed"
+    }
+  ],
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}

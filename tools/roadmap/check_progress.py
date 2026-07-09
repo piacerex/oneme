@@ -108,6 +108,7 @@ PHASES = [
             "schemas/webhook-endpoint.schema.json",
             "schemas/audit-log.schema.json",
             "schemas/asset-review.schema.json",
+            "schemas/asset-validation.schema.json",
             "schemas/monitoring-alert.schema.json",
             "schemas/incident.schema.json",
             "schemas/legal-record.schema.json",

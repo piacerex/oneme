@@ -212,6 +212,27 @@ def run_smoke(base_url: str) -> None:
     )
     assert_equal(approved_review["status"], "approved", "approved asset review status")
 
+    asset_validation = request_json(
+        base_url,
+        "/api/asset_validations",
+        method="POST",
+        payload={
+            "id": "asset-validation-smoke",
+            "assetId": "hair-short-placeholder",
+            "checks": [
+                {
+                    "name": "file_present",
+                    "status": "failed",
+                    "message": "Placeholder asset file is not present in assets/parts.",
+                },
+                {"name": "license_recorded", "status": "passed"},
+            ],
+        },
+    )
+    assert_equal(asset_validation["status"], "failed", "asset validation status")
+    fetched_asset_validation = request_json(base_url, "/api/asset_validations/asset-validation-smoke")
+    assert_equal(fetched_asset_validation["id"], "asset-validation-smoke", "fetched asset validation id")
+
     incident = request_json(
         base_url,
         "/api/incidents",
@@ -469,7 +490,11 @@ def run_smoke(base_url: str) -> None:
     open_alerts = [alert for alert in alerts.get("monitoringAlerts", []) if alert["status"] == "open"]
     if not open_alerts:
         raise AssertionError("monitoring alerts did not include an open alert")
-    assert_equal(open_alerts[0]["metric"], "api_error_rate", "monitoring alert metric")
+    metrics = {alert["metric"] for alert in open_alerts}
+    if "api_error_rate" not in metrics:
+        raise AssertionError("monitoring alerts did not include api_error_rate")
+    if "asset_validation_failure" not in metrics:
+        raise AssertionError("monitoring alerts did not include asset_validation_failure")
 
     resolved_alert = request_json(
         base_url,
