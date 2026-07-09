@@ -22,6 +22,10 @@
     "eyeOffsetY": 0,
     "mouthOffsetY": 0
   },
+  "faceTexture": {
+    "enabled": false,
+    "mode": "cutout_overlay"
+  },
   "source": {
     "kind": "manual"
   }

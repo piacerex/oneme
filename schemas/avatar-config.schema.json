@@ -53,6 +53,18 @@
         "mouthOffsetY": { "type": "number" }
       }
     },
+    "faceTexture": {
+      "type": "object",
+      "required": ["enabled", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": {
+          "type": "string",
+          "enum": ["cutout_overlay"]
+        }
+      }
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,

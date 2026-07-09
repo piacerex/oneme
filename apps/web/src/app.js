@@ -22,6 +22,10 @@ const appState = {
     eyeOffsetY: 0,
     mouthOffsetY: 0
   },
+  faceTexture: {
+    enabled: false,
+    mode: "cutout_overlay"
+  },
   source: {
     kind: "manual"
   }
@@ -76,6 +80,7 @@ const aiStatus = document.querySelector("#ai-status");
 const aiCandidates = document.querySelector("#ai-candidates");
 const faceConsent = document.querySelector("#face-consent");
 const facePhoto = document.querySelector("#face-photo");
+const mapFaceTexture = document.querySelector("#map-face-texture");
 const analyzeFaceButton = document.querySelector("#analyze-face");
 const clearFaceButton = document.querySelector("#clear-face");
 const faceStatus = document.querySelector("#face-status");
@@ -219,6 +224,8 @@ function drawFace(centerX, y, skin) {
   ctx.beginPath();
   ctx.ellipse(centerX, y, width / 2, height / 2, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  drawMappedFaceTexture(centerX, y, width, height);
 
   const highlight = ctx.createRadialGradient(
     centerX - width * 0.18,
@@ -619,6 +626,7 @@ function loadLatestAvatar() {
   appState.parts = { ...appState.parts, ...latest.parts };
   appState.colors = { ...appState.colors, ...latest.colors };
   appState.faceMorph = { ...getDefaultFaceMorph(), ...latest.faceMorph };
+  appState.faceTexture = { ...getDefaultFaceTexture(), ...latest.faceTexture, enabled: false };
   appState.source = latest.source ?? { kind: "manual" };
 
   syncForm();
@@ -825,6 +833,9 @@ function clearFacePhoto() {
 
   facePreviewImage = null;
   faceCutout = null;
+  appState.faceTexture = getDefaultFaceTexture();
+  mapFaceTexture.checked = false;
+  mapFaceTexture.disabled = true;
   facePhoto.value = "";
   faceResult.hidden = true;
   faceResult.textContent = "";
@@ -866,6 +877,12 @@ function analyzeFacePhoto() {
   image.onload = () => {
     facePreviewImage = image;
     faceCutout = detectFaceCutout(image);
+    appState.faceTexture = {
+      enabled: true,
+      mode: "cutout_overlay"
+    };
+    mapFaceTexture.checked = true;
+    mapFaceTexture.disabled = false;
     const recommendation = recommendFromImage(image);
     recommendation.faceMorph = estimateFaceMorph(image, faceCutout);
     URL.revokeObjectURL(currentPhotoUrl);
@@ -988,7 +1005,7 @@ function applyFaceRecommendation(recommendation) {
 
   syncForm();
   renderFaceResult(recommendation);
-  setFaceStatus("Recommendation applied with a temporary contour cutout in preview.");
+  setFaceStatus("Recommendation applied with a temporary face texture on the avatar.");
   render();
 }
 
@@ -1011,6 +1028,13 @@ function getDefaultFaceMorph() {
     depth: 0.5,
     eyeOffsetY: 0,
     mouthOffsetY: 0
+  };
+}
+
+function getDefaultFaceTexture() {
+  return {
+    enabled: false,
+    mode: "cutout_overlay"
   };
 }
 
@@ -1085,6 +1109,39 @@ function drawFacePhotoReference() {
   ctx.beginPath();
   traceFaceContourPath(centerX, centerY, frameSize);
   ctx.stroke();
+}
+
+function drawMappedFaceTexture(centerX, y, width, height) {
+  if (!facePreviewImage || !appState.faceTexture?.enabled) return;
+
+  const crop = faceCutout ?? getCenteredSquareCrop(facePreviewImage);
+  const textureWidth = width * 0.78;
+  const textureHeight = height * 0.82;
+  const textureX = centerX - textureWidth / 2;
+  const textureY = y - textureHeight * 0.48;
+
+  ctx.save();
+  ctx.beginPath();
+  traceFaceContourPath(centerX, y + height * 0.02, Math.max(width, height) * 0.86);
+  ctx.clip();
+  ctx.globalAlpha = 0.72;
+  ctx.drawImage(
+    facePreviewImage,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    textureX,
+    textureY,
+    textureWidth,
+    textureHeight
+  );
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.beginPath();
+  ctx.ellipse(centerX - width * 0.16, y - height * 0.18, width * 0.2, height * 0.18, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function traceFaceContourPath(centerX, centerY, size) {
@@ -1170,6 +1227,8 @@ function syncForm() {
 
   document.querySelector("#skin-color").value = appState.colors.skin;
   document.querySelector("#hair-color").value = appState.colors.hair;
+  mapFaceTexture.checked = Boolean(appState.faceTexture?.enabled && facePreviewImage);
+  mapFaceTexture.disabled = !facePreviewImage;
 }
 
 function render() {
@@ -1208,6 +1267,14 @@ exportButton.addEventListener("click", exportGlb);
 getModelUrlButton.addEventListener("click", getAvatarModelUrl);
 generateAiButton.addEventListener("click", generateAiCandidates);
 aiCandidates.addEventListener("click", handleCandidateAction);
+mapFaceTexture.addEventListener("change", () => {
+  appState.faceTexture = {
+    ...getDefaultFaceTexture(),
+    ...appState.faceTexture,
+    enabled: mapFaceTexture.checked
+  };
+  render();
+});
 analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
 clearFaceButton.addEventListener("click", clearFacePhoto);
 render();
