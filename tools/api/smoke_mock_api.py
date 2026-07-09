@@ -134,6 +134,12 @@ def run_smoke(base_url: str) -> None:
         if event not in events:
             raise AssertionError(f"webhook deliveries did not include {event}")
 
+    audit = request_json(base_url, "/api/audit_logs")
+    actions = {log["action"] for log in audit.get("auditLogs", [])}
+    for action in {"avatar.created", "avatar.updated", "model.exported", "webhook_endpoint.created"}:
+        if action not in actions:
+            raise AssertionError(f"audit logs did not include {action}")
+
 
 def main() -> int:
     port = free_port()

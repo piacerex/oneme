@@ -98,6 +98,9 @@ Minimum actions:
 - `asset.reviewed`
 - `billing.plan_changed`
 
+The local API mock exposes `GET /api/audit_logs` and records avatar, export, and
+webhook endpoint operations.
+
 ## Asset Review
 
 Production assets must pass review before they can be used by commercial apps.

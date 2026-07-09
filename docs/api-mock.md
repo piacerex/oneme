@@ -26,6 +26,7 @@ Implemented endpoints:
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
 - `GET /api/usage_events`
+- `GET /api/audit_logs`
 - `GET /api/webhook_deliveries`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
@@ -46,6 +47,7 @@ Responses include:
 Webhook endpoints are stored in memory. When matching events occur, the mock
 creates queued delivery records that can be inspected with
 `GET /api/webhook_deliveries`.
+Audit logs are stored in memory and exposed at `GET /api/audit_logs`.
 
 Smoke test:
 
@@ -54,5 +56,5 @@ python3 tools/api/smoke_mock_api.py
 ```
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
-parts, model URL, GLB export, VRM export, usage event, rate limit, and webhook
-delivery endpoints.
+parts, model URL, GLB export, VRM export, usage event, audit log, rate limit,
+and webhook delivery endpoints.

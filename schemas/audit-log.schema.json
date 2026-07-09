@@ -26,13 +26,17 @@
         "app.created",
         "api_key.created",
         "api_key.revoked",
+        "avatar.created",
+        "avatar.updated",
         "asset.reviewed",
-        "billing.plan_changed"
+        "billing.plan_changed",
+        "model.exported",
+        "webhook_endpoint.created"
       ]
     },
     "targetType": {
       "type": "string",
-      "enum": ["team", "member", "app", "api_key", "asset", "billing_plan"]
+      "enum": ["team", "member", "app", "api_key", "asset", "avatar", "billing_plan", "export_job", "webhook_endpoint"]
     },
     "targetId": {
       "type": "string",

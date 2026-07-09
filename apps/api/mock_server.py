@@ -36,6 +36,7 @@ def now_id(prefix: str) -> str:
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
     usage_events: list[dict] = []
+    audit_logs: list[dict] = []
     webhook_endpoints: dict[str, dict] = {}
     webhook_deliveries: list[dict] = []
     rate_limits: dict[str, dict] = {}
@@ -57,6 +58,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"parts": PARTS})
         elif path == "/api/usage_events":
             self.send_json({"usageEvents": self.usage_events})
+        elif path == "/api/audit_logs":
+            self.send_json({"auditLogs": self.audit_logs})
         elif path == "/api/webhook_deliveries":
             self.send_json({"webhookDeliveries": self.webhook_deliveries})
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
@@ -87,6 +90,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             avatar["avatarId"] = avatar.get("avatarId") or now_id("avatar")
             self.avatars[avatar["avatarId"]] = avatar
             self.record_usage("avatar_created", {"avatarId": avatar["avatarId"]})
+            self.record_audit("avatar.created", "avatar", avatar["avatarId"], {"source": "api_mock"})
             self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
             self.send_json(avatar, status=201)
         elif path == "/api/webhook_endpoints":
@@ -101,6 +105,12 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "createdAt": "2026-07-09T00:00:00.000Z",
             }
             self.webhook_endpoints[endpoint["id"]] = endpoint
+            self.record_audit(
+                "webhook_endpoint.created",
+                "webhook_endpoint",
+                endpoint["id"],
+                {"events": endpoint["events"], "url": endpoint["url"]},
+            )
             self.send_json(endpoint, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
@@ -136,6 +146,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             avatar["colors"] = {**DEFAULT_AVATAR["colors"], **patch["colors"]}
         self.avatars[parts[2]] = avatar
         self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "method": "PATCH", "avatarId": parts[2]})
+        self.record_audit("avatar.updated", "avatar", parts[2], {"fields": sorted(patch.keys())})
         self.send_json(avatar)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -225,6 +236,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "springBones": ["hair", "accessory"],
             }
         self.record_usage("model_exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
+        self.record_audit("model.exported", "export_job", job["id"], {"avatarId": avatar_id, "format": model_format})
         self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
         return job
 
@@ -239,6 +251,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "quantity": 1,
                 "metadata": metadata,
                 "occurredAt": "2026-07-09T00:00:00.000Z",
+            }
+        )
+
+    def record_audit(self, action: str, target_type: str, target_id: str, metadata: dict) -> None:
+        self.audit_logs.append(
+            {
+                "id": now_id("audit"),
+                "teamId": "team-demo",
+                "actorId": self.get_api_key(),
+                "action": action,
+                "targetType": target_type,
+                "targetId": target_id,
+                "metadata": metadata,
+                "createdAt": "2026-07-09T00:00:00.000Z",
             }
         )
 
@@ -300,6 +326,7 @@ def main() -> int:
     args = parser.parse_args()
 
     OnemeMockApi.rate_limits = {}
+    OnemeMockApi.audit_logs = []
     OnemeMockApi.webhook_endpoints = {}
     OnemeMockApi.webhook_deliveries = []
     OnemeMockApi.rate_limit_max_requests = args.rate_limit
