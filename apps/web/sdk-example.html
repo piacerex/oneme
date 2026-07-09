@@ -45,9 +45,11 @@
       import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
       import { OnemeClient, mountThreeAvatar } from "../../packages/sdk-web/src/oneme-web-sdk.js";
 
-      const client = new OnemeClient();
+      const params = new URLSearchParams(window.location.search);
+      const apiBaseUrl = params.get("api");
+      const client = new OnemeClient(apiBaseUrl ? { apiBaseUrl } : {});
       const output = document.querySelector("#output");
-      const avatar =
+      const fallbackAvatar =
         client.getLatestAvatar() ??
         {
           avatarId: "sdk-demo",
@@ -65,12 +67,14 @@
             depth: 0.5
           }
         };
+      const avatar = apiBaseUrl ? await client.fetchAvatar("demo-avatar") : fallbackAvatar;
+      const model = apiBaseUrl ? await client.fetchModel(avatar.avatarId, { format: "vrm" }) : client.getModel(avatar.avatarId);
 
       mountThreeAvatar(document.querySelector("#viewer"), avatar, { THREE });
       output.textContent = JSON.stringify(
         {
           avatar,
-          model: client.getModel(avatar.avatarId)
+          model
         },
         null,
         2

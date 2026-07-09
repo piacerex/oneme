@@ -1,6 +1,8 @@
 export class OnemeClient {
   constructor(options = {}) {
     this.storage = options.storage ?? globalThis.localStorage;
+    this.apiBaseUrl = options.apiBaseUrl?.replace(/\/$/, "") ?? "";
+    this.fetch = options.fetch ?? globalThis.fetch?.bind(globalThis);
     this.avatarPrefix = options.avatarPrefix ?? "oneme.avatars";
     this.exportJobsKey = options.exportJobsKey ?? "oneme.exportJobs";
     this.exportCacheKey = options.exportCacheKey ?? "oneme.exportCache";
@@ -32,6 +34,43 @@ export class OnemeClient {
       exportJobId: job.id,
       cacheHit: Boolean(cache)
     };
+  }
+
+  async fetchAvatar(avatarId) {
+    return this.#requestJson(`/api/avatars/${encodeURIComponent(avatarId)}`);
+  }
+
+  async fetchModel(avatarId, options = {}) {
+    const format = options.format ?? "glb";
+    return this.#requestJson(
+      `/api/avatars/${encodeURIComponent(avatarId)}/model?format=${encodeURIComponent(format)}`
+    );
+  }
+
+  async fetchParts() {
+    const response = await this.#requestJson("/api/parts");
+    return response.parts ?? [];
+  }
+
+  async #requestJson(path) {
+    if (!this.apiBaseUrl) {
+      throw new Error("OnemeClient requires apiBaseUrl for API requests");
+    }
+    if (!this.fetch) {
+      throw new Error("OnemeClient requires a fetch implementation");
+    }
+
+    const response = await this.fetch(`${this.apiBaseUrl}${path}`, {
+      headers: {
+        accept: "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`oneme API request failed: ${response.status}`);
+    }
+
+    return response.json();
   }
 
   #getSavedAvatars() {

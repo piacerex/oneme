@@ -31,6 +31,9 @@ Useful companion pages:
 - `apps/web/embed-example.html`
 - `apps/web/sdk-example.html`
 
+To point the SDK example at the local API mock, run `python3 apps/api/mock_server.py`
+and open `apps/web/sdk-example.html?api=http://127.0.0.1:8765`.
+
 ## Local Verification
 
 Run the repository gate before committing:

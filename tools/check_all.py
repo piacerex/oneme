@@ -20,6 +20,7 @@ PYTHON_FILES = [
     "tools/gltf/validate_vrm.py",
     "tools/roadmap/check_progress.py",
     "tools/schemas/validate_examples.py",
+    "tools/sdk/smoke_web_sdk.py",
     "tools/check_all.py",
 ]
 
@@ -88,6 +89,14 @@ def check_api_mock() -> None:
     )
 
 
+def check_web_sdk() -> None:
+    subprocess.run(
+        [sys.executable, "tools/sdk/smoke_web_sdk.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
@@ -95,6 +104,7 @@ def main() -> int:
         ("schema example validation", check_schema_example_validation),
         ("python", check_python_files),
         ("api mock", check_api_mock),
+        ("web sdk", check_web_sdk),
         ("roadmap", check_roadmap_progress),
     ]
 
