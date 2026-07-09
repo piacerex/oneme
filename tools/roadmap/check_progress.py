@@ -38,8 +38,9 @@ PHASES = [
         "evidence": [
             "apps/web/src/app.js",
             "schemas/avatar-config.schema.json",
+            "schemas/face-analysis-job.schema.json",
         ],
-        "checks": ["widget_api_smoke"],
+        "checks": ["api_mock_smoke", "widget_api_smoke", "schema_example_validation"],
     },
     {
         "phase": "phase_3",

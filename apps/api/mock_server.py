@@ -35,6 +35,7 @@ def now_id(prefix: str) -> str:
 
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
+    face_analysis_jobs: dict[str, dict] = {}
     asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
@@ -72,6 +73,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"legalRecords": list(self.legal_records.values())})
         elif path == "/api/ops/summary":
             self.send_ops_summary()
+        elif path == "/api/face_analysis_jobs":
+            self.send_json({"faceAnalysisJobs": list(self.face_analysis_jobs.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -82,6 +85,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_incident(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "legal_records"]:
             self.send_legal_record(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "face_analysis_jobs"]:
+            self.send_face_analysis_job(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -184,6 +189,27 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.legal_records[record["id"]] = record
             self.record_audit("legal_record.created", "legal_record", record["id"], {"kind": record["kind"]})
             self.send_json(record, status=201)
+        elif path == "/api/face_analysis_jobs":
+            payload = self.read_json_body()
+            if not payload.get("consentAccepted", False):
+                self.send_error_json(400, "face_photo_consent_required")
+                return
+            job = self.create_face_analysis_job(payload)
+            self.face_analysis_jobs[job["id"]] = job
+            self.record_usage("api_request", {"endpoint": "/api/face_analysis_jobs"})
+            self.send_json(job, status=201)
+        elif path == "/api/avatars/from_face_analysis":
+            payload = self.read_json_body()
+            job = self.face_analysis_jobs.get(payload.get("faceAnalysisJobId", ""))
+            if not job or job["status"] == "deleted":
+                self.send_error_json(404, "face_analysis_job_not_found")
+                return
+            avatar = self.create_avatar_from_face_analysis(job, payload)
+            self.avatars[avatar["avatarId"]] = avatar
+            self.record_usage("avatar_created", {"avatarId": avatar["avatarId"], "source": "face_analysis"})
+            self.record_audit("avatar.created", "avatar", avatar["avatarId"], {"source": "face_analysis"})
+            self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
+            self.send_json(avatar, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
@@ -232,6 +258,19 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "method": "PATCH", "avatarId": parts[2]})
         self.record_audit("avatar.updated", "avatar", parts[2], {"fields": sorted(patch.keys())})
         self.send_json(avatar)
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        if not self.check_rate_limit():
+            return
+
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+        parts = path.strip("/").split("/")
+
+        if len(parts) == 3 and parts[:2] == ["api", "face_analysis_jobs"]:
+            self.delete_face_analysis_job(parts[2])
+            return
+        self.send_error_json(404, "not_found")
 
     def patch_asset_review(self, review_id: str) -> None:
         review = self.asset_reviews.get(review_id)
@@ -374,6 +413,85 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "legal_record_not_found")
             return
         self.send_json(record)
+
+    def send_face_analysis_job(self, job_id: str) -> None:
+        job = self.face_analysis_jobs.get(job_id)
+        if not job:
+            self.send_error_json(404, "face_analysis_job_not_found")
+            return
+        self.send_json(job)
+
+    def delete_face_analysis_job(self, job_id: str) -> None:
+        job = self.face_analysis_jobs.get(job_id)
+        if not job:
+            self.send_error_json(404, "face_analysis_job_not_found")
+            return
+        job["status"] = "deleted"
+        job["deletedAt"] = "2026-07-09T00:00:01.000Z"
+        job["recommendation"]["faceTexture"] = {
+            "enabled": False,
+            "temporary": True,
+            "expiresAt": job["expiresAt"],
+        }
+        self.face_analysis_jobs[job_id] = job
+        self.record_audit("face_analysis.deleted", "face_analysis_job", job_id, {"retainedPhoto": False})
+        self.send_json(job)
+
+    def create_face_analysis_job(self, payload: dict) -> dict:
+        expires_at = payload.get("expiresAt", "2026-07-09T00:15:00.000Z")
+        recommendation = {
+            "parts": {
+                "face": payload.get("facePreset", "face.soft_01"),
+                "hair": payload.get("hairPreset", "hair.medium_01"),
+            },
+            "colors": {
+                "skin": payload.get("skinColor", "#c99686"),
+                "hair": payload.get("hairColor", "#2d2420"),
+            },
+            "faceMorph": payload.get(
+                "faceMorph",
+                {
+                    "widthScale": 1.02,
+                    "heightScale": 0.98,
+                    "depthHint": 0.36,
+                    "eyeLine": 0.42,
+                    "mouthLine": 0.68,
+                },
+            ),
+            "faceTexture": {
+                "enabled": payload.get("mapFaceTexture", True),
+                "temporary": True,
+                "expiresAt": expires_at,
+            },
+        }
+        return {
+            "id": payload.get("id") or now_id("face-job"),
+            "status": "succeeded",
+            "consentAccepted": True,
+            "photoRetention": {
+                "storesOriginalPhoto": False,
+                "retentionSeconds": payload.get("retentionSeconds", 900),
+            },
+            "recommendation": recommendation,
+            "createdAt": "2026-07-09T00:00:00.000Z",
+            "expiresAt": expires_at,
+        }
+
+    def create_avatar_from_face_analysis(self, job: dict, payload: dict) -> dict:
+        recommendation = job["recommendation"]
+        avatar = {
+            **DEFAULT_AVATAR,
+            "avatarId": payload.get("avatarId") or now_id("avatar"),
+            "parts": {**DEFAULT_AVATAR["parts"], **recommendation["parts"], **payload.get("parts", {})},
+            "colors": {**DEFAULT_AVATAR["colors"], **recommendation["colors"], **payload.get("colors", {})},
+            "faceMorph": recommendation["faceMorph"],
+            "faceTexture": recommendation["faceTexture"],
+            "source": {
+                "kind": "face_recommendation",
+                "faceAnalysisJobId": job["id"],
+            },
+        }
+        return avatar
 
     def send_ops_summary(self) -> None:
         pending_review_statuses = {"draft", "submitted"}
@@ -569,7 +687,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
 
     def send_common_headers(self) -> None:
         self.send_header("access-control-allow-origin", "*")
-        self.send_header("access-control-allow-methods", "GET, POST, PATCH, OPTIONS")
+        self.send_header("access-control-allow-methods", "GET, POST, PATCH, DELETE, OPTIONS")
         self.send_header("access-control-allow-headers", "content-type, accept, x-oneme-api-key")
         rate_limit = getattr(self, "rate_limit_headers", None)
         if rate_limit:
@@ -587,6 +705,7 @@ def main() -> int:
     args = parser.parse_args()
 
     OnemeMockApi.rate_limits = {}
+    OnemeMockApi.face_analysis_jobs = {}
     OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []

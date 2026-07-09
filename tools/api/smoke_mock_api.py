@@ -166,6 +166,41 @@ def run_smoke(base_url: str) -> None:
     )
     assert_equal(active_legal_record["status"], "active", "active legal record status")
 
+    assert_equal(
+        request_status(base_url, "/api/face_analysis_jobs", api_key="face-smoke"),
+        200,
+        "face analysis list status",
+    )
+    face_job = request_json(
+        base_url,
+        "/api/face_analysis_jobs",
+        method="POST",
+        payload={
+            "id": "face-job-smoke",
+            "consentAccepted": True,
+            "skinColor": "#c99686",
+            "hairColor": "#2d2420",
+            "mapFaceTexture": True,
+        },
+    )
+    assert_equal(face_job["status"], "succeeded", "face analysis job status")
+    assert_equal(face_job["photoRetention"]["storesOriginalPhoto"], False, "face photo original retention")
+    if not face_job["recommendation"]["faceTexture"]["temporary"]:
+        raise AssertionError("face analysis texture was not marked temporary")
+
+    face_avatar = request_json(
+        base_url,
+        "/api/avatars/from_face_analysis",
+        method="POST",
+        payload={"avatarId": "face-avatar-smoke", "faceAnalysisJobId": "face-job-smoke"},
+    )
+    assert_equal(face_avatar["source"]["kind"], "face_recommendation", "face avatar source kind")
+    assert_equal(face_avatar["faceTexture"]["temporary"], True, "face avatar temporary texture")
+
+    deleted_face_job = request_json(base_url, "/api/face_analysis_jobs/face-job-smoke", method="DELETE")
+    assert_equal(deleted_face_job["status"], "deleted", "deleted face analysis job status")
+    assert_equal(deleted_face_job["recommendation"]["faceTexture"]["enabled"], False, "deleted face texture enabled")
+
     created = request_json(
         base_url,
         "/api/avatars",
@@ -235,6 +270,7 @@ def run_smoke(base_url: str) -> None:
         "avatar.updated",
         "incident.created",
         "incident.updated",
+        "face_analysis.deleted",
         "legal_record.created",
         "legal_record.updated",
         "model.exported",

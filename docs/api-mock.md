@@ -26,6 +26,8 @@ Implemented endpoints:
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
 - `GET /api/avatars/:id/animation_compat?format=vrm`
+- `GET /api/face_analysis_jobs`
+- `GET /api/face_analysis_jobs/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -41,6 +43,9 @@ Implemented endpoints:
 - `PATCH /api/asset_reviews/:id`
 - `PATCH /api/incidents/:id`
 - `PATCH /api/legal_records/:id`
+- `DELETE /api/face_analysis_jobs/:id`
+- `POST /api/avatars/from_face_analysis`
+- `POST /api/face_analysis_jobs`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -51,6 +56,13 @@ Implemented endpoints:
 The server stores avatars in memory and resets on restart. It is not a
 production backend, but it gives SDK, widget, and API contract work a real HTTP
 target before the hosted service exists.
+
+Face analysis jobs are stored in memory and never retain the original photo.
+`POST /api/face_analysis_jobs` requires consent and returns part, color,
+pseudo-3D morph, and temporary face-texture recommendations. Use
+`POST /api/avatars/from_face_analysis` to create an editable avatar from the
+recommendation, and `DELETE /api/face_analysis_jobs/:id` to clear the temporary
+texture state.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.
@@ -92,5 +104,6 @@ python3 tools/api/smoke_mock_api.py
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
-event, audit log, asset review, incident recovery, legal record, monitoring
-alert, operations summary, rate limit, and webhook delivery endpoints.
+event, audit log, face analysis, asset review, incident recovery, legal record,
+monitoring alert, operations summary, rate limit, and webhook delivery
+endpoints.

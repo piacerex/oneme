@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/face-analysis-job.schema.json",
+  "title": "oneme Face Analysis Job",
+  "type": "object",
+  "required": [
+    "id",
+    "status",
+    "consentAccepted",
+    "photoRetention",
+    "recommendation",
+    "createdAt",
+    "expiresAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "succeeded", "failed", "deleted"]
+    },
+    "consentAccepted": {
+      "type": "boolean"
+    },
+    "photoRetention": {
+      "type": "object",
+      "required": ["storesOriginalPhoto", "retentionSeconds"],
+      "additionalProperties": false,
+      "properties": {
+        "storesOriginalPhoto": {
+          "type": "boolean"
+        },
+        "retentionSeconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["parts", "colors", "faceMorph", "faceTexture"],
+      "additionalProperties": false,
+      "properties": {
+        "parts": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "faceMorph": {
+          "type": "object",
+          "required": ["widthScale", "heightScale", "depthHint", "eyeLine", "mouthLine"],
+          "additionalProperties": false,
+          "properties": {
+            "widthScale": { "type": "number" },
+            "heightScale": { "type": "number" },
+            "depthHint": { "type": "number" },
+            "eyeLine": { "type": "number" },
+            "mouthLine": { "type": "number" }
+          }
+        },
+        "faceTexture": {
+          "type": "object",
+          "required": ["enabled", "temporary", "expiresAt"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "temporary": { "type": "boolean" },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

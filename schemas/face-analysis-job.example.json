@@ -1,0 +1,33 @@
+{
+  "id": "face-job-demo",
+  "status": "succeeded",
+  "consentAccepted": true,
+  "photoRetention": {
+    "storesOriginalPhoto": false,
+    "retentionSeconds": 900
+  },
+  "recommendation": {
+    "parts": {
+      "face": "face.soft_01",
+      "hair": "hair.medium_01"
+    },
+    "colors": {
+      "skin": "#c99686",
+      "hair": "#2d2420"
+    },
+    "faceMorph": {
+      "widthScale": 1.02,
+      "heightScale": 0.98,
+      "depthHint": 0.36,
+      "eyeLine": 0.42,
+      "mouthLine": 0.68
+    },
+    "faceTexture": {
+      "enabled": true,
+      "temporary": true,
+      "expiresAt": "2026-07-09T00:15:00.000Z"
+    }
+  },
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "expiresAt": "2026-07-09T00:15:00.000Z"
+}
