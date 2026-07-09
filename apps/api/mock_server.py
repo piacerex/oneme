@@ -36,8 +36,14 @@ def now_id(prefix: str) -> str:
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
     usage_events: list[dict] = []
+    rate_limits: dict[str, dict] = {}
+    rate_limit_window_seconds = 60
+    rate_limit_max_requests = 600
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self.check_rate_limit():
+            return
+
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
         parts = path.strip("/").split("/")
@@ -62,6 +68,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "not_found")
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self.check_rate_limit():
+            return
+
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
 
@@ -85,6 +94,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "not_found")
 
     def do_PATCH(self) -> None:  # noqa: N802
+        if not self.check_rate_limit():
+            return
+
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
         parts = path.strip("/").split("/")
@@ -112,6 +124,41 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_common_headers()
         self.end_headers()
+
+    def check_rate_limit(self) -> bool:
+        key = self.get_api_key()
+        now = time.time()
+        bucket = self.rate_limits.get(key)
+        if not bucket or now >= bucket["resetAt"]:
+            bucket = {
+                "count": 0,
+                "resetAt": now + self.rate_limit_window_seconds,
+            }
+
+        remaining = self.rate_limit_max_requests - bucket["count"]
+        if remaining <= 0:
+            self.rate_limits[key] = bucket
+            self.rate_limit_headers = {
+                "limit": self.rate_limit_max_requests,
+                "remaining": 0,
+                "reset": int(bucket["resetAt"]),
+            }
+            self.send_error_json(429, "rate_limited")
+            return False
+
+        bucket["count"] += 1
+        self.rate_limits[key] = bucket
+        self.rate_limit_headers = {
+            "limit": self.rate_limit_max_requests,
+            "remaining": self.rate_limit_max_requests - bucket["count"],
+            "reset": int(bucket["resetAt"]),
+        }
+        return True
+
+    def get_api_key(self) -> str:
+        parsed = urlparse(self.path)
+        query_key = parse_qs(parsed.query).get("api_key", [""])[0]
+        return self.headers.get("x-oneme-api-key") or query_key or "anonymous"
 
     def send_avatar(self, avatar_id: str) -> None:
         avatar = self.avatars.get(avatar_id)
@@ -201,14 +248,25 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     def send_common_headers(self) -> None:
         self.send_header("access-control-allow-origin", "*")
         self.send_header("access-control-allow-methods", "GET, POST, PATCH, OPTIONS")
-        self.send_header("access-control-allow-headers", "content-type, accept")
+        self.send_header("access-control-allow-headers", "content-type, accept, x-oneme-api-key")
+        rate_limit = getattr(self, "rate_limit_headers", None)
+        if rate_limit:
+            self.send_header("x-ratelimit-limit", str(rate_limit["limit"]))
+            self.send_header("x-ratelimit-remaining", str(rate_limit["remaining"]))
+            self.send_header("x-ratelimit-reset", str(rate_limit["reset"]))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the oneme API mock server.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--rate-limit", type=int, default=600)
+    parser.add_argument("--rate-limit-window", type=int, default=60)
     args = parser.parse_args()
+
+    OnemeMockApi.rate_limits = {}
+    OnemeMockApi.rate_limit_max_requests = args.rate_limit
+    OnemeMockApi.rate_limit_window_seconds = args.rate_limit_window
 
     server = ThreadingHTTPServer((args.host, args.port), OnemeMockApi)
     print(f"oneme API mock listening on http://{args.host}:{args.port}")

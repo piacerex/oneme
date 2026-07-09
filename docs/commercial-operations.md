@@ -41,6 +41,8 @@ The first production limiter is API-key scoped.
 
 Limit decisions must return the remaining quota and reset time so SDKs can back
 off without guessing.
+The local API mock implements this with `x-ratelimit-limit`,
+`x-ratelimit-remaining`, and `x-ratelimit-reset` headers.
 
 ## Billing Plans
 

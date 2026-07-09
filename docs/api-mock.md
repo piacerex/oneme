@@ -9,6 +9,12 @@ Run:
 python3 apps/api/mock_server.py --port 8765
 ```
 
+Optional rate limit flags:
+
+```bash
+python3 apps/api/mock_server.py --rate-limit 600 --rate-limit-window 60
+```
+
 Implemented endpoints:
 
 - `GET /health`
@@ -26,6 +32,14 @@ Implemented endpoints:
 The server stores avatars in memory and resets on restart. It is not a
 production backend, but it gives SDK, widget, and API contract work a real HTTP
 target before the hosted service exists.
+
+The mock applies a fixed-window API-key rate limit. It reads
+`X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.
+Responses include:
+
+- `x-ratelimit-limit`
+- `x-ratelimit-remaining`
+- `x-ratelimit-reset`
 
 Smoke test:
 

@@ -34,6 +34,19 @@ def request_json(base_url: str, path: str, method: str = "GET", payload: dict | 
         return json.loads(response.read().decode("utf-8"))
 
 
+def request_status(base_url: str, path: str, api_key: str = "rate-smoke") -> int:
+    request = urllib.request.Request(
+        f"{base_url}{path}",
+        headers={"accept": "application/json", "x-oneme-api-key": api_key},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+
+
 def wait_for_health(base_url: str) -> None:
     deadline = time.time() + 5
     last_error: Exception | None = None
@@ -129,8 +142,43 @@ def main() -> int:
     if process.returncode not in {0, -15}:
         raise RuntimeError(f"API mock exited unexpectedly with {process.returncode}")
 
+    run_rate_limit_smoke()
     print("ok: API mock smoke")
     return 0
+
+
+def run_rate_limit_smoke() -> None:
+    port = free_port()
+    base_url = f"http://127.0.0.1:{port}"
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "apps/api/mock_server.py",
+            "--port",
+            str(port),
+            "--rate-limit",
+            "2",
+            "--rate-limit-window",
+            "60",
+        ],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        wait_for_health(base_url)
+        assert_equal(request_status(base_url, "/api/parts"), 200, "first limited request")
+        assert_equal(request_status(base_url, "/api/parts"), 200, "second limited request")
+        assert_equal(request_status(base_url, "/api/parts"), 429, "rate limited request")
+    finally:
+        process.terminate()
+        try:
+            process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate(timeout=5)
 
 
 if __name__ == "__main__":
