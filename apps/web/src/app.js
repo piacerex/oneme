@@ -60,8 +60,16 @@ const form = document.querySelector("#avatar-form");
 const saveButton = document.querySelector("#save-avatar");
 const loadButton = document.querySelector("#load-avatar");
 const saveStatus = document.querySelector("#save-status");
+const faceConsent = document.querySelector("#face-consent");
+const facePhoto = document.querySelector("#face-photo");
+const analyzeFaceButton = document.querySelector("#analyze-face");
+const clearFaceButton = document.querySelector("#clear-face");
+const faceStatus = document.querySelector("#face-status");
+const faceResult = document.querySelector("#face-result");
 const ctx = previewCanvas.getContext("2d");
 const storageKey = "oneme.avatars";
+let faceAnalysisCounter = 0;
+let currentPhotoUrl = null;
 
 function renderConfig() {
   configOutput.textContent = JSON.stringify(appState, null, 2);
@@ -269,6 +277,183 @@ function loadLatestAvatar() {
   render();
 }
 
+function clearFacePhoto() {
+  if (currentPhotoUrl) {
+    URL.revokeObjectURL(currentPhotoUrl);
+    currentPhotoUrl = null;
+  }
+
+  facePhoto.value = "";
+  faceResult.hidden = true;
+  faceResult.textContent = "";
+  faceStatus.textContent = "Photo cleared. Manual creation remains available.";
+
+  if (appState.source.kind === "face_recommendation") {
+    appState.source = { kind: "manual" };
+    render();
+  }
+}
+
+function setFaceStatus(message) {
+  faceStatus.textContent = message;
+}
+
+function analyzeFacePhoto() {
+  const [file] = facePhoto.files;
+
+  if (!faceConsent.checked) {
+    setFaceStatus("Check consent before analyzing a photo.");
+    return;
+  }
+
+  if (!file) {
+    setFaceStatus("Choose a photo first, or keep using manual creation.");
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    setFaceStatus("Choose an image file.");
+    return;
+  }
+
+  if (currentPhotoUrl) URL.revokeObjectURL(currentPhotoUrl);
+  currentPhotoUrl = URL.createObjectURL(file);
+  setFaceStatus("Analyzing locally in this browser...");
+
+  const image = new Image();
+  image.onload = () => {
+    const recommendation = recommendFromImage(image);
+    URL.revokeObjectURL(currentPhotoUrl);
+    currentPhotoUrl = null;
+    applyFaceRecommendation(recommendation);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(currentPhotoUrl);
+    currentPhotoUrl = null;
+    setFaceStatus("Could not read this image.");
+  };
+  image.src = currentPhotoUrl;
+}
+
+function recommendFromImage(image) {
+  const sampleCanvas = document.createElement("canvas");
+  const sampleSize = 96;
+  sampleCanvas.width = sampleSize;
+  sampleCanvas.height = sampleSize;
+
+  const sampleContext = sampleCanvas.getContext("2d", { willReadFrequently: true });
+  sampleContext.drawImage(image, 0, 0, sampleSize, sampleSize);
+
+  const topPixels = sampleContext.getImageData(0, 0, sampleSize, Math.round(sampleSize * 0.32));
+  const centerPixels = sampleContext.getImageData(
+    Math.round(sampleSize * 0.24),
+    Math.round(sampleSize * 0.24),
+    Math.round(sampleSize * 0.52),
+    Math.round(sampleSize * 0.52)
+  );
+
+  const hairColor = averageVisibleColor(topPixels.data, "dark");
+  const skinColor = averageVisibleColor(centerPixels.data, "warm");
+  const facePreset = pickFacePreset(image.width / image.height, skinColor);
+  const hairPreset = pickHairPreset(hairColor);
+
+  return {
+    jobId: `face-local-${Date.now()}-${++faceAnalysisCounter}`,
+    skinColor,
+    hairColor,
+    facePreset,
+    hairPreset
+  };
+}
+
+function averageVisibleColor(data, mode) {
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let count = 0;
+
+  for (let index = 0; index < data.length; index += 4) {
+    const alpha = data[index + 3];
+    if (alpha < 128) continue;
+
+    const r = data[index];
+    const g = data[index + 1];
+    const b = data[index + 2];
+    const brightness = (r + g + b) / 3;
+    const warmth = r - b;
+
+    if (mode === "dark" && brightness > 190) continue;
+    if (mode === "warm" && warmth < -10) continue;
+
+    red += r;
+    green += g;
+    blue += b;
+    count += 1;
+  }
+
+  if (count === 0) return mode === "dark" ? "#2f2118" : "#c98f6f";
+
+  return rgbToHex(
+    Math.round(red / count),
+    Math.round(green / count),
+    Math.round(blue / count)
+  );
+}
+
+function rgbToHex(red, green, blue) {
+  return `#${[red, green, blue]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function pickFacePreset(aspectRatio, skinColor) {
+  const brightness = hexBrightness(skinColor);
+  if (aspectRatio < 0.78) return "face.sharp_01";
+  if (brightness > 190) return "face.round_01";
+  return "face.soft_01";
+}
+
+function pickHairPreset(hairColor) {
+  const brightness = hexBrightness(hairColor);
+  if (brightness > 175) return "hair.medium_01";
+  if (brightness < 65) return "hair.short_01";
+  return "hair.long_01";
+}
+
+function hexBrightness(hex) {
+  const red = Number.parseInt(hex.slice(1, 3), 16);
+  const green = Number.parseInt(hex.slice(3, 5), 16);
+  const blue = Number.parseInt(hex.slice(5, 7), 16);
+  return (red * 299 + green * 587 + blue * 114) / 1000;
+}
+
+function applyFaceRecommendation(recommendation) {
+  appState.parts.face = recommendation.facePreset;
+  appState.parts.hair = recommendation.hairPreset;
+  appState.colors.skin = recommendation.skinColor;
+  appState.colors.hair = recommendation.hairColor;
+  appState.source = {
+    kind: "face_recommendation",
+    faceAnalysisJobId: recommendation.jobId
+  };
+
+  syncForm();
+  renderFaceResult(recommendation);
+  setFaceStatus("Recommendation applied. You can adjust every part manually.");
+  render();
+}
+
+function renderFaceResult(recommendation) {
+  faceResult.hidden = false;
+  faceResult.innerHTML = `
+    <strong>Local recommendation</strong>
+    <span>Skin: ${recommendation.skinColor}</span>
+    <span>Hair: ${recommendation.hairColor}</span>
+    <span>Face: ${recommendation.facePreset}</span>
+    <span>Hair part: ${recommendation.hairPreset}</span>
+  `;
+}
+
 function syncForm() {
   for (const name of Object.keys(partOptions)) {
     document.querySelector(`#${name}-select`).value = appState.parts[name];
@@ -308,4 +493,6 @@ for (const name of Object.keys(partOptions)) {
 form.addEventListener("input", updateFromForm);
 saveButton.addEventListener("click", saveAvatar);
 loadButton.addEventListener("click", loadLatestAvatar);
+analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
+clearFaceButton.addEventListener("click", clearFacePhoto);
 render();
