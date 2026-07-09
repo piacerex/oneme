@@ -35,6 +35,13 @@ The viewer reads:
 - `faceMorph`
 - `faceTexture.enabled`
 
+## Responsive Layout
+
+The MVP builder keeps the Three.js preview and Canvas fallback side by side on
+desktop, then stacks them into one column below 900px. The editor actions and AI
+panel heading also collapse to one column on narrow screens so buttons and
+status text remain readable.
+
 ## Migration Path
 
 1. Render procedural 3D avatar from config.

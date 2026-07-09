@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INDEX_FILE = ROOT / "apps/web/index.html"
 APP_FILE = ROOT / "apps/web/src/app.js"
+STYLE_FILE = ROOT / "apps/web/styles.css"
 
 
 def assert_contains(label: str, source: str, tokens: list[str]) -> None:
@@ -20,6 +21,7 @@ def assert_contains(label: str, source: str, tokens: list[str]) -> None:
 def main() -> int:
     index = INDEX_FILE.read_text(encoding="utf-8")
     app = APP_FILE.read_text(encoding="utf-8")
+    styles = STYLE_FILE.read_text(encoding="utf-8")
 
     assert_contains(
         "builder HTML",
@@ -54,6 +56,24 @@ def main() -> int:
             'exportButton.addEventListener("click", exportGlb)',
             'exportVrmButton.addEventListener("click", exportVrm)',
             'getModelUrlButton.addEventListener("click", getAvatarModelUrl)',
+        ],
+    )
+
+    assert_contains(
+        "responsive builder CSS",
+        styles,
+        [
+            ".workspace",
+            "grid-template-columns: minmax(0, 1fr) 380px",
+            ".preview-stack",
+            "grid-template-columns: minmax(260px, 420px) minmax(220px, 320px)",
+            ".three-preview",
+            "aspect-ratio: 3 / 4",
+            ".avatar-preview",
+            "@media (max-width: 900px)",
+            "grid-template-columns: 1fr",
+            ".actions",
+            ".panel-heading",
         ],
     )
 
