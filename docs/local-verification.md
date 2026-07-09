@@ -10,6 +10,7 @@ The check runner covers:
 
 - JSON syntax for every file in `schemas/`
 - one `.example.json` for every `.schema.json`
+- example files matching the supported JSON Schema subset
 - Python syntax for local tooling
 - roadmap evidence coverage through `tools/roadmap/check_progress.py`
 

@@ -17,6 +17,7 @@ PYTHON_FILES = [
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",
     "tools/roadmap/check_progress.py",
+    "tools/schemas/validate_examples.py",
     "tools/check_all.py",
 ]
 
@@ -69,10 +70,19 @@ def check_roadmap_progress() -> None:
     )
 
 
+def check_schema_example_validation() -> None:
+    subprocess.run(
+        [sys.executable, "tools/schemas/validate_examples.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
         ("schema examples", check_schema_examples),
+        ("schema example validation", check_schema_example_validation),
         ("python", check_python_files),
         ("roadmap", check_roadmap_progress),
     ]
