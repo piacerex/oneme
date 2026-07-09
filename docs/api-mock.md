@@ -28,6 +28,9 @@ Implemented endpoints:
 - `GET /api/avatars/:id/animation_compat?format=vrm`
 - `GET /api/face_analysis_jobs`
 - `GET /api/face_analysis_jobs/:id`
+- `GET /api/ai_generation_jobs`
+- `GET /api/ai_generation_jobs/:id`
+- `GET /api/recommendation_feedback`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -45,7 +48,10 @@ Implemented endpoints:
 - `PATCH /api/legal_records/:id`
 - `DELETE /api/face_analysis_jobs/:id`
 - `POST /api/avatars/from_face_analysis`
+- `POST /api/avatars/from_ai_candidate`
+- `POST /api/ai_generation_jobs`
 - `POST /api/face_analysis_jobs`
+- `POST /api/recommendation_feedback`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -63,6 +69,12 @@ pseudo-3D morph, and temporary face-texture recommendations. Use
 `POST /api/avatars/from_face_analysis` to create an editable avatar from the
 recommendation, and `DELETE /api/face_analysis_jobs/:id` to clear the temporary
 texture state.
+AI generation jobs are deterministic local MVP records. `POST
+/api/ai_generation_jobs` creates safe part and texture candidates from the
+current avatar config and safe hints only. `POST /api/avatars/from_ai_candidate`
+turns an approved candidate into an editable avatar, and
+`POST /api/recommendation_feedback` records whether the user applied, rejected,
+or saved a candidate after edits.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.
@@ -104,6 +116,6 @@ python3 tools/api/smoke_mock_api.py
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
-event, audit log, face analysis, asset review, incident recovery, legal record,
-monitoring alert, operations summary, rate limit, and webhook delivery
-endpoints.
+event, audit log, face analysis, AI generation, asset review, incident recovery,
+legal record, monitoring alert, operations summary, rate limit, and webhook
+delivery endpoints.

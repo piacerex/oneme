@@ -36,6 +36,8 @@ def now_id(prefix: str) -> str:
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
     face_analysis_jobs: dict[str, dict] = {}
+    ai_generation_jobs: dict[str, dict] = {}
+    recommendation_feedback: list[dict] = []
     asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
@@ -75,6 +77,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_ops_summary()
         elif path == "/api/face_analysis_jobs":
             self.send_json({"faceAnalysisJobs": list(self.face_analysis_jobs.values())})
+        elif path == "/api/ai_generation_jobs":
+            self.send_json({"aiGenerationJobs": list(self.ai_generation_jobs.values())})
+        elif path == "/api/recommendation_feedback":
+            self.send_json({"recommendationFeedback": self.recommendation_feedback})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -87,6 +93,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_legal_record(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "face_analysis_jobs"]:
             self.send_face_analysis_job(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "ai_generation_jobs"]:
+            self.send_ai_generation_job(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -210,6 +218,35 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.record_audit("avatar.created", "avatar", avatar["avatarId"], {"source": "face_analysis"})
             self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
             self.send_json(avatar, status=201)
+        elif path == "/api/ai_generation_jobs":
+            payload = self.read_json_body()
+            job = self.create_ai_generation_job(payload)
+            self.ai_generation_jobs[job["id"]] = job
+            self.record_usage("api_request", {"endpoint": "/api/ai_generation_jobs"})
+            self.send_json(job, status=201)
+        elif path == "/api/avatars/from_ai_candidate":
+            payload = self.read_json_body()
+            avatar = self.create_avatar_from_ai_candidate(payload)
+            if avatar is None:
+                self.send_error_json(404, "ai_candidate_not_found")
+                return
+            self.avatars[avatar["avatarId"]] = avatar
+            self.record_usage("avatar_created", {"avatarId": avatar["avatarId"], "source": "ai_generation"})
+            self.record_audit("avatar.created", "avatar", avatar["avatarId"], {"source": "ai_generation"})
+            self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
+            self.send_json(avatar, status=201)
+        elif path == "/api/recommendation_feedback":
+            payload = self.read_json_body()
+            feedback = {
+                "id": payload.get("id") or now_id("feedback"),
+                "jobId": payload.get("jobId", ""),
+                "candidateId": payload.get("candidateId", ""),
+                "action": payload.get("action", "applied"),
+                "createdAt": "2026-07-09T00:00:00.000Z",
+            }
+            self.recommendation_feedback.append(feedback)
+            self.record_usage("api_request", {"endpoint": "/api/recommendation_feedback"})
+            self.send_json(feedback, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
@@ -493,6 +530,90 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         }
         return avatar
 
+    def send_ai_generation_job(self, job_id: str) -> None:
+        job = self.ai_generation_jobs.get(job_id)
+        if not job:
+            self.send_error_json(404, "ai_generation_job_not_found")
+            return
+        self.send_json(job)
+
+    def create_ai_generation_job(self, payload: dict) -> dict:
+        avatar_config = payload.get("avatarConfig", DEFAULT_AVATAR)
+        safe_hints = payload.get(
+            "safeHints",
+            {
+                "skinColor": avatar_config.get("colors", {}).get("skin", "#c98f6f"),
+                "hairColor": avatar_config.get("colors", {}).get("hair", "#2f2118"),
+                "facePreset": avatar_config.get("parts", {}).get("face", "face.soft_01"),
+                "hairPreset": avatar_config.get("parts", {}).get("hair", "hair.short_01"),
+            },
+        )
+        candidates = [
+            self.create_ai_candidate("clean", safe_hints, {"top": "top.basic_01", "accessory": "accessory.none"}),
+            self.create_ai_candidate("expressive", safe_hints, {"face": "face.round_01", "hair": "hair.medium_01"}),
+            self.create_ai_candidate("event", safe_hints, {"hair": "hair.long_01", "top": "top.basic_01"}),
+        ]
+        return {
+            "id": payload.get("id") or now_id("ai"),
+            "status": "succeeded",
+            "input": {
+                "avatarConfig": avatar_config,
+                "safeHints": safe_hints,
+            },
+            "candidates": candidates,
+            "createdAt": "2026-07-09T00:00:00.000Z",
+            "finishedAt": "2026-07-09T00:00:01.000Z",
+        }
+
+    def create_ai_candidate(self, style: str, safe_hints: dict, part_patch: dict) -> dict:
+        accent = {"clean": "#347f7b", "expressive": "#8f5fbf", "event": "#d69f45"}[style]
+        return {
+            "id": f"candidate-{style}",
+            "stylePreset": style,
+            "configPatch": {
+                "parts": part_patch,
+                "colors": {
+                    "skin": safe_hints.get("skinColor", "#c98f6f"),
+                    "hair": safe_hints.get("hairColor", "#2f2118"),
+                },
+                "source": {
+                    "kind": "ai_generation",
+                },
+            },
+            "textureCandidate": {
+                "palette": [safe_hints.get("skinColor", "#c98f6f"), safe_hints.get("hairColor", "#2f2118"), accent],
+                "notes": f"{style} texture direction using safe color hints only.",
+            },
+            "safety": {
+                "status": "approved",
+                "reasons": ["uses safe color and part hints only"],
+            },
+        }
+
+    def create_avatar_from_ai_candidate(self, payload: dict) -> dict | None:
+        job = self.ai_generation_jobs.get(payload.get("jobId", ""))
+        if not job:
+            return None
+        candidate = next((item for item in job["candidates"] if item["id"] == payload.get("candidateId")), None)
+        if not candidate or candidate["safety"]["status"] != "approved":
+            return None
+
+        patch = candidate["configPatch"]
+        base = job["input"]["avatarConfig"]
+        avatar = {
+            **DEFAULT_AVATAR,
+            **base,
+            "avatarId": payload.get("avatarId") or now_id("avatar"),
+            "parts": {**DEFAULT_AVATAR["parts"], **base.get("parts", {}), **patch.get("parts", {})},
+            "colors": {**DEFAULT_AVATAR["colors"], **base.get("colors", {}), **patch.get("colors", {})},
+            "source": {
+                "kind": "ai_generation",
+                "aiGenerationJobId": job["id"],
+                "candidateId": candidate["id"],
+            },
+        }
+        return avatar
+
     def send_ops_summary(self) -> None:
         pending_review_statuses = {"draft", "submitted"}
         open_incident_statuses = {"investigating", "mitigating"}
@@ -706,6 +827,8 @@ def main() -> int:
 
     OnemeMockApi.rate_limits = {}
     OnemeMockApi.face_analysis_jobs = {}
+    OnemeMockApi.ai_generation_jobs = {}
+    OnemeMockApi.recommendation_feedback = []
     OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []

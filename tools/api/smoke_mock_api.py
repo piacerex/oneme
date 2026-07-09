@@ -201,6 +201,48 @@ def run_smoke(base_url: str) -> None:
     assert_equal(deleted_face_job["status"], "deleted", "deleted face analysis job status")
     assert_equal(deleted_face_job["recommendation"]["faceTexture"]["enabled"], False, "deleted face texture enabled")
 
+    ai_job = request_json(
+        base_url,
+        "/api/ai_generation_jobs",
+        method="POST",
+        payload={
+            "id": "ai-job-smoke",
+            "avatarConfig": face_avatar,
+            "safeHints": {
+                "skinColor": face_avatar["colors"]["skin"],
+                "hairColor": face_avatar["colors"]["hair"],
+                "facePreset": face_avatar["parts"]["face"],
+                "hairPreset": face_avatar["parts"]["hair"],
+            },
+        },
+    )
+    assert_equal(ai_job["status"], "succeeded", "ai generation job status")
+    if len(ai_job["candidates"]) < 3:
+        raise AssertionError("ai generation job did not include multiple candidates")
+    for candidate in ai_job["candidates"]:
+        assert_equal(candidate["safety"]["status"], "approved", f"{candidate['id']} safety status")
+
+    ai_avatar = request_json(
+        base_url,
+        "/api/avatars/from_ai_candidate",
+        method="POST",
+        payload={"avatarId": "ai-avatar-smoke", "jobId": "ai-job-smoke", "candidateId": "candidate-clean"},
+    )
+    assert_equal(ai_avatar["source"]["kind"], "ai_generation", "ai avatar source kind")
+
+    feedback = request_json(
+        base_url,
+        "/api/recommendation_feedback",
+        method="POST",
+        payload={
+            "id": "feedback-smoke",
+            "jobId": "ai-job-smoke",
+            "candidateId": "candidate-clean",
+            "action": "applied",
+        },
+    )
+    assert_equal(feedback["action"], "applied", "recommendation feedback action")
+
     created = request_json(
         base_url,
         "/api/avatars",
