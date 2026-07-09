@@ -1,0 +1,11 @@
+{
+  "id": "demo-app",
+  "name": "Demo Host",
+  "apiKeys": ["demo-key"],
+  "allowedOrigins": ["*"],
+  "theme": "mint",
+  "allowedParts": {
+    "accessory": ["accessory.none", "accessory.glasses_round_01"],
+    "hair": ["hair.short_01", "hair.medium_01", "hair.long_01"]
+  }
+}
