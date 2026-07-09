@@ -18,7 +18,9 @@ PYTHON_FILES = [
     "tools/api/smoke_admin_dashboard.py",
     "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
+    "tools/gltf/create_sample_glb.py",
     "tools/gltf/create_sample_vrm.py",
+    "tools/gltf/smoke_glb_contract.py",
     "tools/gltf/smoke_vrm_contract.py",
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",
@@ -129,6 +131,14 @@ def check_widget_api() -> None:
     )
 
 
+def check_glb_contract() -> None:
+    subprocess.run(
+        [sys.executable, "smoke_glb_contract.py"],
+        cwd=ROOT / "tools/gltf",
+        check=True,
+    )
+
+
 def check_web_builder() -> None:
     subprocess.run(
         [sys.executable, "tools/web/smoke_builder_surface.py"],
@@ -181,6 +191,7 @@ def main() -> int:
         ("web builder", check_web_builder),
         ("face photo surface", check_face_photo_surface),
         ("widget api", check_widget_api),
+        ("glb contract", check_glb_contract),
         ("vrm sample", check_vrm_sample),
         ("vrm contract", check_vrm_contract),
         ("roadmap", check_roadmap_progress),

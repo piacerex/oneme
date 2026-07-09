@@ -16,6 +16,7 @@ The check runner covers:
 - Admin dashboard smoke test
 - Web SDK API smoke test
 - Widget API smoke test
+- GLB contract smoke test
 - VRM sample and contract smoke tests
 - roadmap evidence coverage through `tools/roadmap/check_progress.py`
 

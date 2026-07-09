@@ -11,6 +11,7 @@ from pathlib import Path
 
 GLB_MAGIC = 0x46546C67
 GLB_JSON = 0x4E4F534A
+REQUIRED_PART_FIELDS = {"baseBody", "face", "hair", "top", "bottom", "shoes", "accessory"}
 
 
 def read_u32(data: bytes, offset: int) -> int:
@@ -48,12 +49,39 @@ def validate(path: Path) -> dict:
     if asset.get("version") != "2.0":
         raise ValueError("gltf asset version is not 2.0")
 
+    oneme = asset.get("extras", {}).get("oneme")
+    if not isinstance(oneme, dict):
+        raise ValueError("missing oneme export metadata in asset.extras.oneme")
+
+    config = oneme.get("config")
+    resolved_parts = oneme.get("resolvedParts")
+    if not isinstance(config, dict):
+        raise ValueError("missing avatar config in asset.extras.oneme.config")
+    if not isinstance(resolved_parts, list) or not resolved_parts:
+        raise ValueError("missing resolved parts in asset.extras.oneme.resolvedParts")
+
+    resolved_fields = {part.get("field") for part in resolved_parts if isinstance(part, dict)}
+    missing_fields = sorted(REQUIRED_PART_FIELDS.difference(resolved_fields))
+    if missing_fields:
+        raise ValueError(f"resolved parts are missing required fields: {', '.join(missing_fields)}")
+
+    unresolved = [
+        part.get("partId", part.get("field", "unknown"))
+        for part in resolved_parts
+        if isinstance(part, dict) and part.get("required") is True and not part.get("assetPath")
+    ]
+    if unresolved:
+        raise ValueError(f"required resolved parts are missing asset paths: {', '.join(unresolved)}")
+
     return {
         "file": str(path),
         "bytes": len(data),
         "jsonChunkBytes": json_length,
         "generator": asset.get("generator"),
-        "hasOnemeExtras": "oneme" in asset.get("extras", {}),
+        "hasOnemeExtras": True,
+        "avatarId": config.get("avatarId"),
+        "resolvedPartCount": len(resolved_parts),
+        "requiredPartCount": len(REQUIRED_PART_FIELDS),
     }
 
 

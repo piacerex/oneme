@@ -12,6 +12,9 @@ The browser exporter creates a valid `.glb` container with:
 - `asset.extras.oneme.resolvedParts` containing part resolution output
 
 This does not yet merge real meshes. It proves the export job lifecycle, cache key, model URL handoff, and GLB validation path.
+`tools/gltf/create_sample_glb.py` creates the same minimal container locally,
+and `tools/gltf/smoke_glb_contract.py` verifies that required resolved parts are
+present and that validation fails when one is removed.
 
 ## Later Server Pipeline
 

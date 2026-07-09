@@ -66,7 +66,7 @@ PHASES = [
             "tools/gltf/validate_glb.py",
             "tools/blender/compose_avatar.py",
         ],
-        "checks": ["api_mock_smoke", "schema_example_validation"],
+        "checks": ["api_mock_smoke", "glb_contract_smoke", "schema_example_validation"],
     },
     {
         "phase": "phase_5",
