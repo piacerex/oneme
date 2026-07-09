@@ -114,6 +114,27 @@ export class OnemeClient {
     });
   }
 
+  async revokeAppApiKey(appId, apiKey) {
+    return this.#requestJson(`/api/apps/${encodeURIComponent(appId)}/api_keys/${encodeURIComponent(apiKey)}`, {
+      method: "DELETE"
+    });
+  }
+
+  async fetchAdminDashboard() {
+    return this.#requestJson("/api/admin/dashboard");
+  }
+
+  async fetchBillingUsage(teamId) {
+    return this.#requestJson(`/api/billing_usage/${encodeURIComponent(teamId)}`);
+  }
+
+  async createStatusPageUpdate(payload) {
+    return this.#requestJson("/api/status_page_updates", {
+      method: "POST",
+      body: payload
+    });
+  }
+
   async #requestJson(path, options = {}) {
     if (!this.apiBaseUrl) {
       throw new Error("OnemeClient requires apiBaseUrl for API requests");

@@ -91,6 +91,22 @@ Creates a widget app configuration through `/api/apps`.
 
 Creates an API key for a widget app through `/api/apps/:id/api_keys`.
 
+### `client.revokeAppApiKey(appId, apiKey)`
+
+Revokes an API key for a widget app through `/api/apps/:id/api_keys/:key`.
+
+### `client.fetchAdminDashboard()`
+
+Fetches the Phase 8 admin dashboard payload from `/api/admin/dashboard`.
+
+### `client.fetchBillingUsage(teamId)`
+
+Fetches plan usage and remaining quota from `/api/billing_usage/:team_id`.
+
+### `client.createStatusPageUpdate(payload)`
+
+Publishes an incident status page update through `/api/status_page_updates`.
+
 ### `client.listExportJobs()`
 
 Returns known export jobs.

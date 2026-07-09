@@ -34,8 +34,15 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def request_json(base_url: str, path: str) -> dict:
-    with urllib.request.urlopen(f"{base_url}{path}", timeout=5) as response:  # noqa: S310
+def request_json(base_url: str, path: str, method: str = "GET", payload: dict | None = None) -> dict:
+    data = None
+    headers = {"accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["content-type"] = "application/json"
+
+    request = urllib.request.Request(f"{base_url}{path}", data=data, headers=headers, method=method)
+    with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -50,6 +57,13 @@ def assert_sdk_surface() -> None:
         "async createExportJob(",
         "async createWidgetApp(",
         "async createAppApiKey(",
+        "async revokeAppApiKey(",
+        "async fetchAdminDashboard(",
+        "async fetchBillingUsage(",
+        "async createStatusPageUpdate(",
+        '"/api/admin/dashboard"',
+        '"/api/status_page_updates"',
+        "`/api/billing_usage/",
         "apiBaseUrl",
         "#requestJson(",
         "method: options.method",
@@ -80,6 +94,15 @@ def main() -> int:
         model = request_json(base_url, "/api/avatars/demo-avatar/model?format=vrm")
         parts = request_json(base_url, "/api/parts")
         animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
+        request_json(base_url, "/api/teams", method="POST", payload={"id": "sdk-team", "planId": "plan-pro"})
+        billing_usage = request_json(base_url, "/api/billing_usage/sdk-team")
+        dashboard = request_json(base_url, "/api/admin/dashboard")
+        status_update = request_json(
+            base_url,
+            "/api/status_page_updates",
+            method="POST",
+            payload={"id": "sdk-status-update", "incidentId": "sdk-incident", "status": "monitoring", "message": "SDK smoke"},
+        )
     finally:
         process.terminate()
         try:
@@ -96,6 +119,12 @@ def main() -> int:
         raise AssertionError("API mock did not return parts for SDK fetchParts")
     if animation["status"] != "contract_ready":
         raise AssertionError("API mock did not return animation compatibility for SDK clients")
+    if billing_usage["teamId"] != "sdk-team":
+        raise AssertionError("API mock did not return billing usage for SDK clients")
+    if "summary" not in dashboard:
+        raise AssertionError("API mock did not return admin dashboard for SDK clients")
+    if status_update["status"] != "monitoring":
+        raise AssertionError("API mock did not create status page update for SDK clients")
 
     print("ok: Web SDK API smoke")
     return 0
