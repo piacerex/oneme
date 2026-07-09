@@ -35,6 +35,8 @@ Implemented endpoints:
 - `GET /api/export_jobs/:id`
 - `GET /api/vrm_export_jobs`
 - `GET /api/vrm_export_jobs/:id`
+- `GET /api/apps`
+- `GET /api/apps/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -56,6 +58,8 @@ Implemented endpoints:
 - `POST /api/ai_generation_jobs`
 - `POST /api/face_analysis_jobs`
 - `POST /api/recommendation_feedback`
+- `POST /api/apps`
+- `POST /api/apps/:id/api_keys`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -82,6 +86,9 @@ or saved a candidate after edits.
 Export jobs are stored in memory after `POST /api/export_jobs` and
 `POST /api/vrm_export_jobs`. They can be listed or fetched by id so SDK and
 operations flows can inspect async job state before a hosted queue exists.
+Widget apps are stored in memory through `POST /api/apps`. App API keys can be
+added with `POST /api/apps/:id/api_keys`, which lets widget embed flows test app
+configuration and credential lifecycle before production auth exists.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.

@@ -23,6 +23,10 @@ Production should resolve the same contract from:
 - `POST /api/apps/:id/api_keys`
 - `GET /widget?app_id=...`
 
+The local API mock implements `POST /api/apps`, `GET /api/apps/:id`, and
+`POST /api/apps/:id/api_keys` so app configuration and API key setup can be
+tested before the hosted backend exists.
+
 ## Allowed Parts
 
 Each app can limit choices by category:

@@ -40,6 +40,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     recommendation_feedback: list[dict] = []
     export_jobs: dict[str, dict] = {}
     vrm_export_jobs: dict[str, dict] = {}
+    apps: dict[str, dict] = {}
     asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
@@ -87,6 +88,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"exportJobs": list(self.export_jobs.values())})
         elif path == "/api/vrm_export_jobs":
             self.send_json({"vrmExportJobs": list(self.vrm_export_jobs.values())})
+        elif path == "/api/apps":
+            self.send_json({"apps": list(self.apps.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -105,6 +108,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_export_job(parts[2], "glb")
         elif len(parts) == 3 and parts[:2] == ["api", "vrm_export_jobs"]:
             self.send_export_job(parts[2], "vrm")
+        elif len(parts) == 3 and parts[:2] == ["api", "apps"]:
+            self.send_app(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -257,6 +262,25 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.recommendation_feedback.append(feedback)
             self.record_usage("api_request", {"endpoint": "/api/recommendation_feedback"})
             self.send_json(feedback, status=201)
+        elif path == "/api/apps":
+            payload = self.read_json_body()
+            app = {
+                "id": payload.get("id") or now_id("app"),
+                "name": payload.get("name", "Demo App"),
+                "apiKeys": payload.get("apiKeys", []),
+                "allowedOrigins": payload.get("allowedOrigins", ["http://localhost"]),
+                "theme": payload.get("theme", "light"),
+                "allowedParts": payload.get("allowedParts", {}),
+            }
+            self.apps[app["id"]] = app
+            self.record_audit("app.created", "app", app["id"], {"theme": app["theme"]})
+            self.send_json(app, status=201)
+        elif path.startswith("/api/apps/") and path.endswith("/api_keys"):
+            parts = path.strip("/").split("/")
+            if len(parts) != 4:
+                self.send_error_json(404, "not_found")
+                return
+            self.create_app_api_key(parts[2])
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             job = self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb")
@@ -559,6 +583,26 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             return
         self.send_json(job)
 
+    def send_app(self, app_id: str) -> None:
+        app = self.apps.get(app_id)
+        if not app:
+            self.send_error_json(404, "app_not_found")
+            return
+        self.send_json(app)
+
+    def create_app_api_key(self, app_id: str) -> None:
+        app = self.apps.get(app_id)
+        if not app:
+            self.send_error_json(404, "app_not_found")
+            return
+        payload = self.read_json_body()
+        key = payload.get("apiKey") or now_id("key")
+        if key not in app["apiKeys"]:
+            app["apiKeys"].append(key)
+        self.apps[app_id] = app
+        self.record_audit("api_key.created", "api_key", key, {"appId": app_id})
+        self.send_json({"appId": app_id, "apiKey": key, "apiKeys": app["apiKeys"]}, status=201)
+
     def create_ai_generation_job(self, payload: dict) -> dict:
         avatar_config = payload.get("avatarConfig", DEFAULT_AVATAR)
         safe_hints = payload.get(
@@ -853,6 +897,7 @@ def main() -> int:
     OnemeMockApi.recommendation_feedback = []
     OnemeMockApi.export_jobs = {}
     OnemeMockApi.vrm_export_jobs = {}
+    OnemeMockApi.apps = {}
     OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.monitoring_alerts = []

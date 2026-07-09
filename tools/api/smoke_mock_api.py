@@ -70,6 +70,32 @@ def run_smoke(base_url: str) -> None:
     if not parts.get("parts"):
         raise AssertionError("/api/parts returned no parts")
 
+    widget_app = request_json(
+        base_url,
+        "/api/apps",
+        method="POST",
+        payload={
+            "id": "app-smoke",
+            "name": "Smoke Widget App",
+            "theme": "mint",
+            "allowedOrigins": ["https://example.com"],
+            "allowedParts": {"hair": ["hair.short_01", "hair.medium_01"], "accessory": ["accessory.none"]},
+        },
+    )
+    assert_equal(widget_app["theme"], "mint", "widget app theme")
+
+    api_key = request_json(
+        base_url,
+        "/api/apps/app-smoke/api_keys",
+        method="POST",
+        payload={"apiKey": "key-smoke"},
+    )
+    assert_equal(api_key["apiKey"], "key-smoke", "created app api key")
+
+    fetched_app = request_json(base_url, "/api/apps/app-smoke")
+    if "key-smoke" not in fetched_app["apiKeys"]:
+        raise AssertionError("widget app did not include created API key")
+
     webhook = request_json(
         base_url,
         "/api/webhook_endpoints",
@@ -315,8 +341,10 @@ def run_smoke(base_url: str) -> None:
     actions = {log["action"] for log in audit.get("auditLogs", [])}
     for action in {
         "asset.reviewed",
+        "app.created",
         "avatar.created",
         "avatar.updated",
+        "api_key.created",
         "incident.created",
         "incident.updated",
         "face_analysis.deleted",
