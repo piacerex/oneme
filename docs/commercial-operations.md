@@ -96,6 +96,9 @@ Deliveries use signed JSON payloads and exponential retry. Failed deliveries sta
 queryable from the operations dashboard.
 The local API mock supports `POST /api/webhook_endpoints` and records queued
 deliveries at `GET /api/webhook_deliveries`.
+It also supports `PATCH /api/webhook_endpoints/:id` for pausing a broken
+endpoint and `PATCH /api/webhook_deliveries/:id` with `{"action":"retry"}` for
+retry workflow testing.
 
 ## Audit Logs
 

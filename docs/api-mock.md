@@ -45,6 +45,9 @@ Implemented endpoints:
 - `GET /api/billing_plans/:id`
 - `GET /api/rate_limit_policies`
 - `GET /api/rate_limit_policies/:id`
+- `GET /api/webhook_endpoints`
+- `GET /api/webhook_endpoints/:id`
+- `GET /api/webhook_deliveries/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -62,6 +65,8 @@ Implemented endpoints:
 - `PATCH /api/legal_records/:id`
 - `PATCH /api/team_members/:id`
 - `PATCH /api/teams/:id`
+- `PATCH /api/webhook_endpoints/:id`
+- `PATCH /api/webhook_deliveries/:id`
 - `DELETE /api/face_analysis_jobs/:id`
 - `POST /api/avatars/from_face_analysis`
 - `POST /api/avatars/from_ai_candidate`
@@ -124,6 +129,9 @@ Responses include:
 Webhook endpoints are stored in memory. When matching events occur, the mock
 creates queued delivery records that can be inspected with
 `GET /api/webhook_deliveries`.
+Webhook endpoints can be fetched or paused with `/api/webhook_endpoints/:id`.
+Webhook deliveries can be fetched or retried with
+`PATCH /api/webhook_deliveries/:id` and `{"action":"retry"}`.
 Audit logs are stored in memory and exposed at `GET /api/audit_logs`.
 Monitoring alerts are stored in memory and exposed at
 `GET /api/monitoring_alerts`. API errors, including unsupported model formats

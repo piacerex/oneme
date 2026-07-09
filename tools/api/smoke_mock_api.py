@@ -183,6 +183,8 @@ def run_smoke(base_url: str) -> None:
         },
     )
     assert_equal(webhook["status"], "active", "webhook endpoint status")
+    fetched_webhook = request_json(base_url, "/api/webhook_endpoints/webhook-smoke")
+    assert_equal(fetched_webhook["id"], "webhook-smoke", "fetched webhook endpoint id")
 
     asset_review = request_json(
         base_url,
@@ -412,10 +414,29 @@ def run_smoke(base_url: str) -> None:
             raise AssertionError(f"usage events did not include {metric}")
 
     deliveries = request_json(base_url, "/api/webhook_deliveries")
-    events = {delivery["event"] for delivery in deliveries.get("webhookDeliveries", [])}
+    webhook_deliveries = deliveries.get("webhookDeliveries", [])
+    events = {delivery["event"] for delivery in webhook_deliveries}
     for event in {"avatar.created", "model.exported", "asset.reviewed"}:
         if event not in events:
             raise AssertionError(f"webhook deliveries did not include {event}")
+    delivery_id = webhook_deliveries[0]["id"]
+    retried_delivery = request_json(
+        base_url,
+        f"/api/webhook_deliveries/{delivery_id}",
+        method="PATCH",
+        payload={"action": "retry"},
+    )
+    assert_equal(retried_delivery["status"], "queued", "retried webhook delivery status")
+    if retried_delivery["attempt"] <= webhook_deliveries[0]["attempt"]:
+        raise AssertionError("retried webhook delivery did not increment attempt")
+
+    paused_webhook = request_json(
+        base_url,
+        "/api/webhook_endpoints/webhook-smoke",
+        method="PATCH",
+        payload={"status": "paused"},
+    )
+    assert_equal(paused_webhook["status"], "paused", "paused webhook endpoint status")
 
     audit = request_json(base_url, "/api/audit_logs")
     actions = {log["action"] for log in audit.get("auditLogs", [])}

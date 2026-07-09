@@ -106,8 +106,14 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
             self.send_json({"webhookDeliveries": self.webhook_deliveries})
+        elif path == "/api/webhook_endpoints":
+            self.send_json({"webhookEndpoints": list(self.webhook_endpoints.values())})
         elif len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
             self.send_asset_review(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "webhook_endpoints"]:
+            self.send_webhook_endpoint(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "webhook_deliveries"]:
+            self.send_webhook_delivery(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "incidents"]:
             self.send_incident(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "legal_records"]:
@@ -381,6 +387,12 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         parts = path.strip("/").split("/")
 
         if len(parts) != 3 or parts[:2] != ["api", "avatars"]:
+            if len(parts) == 3 and parts[:2] == ["api", "webhook_endpoints"]:
+                self.patch_webhook_endpoint(parts[2])
+                return
+            if len(parts) == 3 and parts[:2] == ["api", "webhook_deliveries"]:
+                self.patch_webhook_delivery(parts[2])
+                return
             if len(parts) == 3 and parts[:2] == ["api", "teams"]:
                 self.patch_team(parts[2])
                 return
@@ -497,6 +509,43 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             )
         self.send_json(team)
 
+    def patch_webhook_endpoint(self, endpoint_id: str) -> None:
+        endpoint = self.webhook_endpoints.get(endpoint_id)
+        if not endpoint:
+            self.send_error_json(404, "webhook_endpoint_not_found")
+            return
+
+        patch = self.read_json_body()
+        for key in ("url", "events", "status"):
+            if key in patch:
+                endpoint[key] = patch[key]
+        endpoint["updatedAt"] = "2026-07-09T00:00:01.000Z"
+        self.webhook_endpoints[endpoint_id] = endpoint
+        self.record_audit(
+            "webhook_endpoint.created",
+            "webhook_endpoint",
+            endpoint_id,
+            {"status": endpoint["status"], "operation": "updated"},
+        )
+        self.send_json(endpoint)
+
+    def patch_webhook_delivery(self, delivery_id: str) -> None:
+        delivery = next((item for item in self.webhook_deliveries if item["id"] == delivery_id), None)
+        if not delivery:
+            self.send_error_json(404, "webhook_delivery_not_found")
+            return
+
+        patch = self.read_json_body()
+        if patch.get("action") == "retry":
+            delivery["status"] = "queued"
+            delivery["attempt"] += 1
+            delivery["nextAttemptAt"] = "2026-07-09T00:01:00.000Z"
+        else:
+            for key in ("status", "responseStatus", "nextAttemptAt", "deliveredAt"):
+                if key in patch:
+                    delivery[key] = patch[key]
+        self.send_json(delivery)
+
     def patch_monitoring_alert(self, alert_id: str) -> None:
         alert = next((item for item in self.monitoring_alerts if item["id"] == alert_id), None)
         if not alert:
@@ -603,6 +652,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "asset_review_not_found")
             return
         self.send_json(review)
+
+    def send_webhook_endpoint(self, endpoint_id: str) -> None:
+        endpoint = self.webhook_endpoints.get(endpoint_id)
+        if not endpoint:
+            self.send_error_json(404, "webhook_endpoint_not_found")
+            return
+        self.send_json(endpoint)
+
+    def send_webhook_delivery(self, delivery_id: str) -> None:
+        delivery = next((item for item in self.webhook_deliveries if item["id"] == delivery_id), None)
+        if not delivery:
+            self.send_error_json(404, "webhook_delivery_not_found")
+            return
+        self.send_json(delivery)
 
     def send_incident(self, incident_id: str) -> None:
         incident = self.incidents.get(incident_id)
