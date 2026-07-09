@@ -83,7 +83,7 @@ PHASES = [
             "docs/unity-sdk.md",
             "packages/sdk-unity/package.json",
         ],
-        "checks": ["web_sdk_smoke"],
+        "checks": ["web_sdk_smoke", "unity_sdk_smoke"],
     },
     {
         "phase": "phase_7",

@@ -7,14 +7,15 @@ Phase 6 starts with a Unity Package Manager-compatible skeleton.
 - Package manifest
 - Runtime `OnemeAvatarLoader`
 - Avatar id field
-- Model endpoint template
+- API base URL and model format fields
 - UnityWebRequest fetch for the model response
+- Model response parsing into `OnemeModelResponse`
+- `BuildModelUrl()` helper for `/api/avatars/:id/model?format=...`
 
 ## Next Steps
 
 1. Add a GLB runtime importer dependency.
-2. Parse the model response schema.
-3. Download the returned `.glb` URL.
-4. Instantiate the avatar under the loader GameObject.
-5. Add cache policy and reload controls.
-6. Add Animator sample integration.
+2. Download the returned `.glb` URL.
+3. Instantiate the avatar under the loader GameObject.
+4. Add cache policy and reload controls.
+5. Add Animator sample integration.

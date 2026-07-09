@@ -14,9 +14,10 @@ packages/sdk-unity
 
 1. Add `OnemeAvatarLoader` to a GameObject.
 2. Set `Avatar Id`.
-3. Set `Model Endpoint Template`.
-4. Call `StartCoroutine(loader.Load())`.
+3. Set `Api Base Url`.
+4. Set `Format` to `glb` or `vrm`.
+5. Call `StartCoroutine(loader.Load())`.
 
-The current implementation fetches the avatar model response JSON and logs it.
-The next step is to connect a GLB runtime importer and instantiate the returned
-model URL.
+The current implementation fetches and parses the avatar model response JSON,
+then exposes it as `LastModelResponse`. The next step is to connect a GLB
+runtime importer and instantiate the returned model URL.
