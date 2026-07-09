@@ -37,6 +37,10 @@ Implemented endpoints:
 - `GET /api/vrm_export_jobs/:id`
 - `GET /api/apps`
 - `GET /api/apps/:id`
+- `GET /api/teams`
+- `GET /api/teams/:id`
+- `GET /api/team_members`
+- `GET /api/team_members/:id`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -52,6 +56,7 @@ Implemented endpoints:
 - `PATCH /api/asset_reviews/:id`
 - `PATCH /api/incidents/:id`
 - `PATCH /api/legal_records/:id`
+- `PATCH /api/team_members/:id`
 - `DELETE /api/face_analysis_jobs/:id`
 - `POST /api/avatars/from_face_analysis`
 - `POST /api/avatars/from_ai_candidate`
@@ -60,6 +65,8 @@ Implemented endpoints:
 - `POST /api/recommendation_feedback`
 - `POST /api/apps`
 - `POST /api/apps/:id/api_keys`
+- `POST /api/teams`
+- `POST /api/team_members`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 - `POST /api/asset_reviews`
@@ -89,6 +96,9 @@ operations flows can inspect async job state before a hosted queue exists.
 Widget apps are stored in memory through `POST /api/apps`. App API keys can be
 added with `POST /api/apps/:id/api_keys`, which lets widget embed flows test app
 configuration and credential lifecycle before production auth exists.
+Teams and members are stored in memory through `/api/teams` and
+`/api/team_members`. Member creation and role changes append audit log records
+for local role and access-control workflow testing.
 
 The mock applies a fixed-window API-key rate limit. It reads
 `X-Oneme-Api-Key`, then `api_key`, and finally falls back to `anonymous`.

@@ -35,6 +35,8 @@ def now_id(prefix: str) -> str:
 
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
+    teams: dict[str, dict] = {}
+    team_members: dict[str, dict] = {}
     face_analysis_jobs: dict[str, dict] = {}
     ai_generation_jobs: dict[str, dict] = {}
     recommendation_feedback: list[dict] = []
@@ -90,6 +92,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"vrmExportJobs": list(self.vrm_export_jobs.values())})
         elif path == "/api/apps":
             self.send_json({"apps": list(self.apps.values())})
+        elif path == "/api/teams":
+            self.send_json({"teams": list(self.teams.values())})
+        elif path == "/api/team_members":
+            self.send_json({"teamMembers": list(self.team_members.values())})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -110,6 +116,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_export_job(parts[2], "vrm")
         elif len(parts) == 3 and parts[:2] == ["api", "apps"]:
             self.send_app(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "teams"]:
+            self.send_team(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "team_members"]:
+            self.send_team_member(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -144,6 +154,30 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.record_audit("avatar.created", "avatar", avatar["avatarId"], {"source": "api_mock"})
             self.queue_webhooks("avatar.created", {"avatarId": avatar["avatarId"], "config": avatar})
             self.send_json(avatar, status=201)
+        elif path == "/api/teams":
+            payload = self.read_json_body()
+            team = {
+                "id": payload.get("id") or now_id("team"),
+                "name": payload.get("name", "Demo Studio"),
+                "planId": payload.get("planId", "plan-pro"),
+                "createdAt": "2026-07-09T00:00:00.000Z",
+                "updatedAt": "2026-07-09T00:00:00.000Z",
+            }
+            self.teams[team["id"]] = team
+            self.send_json(team, status=201)
+        elif path == "/api/team_members":
+            payload = self.read_json_body()
+            member = {
+                "id": payload.get("id") or now_id("member"),
+                "teamId": payload.get("teamId", "team-demo"),
+                "userId": payload.get("userId", "user-demo"),
+                "role": payload.get("role", "viewer"),
+                "createdAt": "2026-07-09T00:00:00.000Z",
+                "updatedAt": "2026-07-09T00:00:00.000Z",
+            }
+            self.team_members[member["id"]] = member
+            self.record_audit("team.member.invited", "member", member["id"], {"role": member["role"]})
+            self.send_json(member, status=201)
         elif path == "/api/webhook_endpoints":
             payload = self.read_json_body()
             endpoint = {
@@ -303,6 +337,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         parts = path.strip("/").split("/")
 
         if len(parts) != 3 or parts[:2] != ["api", "avatars"]:
+            if len(parts) == 3 and parts[:2] == ["api", "team_members"]:
+                self.patch_team_member(parts[2])
+                return
             if len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
                 self.patch_asset_review(parts[2])
                 return
@@ -367,6 +404,27 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         )
         self.queue_webhooks("asset.reviewed", {"assetReview": review})
         self.send_json(review)
+
+    def patch_team_member(self, member_id: str) -> None:
+        member = self.team_members.get(member_id)
+        if not member:
+            self.send_error_json(404, "team_member_not_found")
+            return
+
+        patch = self.read_json_body()
+        previous_role = member["role"]
+        if "role" in patch:
+            member["role"] = patch["role"]
+            member["updatedAt"] = "2026-07-09T00:00:01.000Z"
+        self.team_members[member_id] = member
+        if member["role"] != previous_role:
+            self.record_audit(
+                "team.member.role_changed",
+                "member",
+                member_id,
+                {"previousRole": previous_role, "role": member["role"]},
+            )
+        self.send_json(member)
 
     def patch_monitoring_alert(self, alert_id: str) -> None:
         alert = next((item for item in self.monitoring_alerts if item["id"] == alert_id), None)
@@ -589,6 +647,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "app_not_found")
             return
         self.send_json(app)
+
+    def send_team(self, team_id: str) -> None:
+        team = self.teams.get(team_id)
+        if not team:
+            self.send_error_json(404, "team_not_found")
+            return
+        self.send_json(team)
+
+    def send_team_member(self, member_id: str) -> None:
+        member = self.team_members.get(member_id)
+        if not member:
+            self.send_error_json(404, "team_member_not_found")
+            return
+        self.send_json(member)
 
     def create_app_api_key(self, app_id: str) -> None:
         app = self.apps.get(app_id)
@@ -924,6 +996,8 @@ def main() -> int:
     args = parser.parse_args()
 
     OnemeMockApi.rate_limits = {}
+    OnemeMockApi.teams = {}
+    OnemeMockApi.team_members = {}
     OnemeMockApi.face_analysis_jobs = {}
     OnemeMockApi.ai_generation_jobs = {}
     OnemeMockApi.recommendation_feedback = []

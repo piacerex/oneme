@@ -70,6 +70,32 @@ def run_smoke(base_url: str) -> None:
     if not parts.get("parts"):
         raise AssertionError("/api/parts returned no parts")
 
+    team = request_json(
+        base_url,
+        "/api/teams",
+        method="POST",
+        payload={"id": "team-smoke", "name": "Smoke Studio", "planId": "plan-pro"},
+    )
+    assert_equal(team["name"], "Smoke Studio", "created team name")
+
+    member = request_json(
+        base_url,
+        "/api/team_members",
+        method="POST",
+        payload={"id": "member-smoke", "teamId": "team-smoke", "userId": "user-smoke", "role": "developer"},
+    )
+    assert_equal(member["role"], "developer", "created team member role")
+
+    updated_member = request_json(
+        base_url,
+        "/api/team_members/member-smoke",
+        method="PATCH",
+        payload={"role": "admin"},
+    )
+    assert_equal(updated_member["role"], "admin", "updated team member role")
+    fetched_team = request_json(base_url, "/api/teams/team-smoke")
+    assert_equal(fetched_team["id"], "team-smoke", "fetched team id")
+
     widget_app = request_json(
         base_url,
         "/api/apps",
@@ -349,6 +375,8 @@ def run_smoke(base_url: str) -> None:
         "avatar.created",
         "avatar.updated",
         "api_key.created",
+        "team.member.invited",
+        "team.member.role_changed",
         "incident.created",
         "incident.updated",
         "face_analysis.deleted",

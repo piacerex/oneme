@@ -9,6 +9,9 @@ Commercial usage is scoped by team.
 - A team owns apps, API keys, billing plans, usage records, webhooks, and assets.
 - A member belongs to a team with a role.
 - App-level API keys inherit the team's limits.
+The local API mock supports `POST /api/teams`, `GET /api/teams/:id`,
+`POST /api/team_members`, and `PATCH /api/team_members/:id` so team setup,
+member invitation, and role changes can be tested locally.
 
 ## Roles
 
