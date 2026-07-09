@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/rate-limit-policy.schema.json",
+  "title": "oneme Rate Limit Policy",
+  "type": "object",
+  "required": ["id", "planId", "scope", "windowSeconds", "limit"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["api_key", "app", "team"]
+    },
+    "windowSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "burstLimit": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

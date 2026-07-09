@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/billing-plan.schema.json",
+  "title": "oneme Billing Plan",
+  "type": "object",
+  "required": ["id", "name", "currency", "monthlyPriceCents", "limits"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "monthlyPriceCents": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "apps",
+        "members",
+        "monthlyApiRequests",
+        "monthlyModelExports",
+        "storageBytes",
+        "webhookDeliveries"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "members": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "monthlyApiRequests": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "monthlyModelExports": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "storageBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "webhookDeliveries": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}
