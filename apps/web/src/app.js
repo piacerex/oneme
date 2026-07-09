@@ -57,7 +57,11 @@ const partOptions = {
 const previewCanvas = document.querySelector("#avatar-preview");
 const configOutput = document.querySelector("#config-output");
 const form = document.querySelector("#avatar-form");
+const saveButton = document.querySelector("#save-avatar");
+const loadButton = document.querySelector("#load-avatar");
+const saveStatus = document.querySelector("#save-status");
 const ctx = previewCanvas.getContext("2d");
+const storageKey = "oneme.avatars";
 
 function renderConfig() {
   configOutput.textContent = JSON.stringify(appState, null, 2);
@@ -216,6 +220,64 @@ function updateFromForm(event) {
   render();
 }
 
+function cloneConfig() {
+  return JSON.parse(JSON.stringify(appState));
+}
+
+function getSavedAvatars() {
+  const raw = window.localStorage.getItem(storageKey);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAvatar() {
+  const saved = getSavedAvatars();
+  const avatar = {
+    ...cloneConfig(),
+    avatarId: `local-${Date.now()}`,
+    savedAt: new Date().toISOString()
+  };
+
+  saved.unshift(avatar);
+  window.localStorage.setItem(storageKey, JSON.stringify(saved.slice(0, 10)));
+
+  appState.avatarId = avatar.avatarId;
+  saveStatus.textContent = `Saved ${avatar.avatarId}`;
+  render();
+}
+
+function loadLatestAvatar() {
+  const [latest] = getSavedAvatars();
+  if (!latest) {
+    saveStatus.textContent = "No saved avatar yet";
+    return;
+  }
+
+  appState.avatarId = latest.avatarId;
+  appState.parts = { ...appState.parts, ...latest.parts };
+  appState.colors = { ...appState.colors, ...latest.colors };
+  appState.source = latest.source ?? { kind: "manual" };
+
+  syncForm();
+  saveStatus.textContent = `Loaded ${latest.avatarId}`;
+  render();
+}
+
+function syncForm() {
+  for (const name of Object.keys(partOptions)) {
+    document.querySelector(`#${name}-select`).value = appState.parts[name];
+  }
+
+  document.querySelector("#skin-color").value = appState.colors.skin;
+  document.querySelector("#hair-color").value = appState.colors.hair;
+}
+
 function render() {
   drawAvatar();
   renderConfig();
@@ -244,4 +306,6 @@ for (const name of Object.keys(partOptions)) {
 }
 
 form.addEventListener("input", updateFromForm);
+saveButton.addEventListener("click", saveAvatar);
+loadButton.addEventListener("click", loadLatestAvatar);
 render();
