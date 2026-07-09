@@ -18,6 +18,7 @@ PYTHON_FILES = [
     "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
     "tools/gltf/create_sample_vrm.py",
+    "tools/gltf/smoke_vrm_contract.py",
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",
     "tools/roadmap/check_progress.py",
@@ -150,6 +151,14 @@ def check_vrm_sample() -> None:
         )
 
 
+def check_vrm_contract() -> None:
+    subprocess.run(
+        [sys.executable, "smoke_vrm_contract.py"],
+        cwd=ROOT / "tools/gltf",
+        check=True,
+    )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
@@ -163,6 +172,7 @@ def main() -> int:
         ("face photo surface", check_face_photo_surface),
         ("widget api", check_widget_api),
         ("vrm sample", check_vrm_sample),
+        ("vrm contract", check_vrm_contract),
         ("roadmap", check_roadmap_progress),
     ]
 

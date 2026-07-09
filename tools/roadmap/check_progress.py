@@ -101,7 +101,7 @@ PHASES = [
             "tools/gltf/create_sample_vrm.py",
             "tools/gltf/validate_vrm.py",
         ],
-        "checks": ["api_mock_smoke", "vrm_sample_validation"],
+        "checks": ["api_mock_smoke", "vrm_sample_validation", "vrm_contract_smoke"],
     },
     {
         "phase": "phase_8",

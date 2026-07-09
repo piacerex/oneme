@@ -24,8 +24,11 @@ Expected result:
 - glTF asset version is `2.0`
 - `asset.extras.vrm` exists
 - `extensions.VRMC_vrm` exists
+- `extensionsUsed` includes `VRMC_vrm`
+- VRM meta includes name, version, author, contact, license, and commercial usage fields
 - humanoid bone map has the Phase 7 minimum bones
-- expression presets exist
+- expression presets include neutral, happy, blink, and surprised
+- spring bone targets exist
 
 ## Viewer Check
 
@@ -66,3 +69,8 @@ The minimum animation target set is:
 The MVP is compatible at the contract level when all targets are present in the
 VRM humanoid map. Runtime animation compatibility remains blocked on real rigged
 geometry and skinning.
+
+## Contract Smoke
+
+`tools/gltf/smoke_vrm_contract.py` creates a local VRM sample, validates required
+metadata, and confirms validation fails when a required humanoid bone is removed.

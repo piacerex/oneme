@@ -15,6 +15,7 @@ The check runner covers:
 - API mock smoke test
 - Web SDK API smoke test
 - Widget API smoke test
+- VRM sample and contract smoke tests
 - roadmap evidence coverage through `tools/roadmap/check_progress.py`
 
 This is the local MVP gate. It does not replace browser, Unity, hosted API, GLB,

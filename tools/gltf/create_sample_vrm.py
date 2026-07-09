@@ -28,6 +28,7 @@ def create_vrm_metadata(config: dict) -> dict:
             "author": "oneme",
             "contactInformation": "https://github.com/piacerex/oneme",
             "licenseName": "repository",
+            "commercialUsage": "allowed",
         },
         "humanoid": {
             "hips": "hips",

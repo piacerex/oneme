@@ -11,6 +11,34 @@ from pathlib import Path
 
 GLB_MAGIC = 0x46546C67
 GLB_JSON = 0x4E4F534A
+REQUIRED_HUMANOID_BONES = {
+    "hips",
+    "spine",
+    "chest",
+    "neck",
+    "head",
+    "leftUpperArm",
+    "leftLowerArm",
+    "leftHand",
+    "rightUpperArm",
+    "rightLowerArm",
+    "rightHand",
+    "leftUpperLeg",
+    "leftLowerLeg",
+    "leftFoot",
+    "rightUpperLeg",
+    "rightLowerLeg",
+    "rightFoot",
+}
+REQUIRED_EXPRESSIONS = {"neutral", "happy", "blink", "surprised"}
+REQUIRED_META_FIELDS = {
+    "name",
+    "version",
+    "author",
+    "contactInformation",
+    "licenseName",
+    "commercialUsage",
+}
 
 
 def read_u32(data: bytes, offset: int) -> int:
@@ -57,13 +85,34 @@ def validate(path: Path) -> dict:
     vrm = extension_vrm or extras_vrm
     if not isinstance(vrm, dict):
         raise ValueError("missing VRM metadata in asset.extras.vrm or extensions.VRMC_vrm")
+    if not isinstance(extras_vrm, dict):
+        raise ValueError("missing VRM metadata in asset.extras.vrm")
+    if not isinstance(extension_vrm, dict):
+        raise ValueError("missing VRM metadata in extensions.VRMC_vrm")
+    if "VRMC_vrm" not in gltf.get("extensionsUsed", []):
+        raise ValueError("VRMC_vrm is not listed in extensionsUsed")
 
+    meta = vrm.get("meta", {})
     humanoid = vrm.get("humanoid", {})
     expressions = vrm.get("expressions", [])
+    spring_bones = vrm.get("springBones", [])
+    if not isinstance(meta, dict) or not meta:
+        raise ValueError("VRM meta fields are missing")
+    missing_meta = sorted(REQUIRED_META_FIELDS.difference(meta))
+    if missing_meta:
+        raise ValueError(f"VRM meta fields are missing: {', '.join(missing_meta)}")
     if not isinstance(humanoid, dict) or not humanoid:
         raise ValueError("VRM humanoid bone map is missing")
+    missing_bones = sorted(REQUIRED_HUMANOID_BONES.difference(humanoid))
+    if missing_bones:
+        raise ValueError(f"VRM humanoid bone map is missing: {', '.join(missing_bones)}")
     if not isinstance(expressions, list) or not expressions:
         raise ValueError("VRM expression presets are missing")
+    missing_expressions = sorted(REQUIRED_EXPRESSIONS.difference(expressions))
+    if missing_expressions:
+        raise ValueError(f"VRM expression presets are missing: {', '.join(missing_expressions)}")
+    if not isinstance(spring_bones, list) or not spring_bones:
+        raise ValueError("VRM spring bone targets are missing")
 
     return {
         "file": str(path),
@@ -72,8 +121,13 @@ def validate(path: Path) -> dict:
         "generator": asset.get("generator"),
         "hasVrmExtras": isinstance(extras_vrm, dict),
         "hasVrmExtension": isinstance(extension_vrm, dict),
+        "hasVrmExtensionUsed": "VRMC_vrm" in gltf.get("extensionsUsed", []),
+        "metaFields": sorted(meta),
         "humanoidBoneCount": len(humanoid),
+        "requiredHumanoidBoneCount": len(REQUIRED_HUMANOID_BONES),
         "expressionCount": len(expressions),
+        "requiredExpressionCount": len(REQUIRED_EXPRESSIONS),
+        "springBoneTargetCount": len(spring_bones),
     }
 
 
