@@ -7,6 +7,7 @@ import json
 import py_compile
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -16,6 +17,7 @@ PYTHON_FILES = [
     "apps/api/mock_server.py",
     "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
+    "tools/gltf/create_sample_vrm.py",
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",
     "tools/roadmap/check_progress.py",
@@ -106,6 +108,21 @@ def check_widget_api() -> None:
     )
 
 
+def check_vrm_sample() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        sample = Path(directory) / "local-demo.vrm"
+        subprocess.run(
+            [sys.executable, "tools/gltf/create_sample_vrm.py", "--out", str(sample)],
+            cwd=ROOT,
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, "tools/gltf/validate_vrm.py", str(sample)],
+            cwd=ROOT,
+            check=True,
+        )
+
+
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
@@ -115,6 +132,7 @@ def main() -> int:
         ("api mock", check_api_mock),
         ("web sdk", check_web_sdk),
         ("widget api", check_widget_api),
+        ("vrm sample", check_vrm_sample),
         ("roadmap", check_roadmap_progress),
     ]
 

@@ -85,6 +85,7 @@ PHASES = [
             "docs/vrm.md",
             "docs/vrm-validation.md",
             "schemas/vrm-export-job.schema.json",
+            "tools/gltf/create_sample_vrm.py",
             "tools/gltf/validate_vrm.py",
         ],
     },

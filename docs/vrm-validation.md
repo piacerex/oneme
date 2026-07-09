@@ -5,7 +5,14 @@ Phase 7 validates the VRM path in two layers.
 ## MVP Validation
 
 The local MVP exports a `.vrm` file as a GLB container with VRM-shaped metadata.
-Validate it with:
+Create and validate a local sample with:
+
+```bash
+python3 tools/gltf/create_sample_vrm.py --out tmp/local-demo.vrm
+python3 tools/gltf/validate_vrm.py tmp/local-demo.vrm
+```
+
+Validate a file exported from the web app with:
 
 ```bash
 python3 tools/gltf/validate_vrm.py path/to/avatar.vrm
