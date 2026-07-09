@@ -51,6 +51,7 @@ def assert_sdk_surface() -> None:
     expected = [
         "async fetchAvatar(",
         "async fetchModel(",
+        "async fetchPublicAvatar(",
         "async fetchParts(",
         "async createFaceAnalysisJob(",
         "async createAiGenerationJob(",
@@ -66,6 +67,7 @@ def assert_sdk_surface() -> None:
         '"/api/admin/dashboard"',
         '"/api/recommendation_feedback"',
         "`/api/ai_generation_jobs/",
+        "`/api/avatars/${encodeURIComponent(avatarId)}/public`",
         '"/api/status_page_updates"',
         "`/api/billing_usage/",
         "apiBaseUrl",
@@ -95,6 +97,7 @@ def main() -> int:
     try:
         api_smoke.wait_for_health(base_url)
         avatar = request_json(base_url, "/api/avatars/demo-avatar")
+        public_avatar = request_json(base_url, "/api/avatars/demo-avatar/public")
         model = request_json(base_url, "/api/avatars/demo-avatar/model?format=vrm")
         parts = request_json(base_url, "/api/parts")
         animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
@@ -145,6 +148,8 @@ def main() -> int:
 
     if avatar["avatarId"] != "demo-avatar":
         raise AssertionError("API mock did not return the expected demo avatar")
+    if public_avatar["avatarId"] != "demo-avatar" or "publicUrl" not in public_avatar:
+        raise AssertionError("API mock did not return public avatar URL for SDK clients")
     if model["format"] != "vrm":
         raise AssertionError("API mock did not return the requested VRM model response")
     if not parts.get("parts"):

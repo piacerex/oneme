@@ -48,6 +48,10 @@ Options:
 
 - `format`: `glb` or `vrm`, defaults to `glb`
 
+### `client.fetchPublicAvatar(avatarId)`
+
+Fetches public sharing URLs from `/api/avatars/:id/public`.
+
 ### `client.fetchParts()`
 
 Fetches available avatar parts from `/api/parts`.

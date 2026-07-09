@@ -30,6 +30,7 @@ PHASES = [
             "apps/web/index.html",
             "apps/web/src/app.js",
             "apps/web/src/three-preview.js",
+            "schemas/avatar-public-response.schema.json",
             "docs/three-preview.md",
         ],
         "checks": ["web_builder_smoke", "widget_api_smoke"],

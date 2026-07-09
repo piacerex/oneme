@@ -483,6 +483,14 @@ def run_smoke(base_url: str) -> None:
     config = request_json(base_url, "/api/avatars/smoke-avatar/config")
     assert_equal(config["avatarId"], "smoke-avatar", "config avatar id")
 
+    public_avatar = request_json(base_url, "/api/avatars/smoke-avatar/public")
+    assert_equal(public_avatar["avatarId"], "smoke-avatar", "public avatar id")
+    assert_equal(public_avatar["visibility"], "public", "public avatar visibility")
+    if not public_avatar["publicUrl"].endswith("/avatars/smoke-avatar"):
+        raise AssertionError("public avatar URL did not include avatar id")
+    if "/api/avatars/smoke-avatar/config" not in public_avatar["configUrl"]:
+        raise AssertionError("public avatar config URL did not point to avatar config")
+
     glb = request_json(base_url, "/api/avatars/smoke-avatar/model?format=glb")
     assert_equal(glb["format"], "glb", "glb model format")
 

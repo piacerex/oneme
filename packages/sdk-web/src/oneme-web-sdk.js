@@ -47,6 +47,10 @@ export class OnemeClient {
     );
   }
 
+  async fetchPublicAvatar(avatarId) {
+    return this.#requestJson(`/api/avatars/${encodeURIComponent(avatarId)}/public`);
+  }
+
   async fetchParts() {
     const response = await this.#requestJson("/api/parts");
     return response.parts ?? [];

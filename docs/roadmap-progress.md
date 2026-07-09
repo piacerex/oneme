@@ -17,7 +17,7 @@ that phase to the smoke or validation command exercised by `tools/check_all.py`.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 0: planning | `mvp_done` | `docs/avatar-direction.md`, `docs/asset-conventions.md`, `docs/asset-inventory.md`, `docs/mvp-parts.md`, `schemas/avatar-config.schema.json`; checked by `asset_inventory_smoke` |
-| Phase 1: MVP builder | `mvp_done` | `apps/web/index.html`, `apps/web/src/app.js`, `apps/web/src/three-preview.js`, `docs/three-preview.md`; checked by `web_builder_smoke` |
+| Phase 1: MVP builder | `mvp_done` | `apps/web/index.html`, `apps/web/src/app.js`, `apps/web/src/three-preview.js`, `schemas/avatar-public-response.schema.json`, `docs/three-preview.md`; checked by `web_builder_smoke` |
 | Phase 2: face photo proposal | `mvp_done` | `apps/web/src/app.js`, `schemas/avatar-config.schema.json`, `schemas/face-analysis-job.schema.json`; checked by `face_photo_surface_smoke` and `face_retention_smoke` |
 | Phase 3: AI generation MVP | `mvp_done` | `docs/ai-generation-mvp.md`, `schemas/ai-generation-job.schema.json`, `schemas/recommendation-feedback.schema.json`; checked by `ai_generation_smoke` |
 | Phase 4: GLB export | `mvp_done` | `docs/export-api.md`, `docs/export-pipeline.md`, `tools/gltf/validate_glb.py`, `tools/blender/compose_avatar.py`; checked by `glb_contract_smoke` |

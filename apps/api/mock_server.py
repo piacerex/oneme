@@ -159,6 +159,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "config":
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id/config", "avatarId": parts[2]})
             self.send_avatar(parts[2])
+        elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "public":
+            self.send_public_avatar(parts[2])
         elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "model":
             query = parse_qs(parsed.query)
             self.send_model(parts[2], query.get("format", ["glb"])[0])
@@ -736,6 +738,25 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "avatar_not_found")
             return
         self.send_json(avatar)
+
+    def send_public_avatar(self, avatar_id: str) -> None:
+        avatar = self.avatars.get(avatar_id)
+        if not avatar:
+            self.send_error_json(404, "avatar_not_found")
+            return
+
+        base_url = f"http://localhost:{self.server.server_port}"
+        self.record_usage("api_request", {"endpoint": "/api/avatars/:id/public", "avatarId": avatar_id})
+        self.send_json(
+            {
+                "avatarId": avatar_id,
+                "publicUrl": f"{base_url}/avatars/{avatar_id}",
+                "embedUrl": f"{base_url}/embed/avatar.html?avatar_id={avatar_id}",
+                "configUrl": f"{base_url}/api/avatars/{avatar_id}/config",
+                "visibility": avatar.get("visibility", "public"),
+                "updatedAt": avatar.get("updatedAt", "2026-07-09T00:00:00.000Z"),
+            }
+        )
 
     def send_asset_review(self, review_id: str) -> None:
         review = self.asset_reviews.get(review_id)

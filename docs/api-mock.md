@@ -23,6 +23,7 @@ Implemented endpoints:
 - `GET /api/avatars/:id`
 - `PATCH /api/avatars/:id`
 - `GET /api/avatars/:id/config`
+- `GET /api/avatars/:id/public`
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
 - `GET /api/avatars/:id/animation_compat?format=vrm`
@@ -95,6 +96,9 @@ Implemented endpoints:
 The server stores avatars in memory and resets on restart. It is not a
 production backend, but it gives SDK, widget, and API contract work a real HTTP
 target before the hosted service exists.
+Public avatar URLs are exposed through `GET /api/avatars/:id/public`, returning
+a share URL, embed URL, config URL, visibility, and update timestamp for Phase 1
+sharing flows.
 
 Face analysis jobs are stored in memory and never retain the original photo.
 `POST /api/face_analysis_jobs` requires consent and returns part, color,
