@@ -36,8 +36,10 @@ This document maps the current repository artifacts to the roadmap phases.
 Run:
 
 ```bash
-python3 tools/roadmap/check_progress.py
+python3 tools/check_all.py
 ```
 
-The script verifies the expected roadmap evidence files exist and reports phase
-coverage. It does not prove production readiness.
+The full check runner validates schema JSON, Python tooling, and roadmap
+evidence coverage. `tools/roadmap/check_progress.py` can still be run directly
+when only phase evidence should be checked. These checks do not prove production
+readiness.
