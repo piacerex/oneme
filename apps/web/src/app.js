@@ -59,7 +59,10 @@ const configOutput = document.querySelector("#config-output");
 const form = document.querySelector("#avatar-form");
 const saveButton = document.querySelector("#save-avatar");
 const loadButton = document.querySelector("#load-avatar");
+const exportButton = document.querySelector("#export-glb");
+const downloadGlbLink = document.querySelector("#download-glb");
 const saveStatus = document.querySelector("#save-status");
+const exportOutput = document.querySelector("#export-output");
 const faceConsent = document.querySelector("#face-consent");
 const facePhoto = document.querySelector("#face-photo");
 const analyzeFaceButton = document.querySelector("#analyze-face");
@@ -68,11 +71,18 @@ const faceStatus = document.querySelector("#face-status");
 const faceResult = document.querySelector("#face-result");
 const ctx = previewCanvas.getContext("2d");
 const storageKey = "oneme.avatars";
+const exportJobsKey = "oneme.exportJobs";
+const exportCacheKey = "oneme.exportCache";
 let faceAnalysisCounter = 0;
 let currentPhotoUrl = null;
+let currentModelUrl = null;
 
 function renderConfig() {
   configOutput.textContent = JSON.stringify(appState, null, 2);
+}
+
+function renderExportJob(job = getLatestExportJob()) {
+  exportOutput.textContent = job ? JSON.stringify(job, null, 2) : "No export job yet.";
 }
 
 function populateSelect(name) {
@@ -244,6 +254,30 @@ function getSavedAvatars() {
   }
 }
 
+function getJsonArray(key) {
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getJsonObject(key) {
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function saveAvatar() {
   const saved = getSavedAvatars();
   const avatar = {
@@ -258,6 +292,191 @@ function saveAvatar() {
   appState.avatarId = avatar.avatarId;
   saveStatus.textContent = `Saved ${avatar.avatarId}`;
   render();
+}
+
+function getLatestExportJob() {
+  return getJsonArray(exportJobsKey)[0] ?? null;
+}
+
+function saveExportJob(job) {
+  const jobs = getJsonArray(exportJobsKey).filter((item) => item.id !== job.id);
+  jobs.unshift(job);
+  window.localStorage.setItem(exportJobsKey, JSON.stringify(jobs.slice(0, 20)));
+  renderExportJob(job);
+}
+
+function saveExportCache(cacheKey, modelBase64) {
+  const cache = getJsonObject(exportCacheKey);
+  cache[cacheKey] = {
+    modelBase64,
+    cachedAt: new Date().toISOString()
+  };
+  window.localStorage.setItem(exportCacheKey, JSON.stringify(cache));
+}
+
+function getExportCache(cacheKey) {
+  return getJsonObject(exportCacheKey)[cacheKey] ?? null;
+}
+
+function getVisualConfig(config) {
+  return {
+    style: config.style,
+    parts: config.parts,
+    colors: config.colors
+  };
+}
+
+function createCacheKey(config) {
+  return stableStringify(getVisualConfig(config));
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function resolveAvatarParts(config) {
+  const requiredFields = ["baseBody", "face", "hair", "top", "bottom", "shoes", "accessory"];
+
+  return requiredFields.map((field) => {
+    const partId = config.parts[field];
+    if (!partId) throw new Error(`Missing required part: ${field}`);
+
+    const category = partId.split(".")[0];
+    return {
+      field,
+      partId,
+      category,
+      assetPath: `assets/parts/${category}/${partId.replaceAll(".", "-")}.glb`,
+      required: true,
+      status: "placeholder"
+    };
+  });
+}
+
+function exportGlb() {
+  const avatarConfig = cloneConfig();
+  const cacheKey = createCacheKey(avatarConfig);
+  const cached = getExportCache(cacheKey);
+  const job = {
+    id: `export-local-${Date.now()}`,
+    status: "queued",
+    cacheKey,
+    avatarConfig,
+    createdAt: new Date().toISOString()
+  };
+
+  saveExportJob(job);
+  saveStatus.textContent = "Export queued";
+
+  window.setTimeout(() => runExportJob(job, cached), 80);
+}
+
+function runExportJob(job, cached) {
+  try {
+    const runningJob = {
+      ...job,
+      status: "running",
+      resolvedParts: resolveAvatarParts(job.avatarConfig)
+    };
+    saveExportJob(runningJob);
+
+    const modelBase64 =
+      cached?.modelBase64 ??
+      bytesToBase64(createGlbBytes(runningJob.avatarConfig, runningJob.resolvedParts));
+
+    if (!cached) saveExportCache(runningJob.cacheKey, modelBase64);
+
+    const modelBlob = base64ToBlob(modelBase64, "model/gltf-binary");
+    setDownloadUrl(modelBlob, `${runningJob.avatarConfig.avatarId}.glb`);
+
+    saveExportJob({
+      ...runningJob,
+      status: "succeeded",
+      modelUrl: downloadGlbLink.href,
+      cacheHit: Boolean(cached),
+      finishedAt: new Date().toISOString()
+    });
+    saveStatus.textContent = cached ? "Export reused cached GLB" : "Exported GLB";
+  } catch (error) {
+    saveExportJob({
+      ...job,
+      status: "failed",
+      error: error instanceof Error ? error.message : String(error),
+      finishedAt: new Date().toISOString()
+    });
+    saveStatus.textContent = "Export failed";
+  }
+}
+
+function setDownloadUrl(blob, fileName) {
+  if (currentModelUrl) URL.revokeObjectURL(currentModelUrl);
+  currentModelUrl = URL.createObjectURL(blob);
+  downloadGlbLink.href = currentModelUrl;
+  downloadGlbLink.download = fileName;
+  downloadGlbLink.hidden = false;
+}
+
+function createGlbBytes(config, resolvedParts) {
+  const gltf = {
+    asset: {
+      version: "2.0",
+      generator: "oneme local MVP exporter",
+      extras: {
+        oneme: {
+          config,
+          resolvedParts
+        }
+      }
+    },
+    scenes: [{ nodes: [] }],
+    scene: 0,
+    nodes: []
+  };
+
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(gltf));
+  const paddedJsonBytes = padBytes(jsonBytes, 0x20);
+  const totalLength = 12 + 8 + paddedJsonBytes.length;
+  const bytes = new Uint8Array(totalLength);
+  const view = new DataView(bytes.buffer);
+
+  view.setUint32(0, 0x46546c67, true);
+  view.setUint32(4, 2, true);
+  view.setUint32(8, totalLength, true);
+  view.setUint32(12, paddedJsonBytes.length, true);
+  view.setUint32(16, 0x4e4f534a, true);
+  bytes.set(paddedJsonBytes, 20);
+
+  return bytes;
+}
+
+function padBytes(bytes, paddingByte) {
+  const paddedLength = Math.ceil(bytes.length / 4) * 4;
+  const padded = new Uint8Array(paddedLength);
+  padded.fill(paddingByte);
+  padded.set(bytes);
+  return padded;
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return window.btoa(binary);
+}
+
+function base64ToBlob(base64, type) {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type });
 }
 
 function loadLatestAvatar() {
@@ -466,6 +685,7 @@ function syncForm() {
 function render() {
   drawAvatar();
   renderConfig();
+  renderExportJob();
 }
 
 const topPalette = {
@@ -493,6 +713,7 @@ for (const name of Object.keys(partOptions)) {
 form.addEventListener("input", updateFromForm);
 saveButton.addEventListener("click", saveAvatar);
 loadButton.addEventListener("click", loadLatestAvatar);
+exportButton.addEventListener("click", exportGlb);
 analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
 clearFaceButton.addEventListener("click", clearFacePhoto);
 render();

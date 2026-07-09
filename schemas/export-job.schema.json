@@ -43,6 +43,9 @@
     "modelUrl": {
       "type": "string"
     },
+    "cacheHit": {
+      "type": "boolean"
+    },
     "error": {
       "type": "string"
     },
