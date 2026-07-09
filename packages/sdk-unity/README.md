@@ -17,7 +17,9 @@ packages/sdk-unity
 3. Set `Api Base Url`.
 4. Set `Format` to `glb` or `vrm`.
 5. Call `StartCoroutine(loader.Load())`.
+6. For VRM readiness checks, call `StartCoroutine(loader.LoadAnimationCompatibility())`.
 
 The current implementation fetches and parses the avatar model response JSON,
-then exposes it as `LastModelResponse`. The next step is to connect a GLB
-runtime importer and instantiate the returned model URL.
+then exposes it as `LastModelResponse`. It can also fetch VRM animation
+compatibility into `LastAnimationCompatibility`. The next step is to connect a
+GLB runtime importer and instantiate the returned model URL.

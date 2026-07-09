@@ -21,12 +21,21 @@ def main() -> int:
         "public string modelUrl;",
         "public string exportJobId;",
         "public bool cacheHit;",
+        "OnemeAnimationCompatibilityResponse",
+        "public string[] requiredHumanoidBones;",
+        "public string[] missingHumanoidBones;",
+        "public string[] expressions;",
         "public OnemeModelResponse LastModelResponse",
+        "public OnemeAnimationCompatibilityResponse LastAnimationCompatibility",
         "public string ApiBaseUrl",
         "public string Format",
+        "LoadAnimationCompatibility()",
         "BuildModelUrl()",
+        "BuildAnimationCompatibilityUrl()",
         "JsonUtility.FromJson<OnemeModelResponse>",
+        "JsonUtility.FromJson<OnemeAnimationCompatibilityResponse>",
         "/api/avatars/{escapedAvatarId}/model?format={escapedFormat}",
+        "/api/avatars/{escapedAvatarId}/animation_compat?format={escapedFormat}",
     ]
     missing = [token for token in expected_tokens if token not in source]
     if missing:
