@@ -8,6 +8,10 @@ This document maps the current repository artifacts to the roadmap phases.
 - `contract_done`: schema and operational contract exist, production code still follows
 - `production_pending`: requires hosted backend, production assets, or external service integration
 
+`tools/roadmap/check_progress.py` reports both evidence files and phase-linked
+local checks. File evidence proves the roadmap artifact exists; check names map
+that phase to the smoke or validation command exercised by `tools/check_all.py`.
+
 ## Phase Status
 
 | Phase | Status | Evidence |
@@ -40,6 +44,8 @@ python3 tools/check_all.py
 ```
 
 The full check runner validates schema JSON, Python tooling, and roadmap
-evidence coverage. `tools/roadmap/check_progress.py` can still be run directly
-when only phase evidence should be checked. These checks do not prove production
-readiness.
+evidence coverage. It also runs API mock, Web SDK, Widget API, and VRM sample
+validation checks that are referenced by the phase progress output.
+`tools/roadmap/check_progress.py` can still be run directly when only phase
+evidence and check mapping should be inspected. These checks do not prove
+production readiness.

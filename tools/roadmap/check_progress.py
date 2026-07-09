@@ -30,6 +30,7 @@ PHASES = [
             "apps/web/src/three-preview.js",
             "docs/three-preview.md",
         ],
+        "checks": ["widget_api_smoke"],
     },
     {
         "phase": "phase_2",
@@ -38,6 +39,7 @@ PHASES = [
             "apps/web/src/app.js",
             "schemas/avatar-config.schema.json",
         ],
+        "checks": ["widget_api_smoke"],
     },
     {
         "phase": "phase_3",
@@ -47,6 +49,7 @@ PHASES = [
             "schemas/ai-generation-job.schema.json",
             "schemas/recommendation-feedback.schema.json",
         ],
+        "checks": ["schema_example_validation"],
     },
     {
         "phase": "phase_4",
@@ -57,6 +60,7 @@ PHASES = [
             "tools/gltf/validate_glb.py",
             "tools/blender/compose_avatar.py",
         ],
+        "checks": ["api_mock_smoke", "schema_example_validation"],
     },
     {
         "phase": "phase_5",
@@ -67,6 +71,7 @@ PHASES = [
             "apps/web/embed-example.html",
             "schemas/widget-app.schema.json",
         ],
+        "checks": ["widget_api_smoke"],
     },
     {
         "phase": "phase_6",
@@ -77,6 +82,7 @@ PHASES = [
             "docs/unity-sdk.md",
             "packages/sdk-unity/package.json",
         ],
+        "checks": ["web_sdk_smoke"],
     },
     {
         "phase": "phase_7",
@@ -88,6 +94,7 @@ PHASES = [
             "tools/gltf/create_sample_vrm.py",
             "tools/gltf/validate_vrm.py",
         ],
+        "checks": ["api_mock_smoke", "vrm_sample_validation"],
     },
     {
         "phase": "phase_8",
@@ -105,16 +112,20 @@ PHASES = [
             "schemas/legal-record.schema.json",
             "schemas/ops-summary.schema.json",
         ],
+        "checks": ["api_mock_smoke", "schema_example_validation"],
     },
 ]
 
 
 def check_phase(phase: dict) -> dict:
     missing = [path for path in phase["evidence"] if not (ROOT / path).exists()]
+    checks = phase.get("checks", [])
     return {
         "phase": phase["phase"],
         "status": phase["status"],
         "evidenceCount": len(phase["evidence"]),
+        "checks": checks,
+        "checkCount": len(checks),
         "missing": missing,
         "ok": not missing,
     }
