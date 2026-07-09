@@ -207,9 +207,9 @@ function drawAvatar() {
   drawCapsule(centerX - 165, 560, 52, 64, skin);
   drawCapsule(centerX + 113, 560, 52, 64, skin);
 
+  drawHair(centerX, 188, hair);
   drawCapsule(centerX - 46, 304, 92, 82, skin);
   drawFace(centerX, 230, skin);
-  drawHair(centerX, 188, hair);
   drawAccessory(centerX, 230);
   drawFacePhotoReference();
 }
@@ -271,11 +271,6 @@ function drawHair(centerX, y, color) {
     ctx.roundRect(centerX - 76, y - 52, 152, 92, 50);
   }
 
-  ctx.fill();
-
-  ctx.fillStyle = appState.colors.skin;
-  ctx.beginPath();
-  ctx.ellipse(centerX, y + 42, 68, 66, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -1018,6 +1013,7 @@ function renderFaceResult(recommendation) {
     <span>Face: ${recommendation.facePreset}</span>
     <span>Hair part: ${recommendation.hairPreset}</span>
     <span>Morph: ${formatFaceMorph(recommendation.faceMorph)}</span>
+    <span>Face texture: ${appState.faceTexture?.enabled ? "mapped" : "off"}</span>
   `;
 }
 
@@ -1124,7 +1120,7 @@ function drawMappedFaceTexture(centerX, y, width, height) {
   ctx.beginPath();
   traceFaceContourPath(centerX, y + height * 0.02, Math.max(width, height) * 0.86);
   ctx.clip();
-  ctx.globalAlpha = 0.72;
+  ctx.globalAlpha = 0.9;
   ctx.drawImage(
     facePreviewImage,
     crop.x,
