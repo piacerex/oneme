@@ -17,9 +17,11 @@ PHASES = [
         "evidence": [
             "docs/avatar-direction.md",
             "docs/asset-conventions.md",
+            "docs/asset-inventory.md",
             "docs/mvp-parts.md",
             "schemas/avatar-config.schema.json",
         ],
+        "checks": ["asset_inventory_smoke"],
     },
     {
         "phase": "phase_1",

@@ -16,7 +16,7 @@ that phase to the smoke or validation command exercised by `tools/check_all.py`.
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| Phase 0: planning | `mvp_done` | `docs/avatar-direction.md`, `docs/asset-conventions.md`, `docs/mvp-parts.md`, `schemas/avatar-config.schema.json` |
+| Phase 0: planning | `mvp_done` | `docs/avatar-direction.md`, `docs/asset-conventions.md`, `docs/asset-inventory.md`, `docs/mvp-parts.md`, `schemas/avatar-config.schema.json`; checked by `asset_inventory_smoke` |
 | Phase 1: MVP builder | `mvp_done` | `apps/web/index.html`, `apps/web/src/app.js`, `apps/web/src/three-preview.js`, `docs/three-preview.md`; checked by `web_builder_smoke` |
 | Phase 2: face photo proposal | `mvp_done` | `apps/web/src/app.js`, `schemas/avatar-config.schema.json`, `schemas/face-analysis-job.schema.json`; checked by `face_photo_surface_smoke` and `face_retention_smoke` |
 | Phase 3: AI generation MVP | `mvp_done` | `docs/ai-generation-mvp.md`, `schemas/ai-generation-job.schema.json`, `schemas/recommendation-feedback.schema.json`; checked by `ai_generation_smoke` |
@@ -44,10 +44,10 @@ python3 tools/check_all.py
 ```
 
 The full check runner validates schema JSON, Python tooling, and roadmap
-evidence coverage. It also runs API mock, AI generation, Web builder, face photo
-surface, face retention, Web SDK, Widget API, admin dashboard, GLB contract, VRM
-sample validation, and VRM contract checks that are referenced by the phase
-progress output.
+evidence coverage. It also runs asset inventory, API mock, AI generation, Web
+builder, face photo surface, face retention, Web SDK, Widget API, admin
+dashboard, GLB contract, VRM sample validation, and VRM contract checks that are
+referenced by the phase progress output.
 `tools/roadmap/check_progress.py` can still be run directly when only phase
 evidence and check mapping should be inspected. These checks do not prove
 production readiness.

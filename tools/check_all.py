@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 PYTHON_FILES = [
     "apps/api/mock_server.py",
+    "tools/assets/smoke_asset_inventory.py",
     "tools/api/smoke_ai_generation.py",
     "tools/api/smoke_admin_dashboard.py",
     "tools/api/smoke_face_retention.py",
@@ -88,6 +89,14 @@ def check_roadmap_progress() -> None:
 def check_schema_example_validation() -> None:
     subprocess.run(
         [sys.executable, "tools/schemas/validate_examples.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
+def check_asset_inventory() -> None:
+    subprocess.run(
+        [sys.executable, "tools/assets/smoke_asset_inventory.py"],
         cwd=ROOT,
         check=True,
     )
@@ -202,6 +211,7 @@ def main() -> int:
         ("schema examples", check_schema_examples),
         ("schema example validation", check_schema_example_validation),
         ("python", check_python_files),
+        ("asset inventory", check_asset_inventory),
         ("api mock", check_api_mock),
         ("admin dashboard", check_admin_dashboard),
         ("ai generation", check_ai_generation),

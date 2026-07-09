@@ -12,6 +12,7 @@ The check runner covers:
 - one `.example.json` for every `.schema.json`
 - example files matching the supported JSON Schema subset
 - Python syntax for local tooling
+- Asset inventory smoke test
 - API mock smoke test
 - AI generation smoke test
 - Admin dashboard smoke test
