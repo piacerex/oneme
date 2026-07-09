@@ -40,7 +40,12 @@ PHASES = [
             "schemas/avatar-config.schema.json",
             "schemas/face-analysis-job.schema.json",
         ],
-        "checks": ["api_mock_smoke", "widget_api_smoke", "schema_example_validation"],
+        "checks": [
+            "api_mock_smoke",
+            "face_photo_surface_smoke",
+            "widget_api_smoke",
+            "schema_example_validation",
+        ],
     },
     {
         "phase": "phase_3",

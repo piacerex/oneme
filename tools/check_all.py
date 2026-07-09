@@ -25,6 +25,7 @@ PYTHON_FILES = [
     "tools/sdk/smoke_web_sdk.py",
     "tools/sdk/smoke_unity_sdk.py",
     "tools/web/smoke_builder_surface.py",
+    "tools/web/smoke_face_photo_surface.py",
     "tools/widget/smoke_widget_api.py",
     "tools/check_all.py",
 ]
@@ -126,6 +127,14 @@ def check_web_builder() -> None:
     )
 
 
+def check_face_photo_surface() -> None:
+    subprocess.run(
+        [sys.executable, "tools/web/smoke_face_photo_surface.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def check_vrm_sample() -> None:
     with tempfile.TemporaryDirectory() as directory:
         sample = Path(directory) / "local-demo.vrm"
@@ -151,6 +160,7 @@ def main() -> int:
         ("web sdk", check_web_sdk),
         ("unity sdk", check_unity_sdk),
         ("web builder", check_web_builder),
+        ("face photo surface", check_face_photo_surface),
         ("widget api", check_widget_api),
         ("vrm sample", check_vrm_sample),
         ("roadmap", check_roadmap_progress),
