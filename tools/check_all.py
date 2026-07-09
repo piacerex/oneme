@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 PYTHON_FILES = [
     "apps/api/mock_server.py",
+    "tools/api/smoke_admin_dashboard.py",
     "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
     "tools/gltf/create_sample_vrm.py",
@@ -96,6 +97,14 @@ def check_api_mock() -> None:
     )
 
 
+def check_admin_dashboard() -> None:
+    subprocess.run(
+        [sys.executable, "tools/api/smoke_admin_dashboard.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def check_web_sdk() -> None:
     subprocess.run(
         [sys.executable, "tools/sdk/smoke_web_sdk.py"],
@@ -166,6 +175,7 @@ def main() -> int:
         ("schema example validation", check_schema_example_validation),
         ("python", check_python_files),
         ("api mock", check_api_mock),
+        ("admin dashboard", check_admin_dashboard),
         ("web sdk", check_web_sdk),
         ("unity sdk", check_unity_sdk),
         ("web builder", check_web_builder),

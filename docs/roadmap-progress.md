@@ -24,7 +24,7 @@ that phase to the smoke or validation command exercised by `tools/check_all.py`.
 | Phase 5: widget | `mvp_done` | `docs/widget-contract.md`, `apps/web/widget.html`, `apps/web/embed-example.html`, `apps/web/src/widget.js`, `schemas/widget-app.schema.json` |
 | Phase 6: SDKs | `mvp_done` | `docs/web-sdk.md`, `packages/sdk-web/package.json`, `docs/unity-sdk.md`, `packages/sdk-unity/package.json` |
 | Phase 7: VRM | `contract_done` | `docs/vrm.md`, `docs/vrm-validation.md`, `schemas/vrm-export-job.schema.json`, `tools/gltf/create_sample_vrm.py`, `tools/gltf/validate_vrm.py`; checked by `vrm_contract_smoke` |
-| Phase 8: commercial operations | `contract_done` | `docs/commercial-operations.md`, team, admin dashboard, usage, billing usage, billing, webhook, audit, asset review, asset validation, monitoring, incident, status page update, legal, and ops summary schemas |
+| Phase 8: commercial operations | `contract_done` | `docs/commercial-operations.md`, team, admin dashboard, usage, billing usage, billing, webhook, audit, asset review, asset validation, monitoring, incident, status page update, legal, and ops summary schemas; checked by `admin_dashboard_smoke` |
 
 ## Remaining Production Work
 
@@ -45,8 +45,8 @@ python3 tools/check_all.py
 
 The full check runner validates schema JSON, Python tooling, and roadmap
 evidence coverage. It also runs API mock, Web builder, face photo surface, Web
-SDK, Widget API, VRM sample validation, and VRM contract checks that are
-referenced by the phase progress output.
+SDK, Widget API, admin dashboard, VRM sample validation, and VRM contract checks
+that are referenced by the phase progress output.
 `tools/roadmap/check_progress.py` can still be run directly when only phase
 evidence and check mapping should be inspected. These checks do not prove
 production readiness.

@@ -86,6 +86,8 @@ webhook deliveries, and active legal records for the demo team/app.
 `GET /api/admin/dashboard` returns the same summary plus teams, members, apps,
 pending asset reviews, open alerts, open incidents, failed webhook deliveries,
 and recent audit logs for admin UI contract testing.
+`tools/api/smoke_admin_dashboard.py` seeds these operational states and verifies
+that the dashboard includes each queue before production persistence exists.
 
 ## Webhooks
 

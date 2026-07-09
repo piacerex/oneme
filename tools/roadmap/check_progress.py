@@ -123,7 +123,7 @@ PHASES = [
             "schemas/legal-record.schema.json",
             "schemas/ops-summary.schema.json",
         ],
-        "checks": ["api_mock_smoke", "schema_example_validation"],
+        "checks": ["admin_dashboard_smoke", "api_mock_smoke", "schema_example_validation"],
     },
 ]
 
