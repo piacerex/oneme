@@ -105,3 +105,37 @@ Review states:
 - `archived`
 
 Review records keep the reviewer, decision, license status, and notes.
+
+## Monitoring
+
+Production monitoring tracks:
+
+- export job latency and failures
+- API error rates by app and endpoint
+- CDN delivery errors
+- webhook delivery failures
+- asset validation failures
+
+Alerts should include team id, app id, severity, metric, and a runbook link.
+
+## Incident Recovery
+
+Incidents record detection, mitigation, customer impact, and follow-up tasks.
+
+Minimum recovery actions:
+
+- retry failed export jobs
+- pause a broken webhook endpoint
+- revoke a leaked API key
+- roll back a rejected asset
+- publish a status page update
+
+## Legal and License Records
+
+Commercial operation keeps structured records for:
+
+- terms of service version
+- privacy policy version
+- asset license source and usage rights
+- consent requirements for face-photo analysis
+- retention policy for generated artifacts

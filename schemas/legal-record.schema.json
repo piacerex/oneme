@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/legal-record.schema.json",
+  "title": "oneme Legal Record",
+  "type": "object",
+  "required": ["id", "kind", "version", "status", "effectiveAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "terms_of_service",
+        "privacy_policy",
+        "asset_license",
+        "face_photo_consent",
+        "retention_policy"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "superseded", "archived"]
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "usageRights": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["commercial", "redistribution", "modification", "attribution_required"]
+      },
+      "uniqueItems": true
+    },
+    "retentionDays": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "effectiveAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

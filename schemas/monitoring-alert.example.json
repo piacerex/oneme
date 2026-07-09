@@ -1,0 +1,12 @@
+{
+  "id": "alert-demo",
+  "teamId": "team-demo",
+  "appId": "app-demo",
+  "severity": "warning",
+  "metric": "export_job_failure_rate",
+  "status": "open",
+  "value": 0.08,
+  "threshold": 0.05,
+  "runbookUrl": "https://example.com/runbooks/export-failures",
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}

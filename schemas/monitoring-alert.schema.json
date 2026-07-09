@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/monitoring-alert.schema.json",
+  "title": "oneme Monitoring Alert",
+  "type": "object",
+  "required": ["id", "teamId", "appId", "severity", "metric", "status", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "teamId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "appId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "critical"]
+    },
+    "metric": {
+      "type": "string",
+      "enum": [
+        "export_job_failure_rate",
+        "export_job_latency",
+        "api_error_rate",
+        "cdn_error_rate",
+        "webhook_failure_rate",
+        "asset_validation_failure"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "acknowledged", "resolved"]
+    },
+    "value": {
+      "type": "number"
+    },
+    "threshold": {
+      "type": "number"
+    },
+    "runbookUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
