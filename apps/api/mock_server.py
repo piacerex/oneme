@@ -58,6 +58,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     rate_limits: dict[str, dict] = {}
     rate_limit_window_seconds = 60
     rate_limit_max_requests = 600
+    mock_now = "2026-07-09T00:00:00.000Z"
 
     def do_GET(self) -> None:  # noqa: N802
         if not self.check_rate_limit():
@@ -343,7 +344,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         elif path == "/api/avatars/from_face_analysis":
             payload = self.read_json_body()
             job = self.face_analysis_jobs.get(payload.get("faceAnalysisJobId", ""))
-            if not job or job["status"] == "deleted":
+            if not job or self.is_face_analysis_unusable(job):
                 self.send_error_json(404, "face_analysis_job_not_found")
                 return
             avatar = self.create_avatar_from_face_analysis(job, payload)
@@ -885,6 +886,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             },
         }
         return avatar
+
+    def is_face_analysis_unusable(self, job: dict) -> bool:
+        return job.get("status") == "deleted" or job.get("expiresAt", "") <= self.mock_now
 
     def send_ai_generation_job(self, job_id: str) -> None:
         job = self.ai_generation_jobs.get(job_id)

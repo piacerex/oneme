@@ -42,6 +42,7 @@ PHASES = [
         ],
         "checks": [
             "api_mock_smoke",
+            "face_retention_smoke",
             "face_photo_surface_smoke",
             "widget_api_smoke",
             "schema_example_validation",

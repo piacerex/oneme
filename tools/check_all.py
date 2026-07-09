@@ -17,6 +17,7 @@ PYTHON_FILES = [
     "apps/api/mock_server.py",
     "tools/api/smoke_ai_generation.py",
     "tools/api/smoke_admin_dashboard.py",
+    "tools/api/smoke_face_retention.py",
     "tools/api/smoke_mock_api.py",
     "tools/blender/compose_avatar.py",
     "tools/gltf/create_sample_glb.py",
@@ -116,6 +117,14 @@ def check_ai_generation() -> None:
     )
 
 
+def check_face_retention() -> None:
+    subprocess.run(
+        [sys.executable, "tools/api/smoke_face_retention.py"],
+        cwd=ROOT,
+        check=True,
+    )
+
+
 def check_web_sdk() -> None:
     subprocess.run(
         [sys.executable, "tools/sdk/smoke_web_sdk.py"],
@@ -196,6 +205,7 @@ def main() -> int:
         ("api mock", check_api_mock),
         ("admin dashboard", check_admin_dashboard),
         ("ai generation", check_ai_generation),
+        ("face retention", check_face_retention),
         ("web sdk", check_web_sdk),
         ("unity sdk", check_unity_sdk),
         ("web builder", check_web_builder),

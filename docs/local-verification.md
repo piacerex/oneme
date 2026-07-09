@@ -15,6 +15,7 @@ The check runner covers:
 - API mock smoke test
 - AI generation smoke test
 - Admin dashboard smoke test
+- Face retention smoke test
 - Web SDK API smoke test
 - Widget API smoke test
 - GLB contract smoke test
