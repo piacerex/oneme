@@ -77,10 +77,36 @@ def run_smoke(base_url: str) -> None:
         payload={
             "id": "webhook-smoke",
             "url": "https://example.com/oneme/webhooks",
-            "events": ["avatar.created", "model.exported"],
+            "events": ["asset.reviewed", "avatar.created", "model.exported"],
         },
     )
     assert_equal(webhook["status"], "active", "webhook endpoint status")
+
+    asset_review = request_json(
+        base_url,
+        "/api/asset_reviews",
+        method="POST",
+        payload={
+            "id": "asset-review-smoke",
+            "assetId": "hair-short-placeholder",
+            "status": "submitted",
+            "licenseStatus": "needs_review",
+        },
+    )
+    assert_equal(asset_review["status"], "submitted", "created asset review status")
+
+    approved_review = request_json(
+        base_url,
+        "/api/asset_reviews/asset-review-smoke",
+        method="PATCH",
+        payload={
+            "status": "approved",
+            "licenseStatus": "verified",
+            "decision": "approve",
+            "reviewerId": "user-demo",
+        },
+    )
+    assert_equal(approved_review["status"], "approved", "approved asset review status")
 
     created = request_json(
         base_url,
@@ -130,13 +156,13 @@ def run_smoke(base_url: str) -> None:
 
     deliveries = request_json(base_url, "/api/webhook_deliveries")
     events = {delivery["event"] for delivery in deliveries.get("webhookDeliveries", [])}
-    for event in {"avatar.created", "model.exported"}:
+    for event in {"avatar.created", "model.exported", "asset.reviewed"}:
         if event not in events:
             raise AssertionError(f"webhook deliveries did not include {event}")
 
     audit = request_json(base_url, "/api/audit_logs")
     actions = {log["action"] for log in audit.get("auditLogs", [])}
-    for action in {"avatar.created", "avatar.updated", "model.exported", "webhook_endpoint.created"}:
+    for action in {"asset.reviewed", "avatar.created", "avatar.updated", "model.exported", "webhook_endpoint.created"}:
         if action not in actions:
             raise AssertionError(f"audit logs did not include {action}")
 

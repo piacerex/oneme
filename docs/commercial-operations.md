@@ -114,6 +114,9 @@ Review states:
 - `archived`
 
 Review records keep the reviewer, decision, license status, and notes.
+The local API mock supports `POST /api/asset_reviews`,
+`PATCH /api/asset_reviews/:id`, and `GET /api/asset_reviews` for the MVP review
+queue.
 
 ## Monitoring
 

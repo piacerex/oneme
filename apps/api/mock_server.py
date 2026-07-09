@@ -35,6 +35,7 @@ def now_id(prefix: str) -> str:
 
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
+    asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
     webhook_endpoints: dict[str, dict] = {}
@@ -60,8 +61,12 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"usageEvents": self.usage_events})
         elif path == "/api/audit_logs":
             self.send_json({"auditLogs": self.audit_logs})
+        elif path == "/api/asset_reviews":
+            self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
             self.send_json({"webhookDeliveries": self.webhook_deliveries})
+        elif len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
+            self.send_asset_review(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
             self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
@@ -112,6 +117,22 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 {"events": endpoint["events"], "url": endpoint["url"]},
             )
             self.send_json(endpoint, status=201)
+        elif path == "/api/asset_reviews":
+            payload = self.read_json_body()
+            review = {
+                "id": payload.get("id") or now_id("asset-review"),
+                "assetId": payload.get("assetId", "asset-demo"),
+                "teamId": payload.get("teamId", "team-demo"),
+                "status": payload.get("status", "submitted"),
+                "licenseStatus": payload.get("licenseStatus", "needs_review"),
+                "notes": payload.get("notes", ""),
+                "createdAt": "2026-07-09T00:00:00.000Z",
+                "submittedAt": payload.get("submittedAt", "2026-07-09T00:00:00.000Z"),
+            }
+            self.asset_reviews[review["id"]] = review
+            self.record_audit("asset.reviewed", "asset", review["assetId"], {"status": review["status"]})
+            self.queue_webhooks("asset.reviewed", {"assetReview": review})
+            self.send_json(review, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
             self.send_json(self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb"), status=201)
@@ -130,6 +151,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         parts = path.strip("/").split("/")
 
         if len(parts) != 3 or parts[:2] != ["api", "avatars"]:
+            if len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
+                self.patch_asset_review(parts[2])
+                return
             self.send_error_json(404, "not_found")
             return
 
@@ -148,6 +172,27 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "method": "PATCH", "avatarId": parts[2]})
         self.record_audit("avatar.updated", "avatar", parts[2], {"fields": sorted(patch.keys())})
         self.send_json(avatar)
+
+    def patch_asset_review(self, review_id: str) -> None:
+        review = self.asset_reviews.get(review_id)
+        if not review:
+            self.send_error_json(404, "asset_review_not_found")
+            return
+
+        patch = self.read_json_body()
+        review.update(patch)
+        if "decision" in patch or "status" in patch:
+            review["reviewerId"] = patch.get("reviewerId", review.get("reviewerId", "user-demo"))
+            review["reviewedAt"] = patch.get("reviewedAt", "2026-07-09T00:00:01.000Z")
+        self.asset_reviews[review_id] = review
+        self.record_audit(
+            "asset.reviewed",
+            "asset",
+            review["assetId"],
+            {"status": review["status"], "decision": review.get("decision")},
+        )
+        self.queue_webhooks("asset.reviewed", {"assetReview": review})
+        self.send_json(review)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
@@ -195,6 +240,13 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "avatar_not_found")
             return
         self.send_json(avatar)
+
+    def send_asset_review(self, review_id: str) -> None:
+        review = self.asset_reviews.get(review_id)
+        if not review:
+            self.send_error_json(404, "asset_review_not_found")
+            return
+        self.send_json(review)
 
     def send_model(self, avatar_id: str, model_format: str) -> None:
         if avatar_id not in self.avatars:
@@ -326,6 +378,7 @@ def main() -> int:
     args = parser.parse_args()
 
     OnemeMockApi.rate_limits = {}
+    OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
     OnemeMockApi.webhook_endpoints = {}
     OnemeMockApi.webhook_deliveries = []
