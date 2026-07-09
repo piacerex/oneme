@@ -1187,11 +1187,26 @@ class OnemeMockApi(BaseHTTPRequestHandler):
 
     def create_export_job(self, avatar_config: dict, model_format: str, simulate_failure: bool = False) -> dict:
         avatar_id = avatar_config.get("avatarId", DEFAULT_AVATAR["avatarId"])
+        cache_key = f"mock-{avatar_id}"
+        cached_job = None
+        if model_format == "glb" and not simulate_failure:
+            cached_job = next(
+                (
+                    item
+                    for item in self.export_jobs.values()
+                    if item.get("cacheKey") == cache_key and item.get("status") == "succeeded"
+                ),
+                None,
+            )
         job = {
             "id": now_id(f"{model_format}-export"),
             "status": "failed" if simulate_failure else "succeeded",
             "avatarConfig": avatar_config,
-            "modelUrl": f"http://localhost:{self.server.server_port}/models/{avatar_id}.{model_format}",
+            "modelUrl": (
+                cached_job.get("modelUrl")
+                if cached_job
+                else f"http://localhost:{self.server.server_port}/models/{avatar_id}.{model_format}"
+            ),
             "createdAt": "2026-07-09T00:00:00.000Z",
             "finishedAt": "2026-07-09T00:00:01.000Z",
         }
@@ -1200,8 +1215,10 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             job.pop("modelUrl", None)
             job.pop("finishedAt", None)
         if model_format == "glb":
-            job["cacheKey"] = f"mock-{avatar_id}"
-            job["cacheHit"] = False
+            job["cacheKey"] = cache_key
+            job["cacheHit"] = cached_job is not None
+            if cached_job is not None:
+                job["cachedExportJobId"] = cached_job["id"]
         else:
             job["vrm"] = {
                 "meta": self.create_vrm_meta(avatar_id, avatar_config),

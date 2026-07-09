@@ -111,6 +111,8 @@ or saved a candidate after edits.
 Export jobs are stored in memory after `POST /api/export_jobs` and
 `POST /api/vrm_export_jobs`. They can be listed or fetched by id so SDK and
 operations flows can inspect async job state before a hosted queue exists.
+Repeated GLB exports for the same mock cache key return `cacheHit: true` and
+link to the original job with `cachedExportJobId`.
 `POST /api/export_jobs` with `simulateFailure` creates a local failed GLB job,
 and `PATCH /api/export_jobs/:id` with `{"action":"retry"}` marks it succeeded
 for incident recovery testing.

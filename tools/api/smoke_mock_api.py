@@ -466,11 +466,15 @@ def run_smoke(base_url: str) -> None:
 
     export_job = request_json(base_url, "/api/export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(export_job["status"], "succeeded", "glb export status")
+    assert_equal(export_job["cacheHit"], False, "first glb export cache hit")
     fetched_export_job = request_json(base_url, f"/api/export_jobs/{export_job['id']}")
     assert_equal(fetched_export_job["id"], export_job["id"], "fetched glb export job id")
     export_jobs = request_json(base_url, "/api/export_jobs")
     if export_job["id"] not in {job["id"] for job in export_jobs.get("exportJobs", [])}:
         raise AssertionError("export jobs did not include created GLB job")
+    cached_export_job = request_json(base_url, "/api/export_jobs", method="POST", payload={"avatarConfig": config})
+    assert_equal(cached_export_job["cacheHit"], True, "second glb export cache hit")
+    assert_equal(cached_export_job["cachedExportJobId"], export_job["id"], "cached glb export source job")
 
     failed_export_job = request_json(
         base_url,

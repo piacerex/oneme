@@ -40,6 +40,9 @@ The MVP cache key is a stable JSON string of:
 
 The same visual avatar should reuse the same generated GLB.
 
+The API mock mirrors this by returning `cacheHit: true` and `cachedExportJobId`
+when a later GLB export resolves to an existing cache key.
+
 ## Error Policy
 
 - Keep failed jobs in the local job list.
