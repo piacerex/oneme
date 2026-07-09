@@ -45,6 +45,9 @@ This verifies:
 - Python syntax for local tools
 - roadmap phase evidence with `tools/roadmap/check_progress.py`
 
+`docs/github-actions.md` includes a workflow template for running the same gate
+in GitHub Actions when repository credentials allow workflow updates.
+
 ## Key Documents
 
 - `docs/avatar-direction.md`: avatar style and MVP structure
