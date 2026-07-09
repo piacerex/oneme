@@ -47,9 +47,15 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["manual", "face_recommendation"]
+          "enum": ["manual", "face_recommendation", "ai_generation"]
         },
         "faceAnalysisJobId": {
+          "type": "string"
+        },
+        "aiGenerationJobId": {
+          "type": "string"
+        },
+        "aiCandidateId": {
           "type": "string"
         }
       }

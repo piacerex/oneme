@@ -87,6 +87,17 @@
             </fieldset>
           </form>
 
+          <section class="ai-panel" aria-label="AI generation">
+            <div class="panel-heading">
+              <h2>AI Generation MVP</h2>
+              <button id="generate-ai" type="button">Generate Ideas</button>
+            </div>
+            <p id="ai-status" class="ai-status" role="status">
+              Generates safe style candidates from current avatar settings.
+            </p>
+            <div id="ai-candidates" class="ai-candidates"></div>
+          </section>
+
           <section class="actions" aria-label="Avatar actions">
             <button id="save-avatar" type="button">Save</button>
             <button id="load-avatar" type="button">Load Latest</button>

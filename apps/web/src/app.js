@@ -60,9 +60,12 @@ const form = document.querySelector("#avatar-form");
 const saveButton = document.querySelector("#save-avatar");
 const loadButton = document.querySelector("#load-avatar");
 const exportButton = document.querySelector("#export-glb");
+const generateAiButton = document.querySelector("#generate-ai");
 const downloadGlbLink = document.querySelector("#download-glb");
 const saveStatus = document.querySelector("#save-status");
 const exportOutput = document.querySelector("#export-output");
+const aiStatus = document.querySelector("#ai-status");
+const aiCandidates = document.querySelector("#ai-candidates");
 const faceConsent = document.querySelector("#face-consent");
 const facePhoto = document.querySelector("#face-photo");
 const analyzeFaceButton = document.querySelector("#analyze-face");
@@ -73,9 +76,12 @@ const ctx = previewCanvas.getContext("2d");
 const storageKey = "oneme.avatars";
 const exportJobsKey = "oneme.exportJobs";
 const exportCacheKey = "oneme.exportCache";
+const aiJobsKey = "oneme.aiGenerationJobs";
+const recommendationFeedbackKey = "oneme.recommendationFeedback";
 let faceAnalysisCounter = 0;
 let currentPhotoUrl = null;
 let currentModelUrl = null;
+let latestAiJob = null;
 
 function renderConfig() {
   configOutput.textContent = JSON.stringify(appState, null, 2);
@@ -83,6 +89,43 @@ function renderConfig() {
 
 function renderExportJob(job = getLatestExportJob()) {
   exportOutput.textContent = job ? JSON.stringify(job, null, 2) : "No export job yet.";
+}
+
+function renderAiCandidates(job = latestAiJob) {
+  aiCandidates.textContent = "";
+  if (!job?.candidates?.length) return;
+
+  for (const candidate of job.candidates) {
+    const card = document.createElement("article");
+    card.className = "candidate-card";
+
+    const title = document.createElement("h3");
+    title.textContent = candidate.stylePreset;
+
+    const notes = document.createElement("p");
+    notes.textContent = candidate.textureCandidate.notes;
+
+    const palette = document.createElement("div");
+    palette.className = "palette-row";
+    for (const color of candidate.textureCandidate.palette) {
+      const swatch = document.createElement("span");
+      swatch.className = "palette-swatch";
+      swatch.style.background = color;
+      swatch.title = color;
+      palette.append(swatch);
+    }
+
+    const safety = document.createElement("small");
+    safety.textContent = `Safety: ${candidate.safety.status} - ${candidate.safety.reasons.join(", ")}`;
+
+    const applyButton = document.createElement("button");
+    applyButton.type = "button";
+    applyButton.textContent = "Apply Candidate";
+    applyButton.dataset.candidateId = candidate.id;
+
+    card.append(title, notes, palette, safety, applyButton);
+    aiCandidates.append(card);
+  }
 }
 
 function populateSelect(name) {
@@ -305,6 +348,14 @@ function saveExportJob(job) {
   renderExportJob(job);
 }
 
+function saveAiJob(job) {
+  latestAiJob = job;
+  const jobs = getJsonArray(aiJobsKey).filter((item) => item.id !== job.id);
+  jobs.unshift(job);
+  window.localStorage.setItem(aiJobsKey, JSON.stringify(jobs.slice(0, 20)));
+  renderAiCandidates(job);
+}
+
 function saveExportCache(cacheKey, modelBase64) {
   const cache = getJsonObject(exportCacheKey);
   cache[cacheKey] = {
@@ -494,6 +545,185 @@ function loadLatestAvatar() {
   syncForm();
   saveStatus.textContent = `Loaded ${latest.avatarId}`;
   render();
+}
+
+function generateAiCandidates() {
+  const avatarConfig = cloneConfig();
+  const job = {
+    id: `ai-local-${Date.now()}`,
+    status: "queued",
+    input: {
+      avatarConfig,
+      safeHints: getSafeAiHints(avatarConfig)
+    },
+    candidates: [],
+    createdAt: new Date().toISOString()
+  };
+
+  saveAiJob(job);
+  aiStatus.textContent = "Generating local candidates...";
+  window.setTimeout(() => runAiGenerationJob(job), 80);
+}
+
+function runAiGenerationJob(job) {
+  try {
+    const rejectedReason = getUnsafeGenerationReason(job.input.safeHints);
+    if (rejectedReason) {
+      saveAiJob({
+        ...job,
+        status: "rejected",
+        error: rejectedReason,
+        finishedAt: new Date().toISOString()
+      });
+      aiStatus.textContent = rejectedReason;
+      return;
+    }
+
+    const candidates = createLocalAiCandidates(job.input.avatarConfig, job.input.safeHints);
+    saveAiJob({
+      ...job,
+      status: "succeeded",
+      candidates,
+      finishedAt: new Date().toISOString()
+    });
+    aiStatus.textContent = "Generated 3 editable candidates.";
+  } catch (error) {
+    saveAiJob({
+      ...job,
+      status: "failed",
+      error: error instanceof Error ? error.message : String(error),
+      finishedAt: new Date().toISOString()
+    });
+    aiStatus.textContent = "AI generation failed.";
+  }
+}
+
+function getSafeAiHints(config) {
+  return {
+    skinColor: config.colors.skin,
+    hairColor: config.colors.hair,
+    facePreset: config.parts.face,
+    hairPreset: config.parts.hair
+  };
+}
+
+function getUnsafeGenerationReason(hints) {
+  const values = Object.values(hints).join(" ").toLowerCase();
+  const blockedTerms = ["celebrity", "identity", "ethnicity", "age", "health"];
+  const blocked = blockedTerms.find((term) => values.includes(term));
+  return blocked ? `Rejected unsafe generation hint: ${blocked}` : "";
+}
+
+function createLocalAiCandidates(config, hints) {
+  const basePalette = [hints.skinColor, hints.hairColor];
+  const styles = [
+    {
+      stylePreset: "clean",
+      parts: { top: "top.basic_01", accessory: "accessory.none" },
+      accent: "#347f7b",
+      notes: "Clean everyday texture direction with calm fabric contrast."
+    },
+    {
+      stylePreset: "expressive",
+      parts: { top: "top.hoodie_01", accessory: "accessory.glasses_round_01" },
+      accent: "#6f4f8f",
+      notes: "Expressive social avatar direction with stronger accessory focus."
+    },
+    {
+      stylePreset: "event",
+      parts: { top: "top.jacket_01", accessory: "accessory.hat_cap_01" },
+      accent: "#8f3d36",
+      notes: "Event-ready avatar direction with higher contrast outerwear."
+    }
+  ];
+
+  return styles.map((style, index) => ({
+    id: `candidate-${style.stylePreset}-${index + 1}`,
+    stylePreset: style.stylePreset,
+    configPatch: {
+      parts: {
+        ...style.parts,
+        face: config.parts.face,
+        hair: config.parts.hair
+      },
+      colors: {
+        skin: hints.skinColor,
+        hair: tintColor(hints.hairColor, index * 16)
+      }
+    },
+    textureCandidate: {
+      palette: [...basePalette, style.accent],
+      notes: style.notes
+    },
+    safety: {
+      status: "approved",
+      reasons: ["uses safe color hints and existing part ids only"]
+    }
+  }));
+}
+
+function handleCandidateAction(event) {
+  const button = event.target.closest("button[data-candidate-id]");
+  if (!button) return;
+
+  const candidate = latestAiJob?.candidates?.find((item) => item.id === button.dataset.candidateId);
+  if (!candidate) {
+    aiStatus.textContent = "Candidate is no longer available.";
+    return;
+  }
+
+  applyAiCandidate(candidate);
+}
+
+function applyAiCandidate(candidate) {
+  if (candidate.safety.status !== "approved") {
+    recordRecommendationFeedback(candidate, "rejected");
+    aiStatus.textContent = "Rejected candidate was not applied.";
+    return;
+  }
+
+  appState.parts = {
+    ...appState.parts,
+    ...candidate.configPatch.parts
+  };
+  appState.colors = {
+    ...appState.colors,
+    ...candidate.configPatch.colors
+  };
+  appState.source = {
+    kind: "ai_generation",
+    aiGenerationJobId: latestAiJob.id,
+    aiCandidateId: candidate.id
+  };
+
+  recordRecommendationFeedback(candidate, "applied");
+  syncForm();
+  render();
+  aiStatus.textContent = `Applied ${candidate.stylePreset}. You can keep editing before save/export.`;
+}
+
+function recordRecommendationFeedback(candidate, action) {
+  const feedback = {
+    id: `feedback-${Date.now()}`,
+    jobId: latestAiJob?.id ?? "unknown",
+    candidateId: candidate.id,
+    action,
+    createdAt: new Date().toISOString()
+  };
+  const records = getJsonArray(recommendationFeedbackKey);
+  records.unshift(feedback);
+  window.localStorage.setItem(recommendationFeedbackKey, JSON.stringify(records.slice(0, 50)));
+}
+
+function tintColor(hex, amount) {
+  const red = clampColor(Number.parseInt(hex.slice(1, 3), 16) + amount);
+  const green = clampColor(Number.parseInt(hex.slice(3, 5), 16) + amount);
+  const blue = clampColor(Number.parseInt(hex.slice(5, 7), 16) + amount);
+  return rgbToHex(red, green, blue);
+}
+
+function clampColor(value) {
+  return Math.max(0, Math.min(255, value));
 }
 
 function clearFacePhoto() {
@@ -686,6 +916,7 @@ function render() {
   drawAvatar();
   renderConfig();
   renderExportJob();
+  renderAiCandidates();
 }
 
 const topPalette = {
@@ -714,6 +945,8 @@ form.addEventListener("input", updateFromForm);
 saveButton.addEventListener("click", saveAvatar);
 loadButton.addEventListener("click", loadLatestAvatar);
 exportButton.addEventListener("click", exportGlb);
+generateAiButton.addEventListener("click", generateAiCandidates);
+aiCandidates.addEventListener("click", handleCandidateAction);
 analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
 clearFaceButton.addEventListener("click", clearFacePhoto);
 render();
