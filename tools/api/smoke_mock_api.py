@@ -47,6 +47,21 @@ def request_status(base_url: str, path: str, api_key: str = "rate-smoke") -> int
         return error.code
 
 
+def request_status_json(base_url: str, path: str, method: str = "GET", payload: dict | None = None) -> int:
+    data = None
+    headers = {"accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["content-type"] = "application/json"
+
+    request = urllib.request.Request(f"{base_url}{path}", data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+
+
 def wait_for_health(base_url: str) -> None:
     deadline = time.time() + 5
     last_error: Exception | None = None
@@ -388,6 +403,7 @@ def run_smoke(base_url: str) -> None:
         payload={
             "id": "ai-job-smoke",
             "avatarConfig": face_avatar,
+            "includeRejectedCandidate": True,
             "safeHints": {
                 "skinColor": face_avatar["colors"]["skin"],
                 "hairColor": face_avatar["colors"]["hair"],
@@ -399,8 +415,12 @@ def run_smoke(base_url: str) -> None:
     assert_equal(ai_job["status"], "succeeded", "ai generation job status")
     if len(ai_job["candidates"]) < 3:
         raise AssertionError("ai generation job did not include multiple candidates")
-    for candidate in ai_job["candidates"]:
+    approved_candidates = [candidate for candidate in ai_job["candidates"] if candidate["safety"]["status"] == "approved"]
+    rejected_candidates = [candidate for candidate in ai_job["candidates"] if candidate["safety"]["status"] == "rejected"]
+    for candidate in approved_candidates:
         assert_equal(candidate["safety"]["status"], "approved", f"{candidate['id']} safety status")
+    if not rejected_candidates:
+        raise AssertionError("ai generation job did not include a rejected candidate")
 
     ai_avatar = request_json(
         base_url,
@@ -409,6 +429,13 @@ def run_smoke(base_url: str) -> None:
         payload={"avatarId": "ai-avatar-smoke", "jobId": "ai-job-smoke", "candidateId": "candidate-clean"},
     )
     assert_equal(ai_avatar["source"]["kind"], "ai_generation", "ai avatar source kind")
+    rejected_candidate_status = request_status_json(
+        base_url,
+        "/api/avatars/from_ai_candidate",
+        method="POST",
+        payload={"avatarId": "ai-avatar-rejected", "jobId": "ai-job-smoke", "candidateId": rejected_candidates[0]["id"]},
+    )
+    assert_equal(rejected_candidate_status, 404, "rejected ai candidate create status")
 
     feedback = request_json(
         base_url,

@@ -108,6 +108,9 @@ current avatar config and safe hints only. `POST /api/avatars/from_ai_candidate`
 turns an approved candidate into an editable avatar, and
 `POST /api/recommendation_feedback` records whether the user applied, rejected,
 or saved a candidate after edits.
+For safety testing, `includeRejectedCandidate` can add a rejected candidate to
+an AI generation job; rejected candidates cannot be converted through
+`POST /api/avatars/from_ai_candidate`.
 Export jobs are stored in memory after `POST /api/export_jobs` and
 `POST /api/vrm_export_jobs`. They can be listed or fetched by id so SDK and
 operations flows can inspect async job state before a hosted queue exists.

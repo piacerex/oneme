@@ -1021,6 +1021,17 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.create_ai_candidate("expressive", safe_hints, {"face": "face.round_01", "hair": "hair.medium_01"}),
             self.create_ai_candidate("event", safe_hints, {"hair": "hair.long_01", "top": "top.basic_01"}),
         ]
+        if payload.get("includeRejectedCandidate", False):
+            candidates.append(
+                self.create_ai_candidate(
+                    "event",
+                    safe_hints,
+                    {"hair": "hair.long_01", "top": "top.basic_01"},
+                    candidate_id="candidate-rejected",
+                    safety_status="rejected",
+                    safety_reasons=["blocked by safety review"],
+                )
+            )
         return {
             "id": payload.get("id") or now_id("ai"),
             "status": "succeeded",
@@ -1033,10 +1044,18 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             "finishedAt": "2026-07-09T00:00:01.000Z",
         }
 
-    def create_ai_candidate(self, style: str, safe_hints: dict, part_patch: dict) -> dict:
+    def create_ai_candidate(
+        self,
+        style: str,
+        safe_hints: dict,
+        part_patch: dict,
+        candidate_id: str | None = None,
+        safety_status: str = "approved",
+        safety_reasons: list[str] | None = None,
+    ) -> dict:
         accent = {"clean": "#347f7b", "expressive": "#8f5fbf", "event": "#d69f45"}[style]
         return {
-            "id": f"candidate-{style}",
+            "id": candidate_id or f"candidate-{style}",
             "stylePreset": style,
             "configPatch": {
                 "parts": part_patch,
@@ -1053,8 +1072,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "notes": f"{style} texture direction using safe color hints only.",
             },
             "safety": {
-                "status": "approved",
-                "reasons": ["uses safe color and part hints only"],
+                "status": safety_status,
+                "reasons": safety_reasons or ["uses safe color and part hints only"],
             },
         }
 

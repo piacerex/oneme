@@ -58,3 +58,7 @@ The MVP cache key is based on:
 
 Feedback records whether a candidate was applied, rejected, or saved after edit.
 Future recommendation models can learn from this without storing the original photo.
+
+The API mock can include a rejected candidate with `includeRejectedCandidate`
+for safety workflow testing. Rejected candidates remain visible in the job
+result but cannot be converted into saved avatars.
