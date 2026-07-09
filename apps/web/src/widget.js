@@ -58,8 +58,22 @@ let state = {
 
 if (!app) {
   fail("Invalid app credentials");
+} else if (!isAllowedOrigin(app)) {
+  fail("Embedding origin is not allowed");
 } else {
   boot();
+}
+
+function isAllowedOrigin(widgetApp) {
+  const allowedOrigins = widgetApp.allowedOrigins ?? [];
+  if (allowedOrigins.includes("*")) return true;
+  if (!document.referrer) return true;
+
+  try {
+    return allowedOrigins.includes(new URL(document.referrer).origin);
+  } catch {
+    return false;
+  }
 }
 
 async function boot() {

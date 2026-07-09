@@ -99,6 +99,8 @@ The widget sends messages to `window.parent`.
 The static MVP cannot enforce server CORS. It simulates embed policy by checking
 `document.referrer` against the configured `allowedOrigins` list where available.
 Production must enforce this server-side.
+Empty referrers are allowed for local development, and `*` allows any origin for
+demo apps.
 
 ## API Mock Save
 
