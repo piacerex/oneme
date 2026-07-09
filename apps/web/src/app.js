@@ -334,6 +334,7 @@ function saveAvatar() {
 
   appState.avatarId = avatar.avatarId;
   saveStatus.textContent = `Saved ${avatar.avatarId}`;
+  recordSavedAfterAiEdit();
   render();
 }
 
@@ -702,10 +703,10 @@ function applyAiCandidate(candidate) {
   aiStatus.textContent = `Applied ${candidate.stylePreset}. You can keep editing before save/export.`;
 }
 
-function recordRecommendationFeedback(candidate, action) {
+function recordRecommendationFeedback(candidate, action, jobId = latestAiJob?.id ?? "unknown") {
   const feedback = {
     id: `feedback-${Date.now()}`,
-    jobId: latestAiJob?.id ?? "unknown",
+    jobId,
     candidateId: candidate.id,
     action,
     createdAt: new Date().toISOString()
@@ -713,6 +714,18 @@ function recordRecommendationFeedback(candidate, action) {
   const records = getJsonArray(recommendationFeedbackKey);
   records.unshift(feedback);
   window.localStorage.setItem(recommendationFeedbackKey, JSON.stringify(records.slice(0, 50)));
+}
+
+function recordSavedAfterAiEdit() {
+  if (appState.source.kind !== "ai_generation") return;
+
+  recordRecommendationFeedback(
+    {
+      id: appState.source.aiCandidateId
+    },
+    "saved_after_edit",
+    appState.source.aiGenerationJobId
+  );
 }
 
 function tintColor(hex, amount) {
