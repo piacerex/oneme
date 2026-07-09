@@ -218,6 +218,28 @@ def run_smoke(base_url: str) -> None:
     )
     assert_equal(approved_review["status"], "approved", "approved asset review status")
 
+    rejected_review = request_json(
+        base_url,
+        "/api/asset_reviews",
+        method="POST",
+        payload={
+            "id": "asset-review-rollback-smoke",
+            "assetId": "top-rejected-placeholder",
+            "status": "rejected",
+            "licenseStatus": "blocked",
+            "notes": "Rejected placeholder asset for rollback smoke.",
+        },
+    )
+    assert_equal(rejected_review["status"], "rejected", "rejected asset review status")
+    rolled_back_review = request_json(
+        base_url,
+        "/api/asset_reviews/asset-review-rollback-smoke",
+        method="PATCH",
+        payload={"action": "rollback", "reviewerId": "user-demo", "notes": "Rolled back rejected asset."},
+    )
+    assert_equal(rolled_back_review["status"], "archived", "rolled back asset review status")
+    assert_equal(rolled_back_review["licenseStatus"], "blocked", "rolled back asset review license status")
+
     asset_validation = request_json(
         base_url,
         "/api/asset_validations",
@@ -508,6 +530,7 @@ def run_smoke(base_url: str) -> None:
     actions = {log["action"] for log in audit.get("auditLogs", [])}
     for action in {
         "asset.reviewed",
+        "asset.rollback",
         "app.created",
         "avatar.created",
         "avatar.updated",

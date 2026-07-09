@@ -146,7 +146,9 @@ Monitoring alerts are stored in memory and exposed at
 and rate limits, create open `api_error_rate` alerts that can be resolved with
 `PATCH /api/monitoring_alerts/:id`.
 Asset reviews are stored in memory and can be submitted or approved through
-`/api/asset_reviews`.
+`/api/asset_reviews`. Rejected assets can be rolled back with
+`PATCH /api/asset_reviews/:id` and `{"action":"rollback"}`, which archives the
+review and records an `asset.rollback` audit entry.
 Asset validations are stored in memory through `/api/asset_validations`.
 Failed validations create open `asset_validation_failure` monitoring alerts.
 Incidents are stored in memory and can be created, listed, fetched, and resolved

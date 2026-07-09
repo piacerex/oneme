@@ -489,6 +489,24 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             return
 
         patch = self.read_json_body()
+        if patch.get("action") == "rollback":
+            review["status"] = "archived"
+            review["licenseStatus"] = "blocked"
+            review["decision"] = "reject"
+            review["notes"] = patch.get("notes", review.get("notes", "Rolled back after rejection."))
+            review["reviewerId"] = patch.get("reviewerId", review.get("reviewerId", "user-demo"))
+            review["reviewedAt"] = patch.get("reviewedAt", "2026-07-09T00:00:02.000Z")
+            self.asset_reviews[review_id] = review
+            self.record_audit(
+                "asset.rollback",
+                "asset",
+                review["assetId"],
+                {"status": review["status"], "licenseStatus": review["licenseStatus"]},
+            )
+            self.queue_webhooks("asset.reviewed", {"assetReview": review, "operation": "rollback"})
+            self.send_json(review)
+            return
+
         review.update(patch)
         if "decision" in patch or "status" in patch:
             review["reviewerId"] = patch.get("reviewerId", review.get("reviewerId", "user-demo"))

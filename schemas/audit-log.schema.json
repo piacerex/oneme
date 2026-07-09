@@ -28,6 +28,7 @@
         "api_key.revoked",
         "avatar.created",
         "avatar.updated",
+        "asset.rollback",
         "asset.reviewed",
         "billing.plan_changed",
         "model.exported",

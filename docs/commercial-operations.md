@@ -113,6 +113,7 @@ Minimum actions:
 - `api_key.created`
 - `api_key.revoked`
 - `asset.reviewed`
+- `asset.rollback`
 - `billing.plan_changed`
 
 The local API mock exposes `GET /api/audit_logs` and records avatar, export,
@@ -138,6 +139,9 @@ queue.
 It also supports `POST /api/asset_validations`,
 `GET /api/asset_validations`, and `GET /api/asset_validations/:id`; failed
 validations create `asset_validation_failure` monitoring alerts.
+Rejected asset rollback is tested with `PATCH /api/asset_reviews/:id` and
+`{"action":"rollback"}`. The rollback archives the review, keeps the license
+blocked, emits an `asset.rollback` audit log, and queues an asset review webhook.
 
 ## Monitoring
 
