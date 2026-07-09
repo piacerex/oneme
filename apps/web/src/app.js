@@ -71,9 +71,11 @@ const form = document.querySelector("#avatar-form");
 const saveButton = document.querySelector("#save-avatar");
 const loadButton = document.querySelector("#load-avatar");
 const exportButton = document.querySelector("#export-glb");
+const exportVrmButton = document.querySelector("#export-vrm");
 const getModelUrlButton = document.querySelector("#get-model-url");
 const generateAiButton = document.querySelector("#generate-ai");
 const downloadGlbLink = document.querySelector("#download-glb");
+const downloadVrmLink = document.querySelector("#download-vrm");
 const saveStatus = document.querySelector("#save-status");
 const exportOutput = document.querySelector("#export-output");
 const aiStatus = document.querySelector("#ai-status");
@@ -88,12 +90,14 @@ const faceResult = document.querySelector("#face-result");
 const ctx = previewCanvas.getContext("2d");
 const storageKey = "oneme.avatars";
 const exportJobsKey = "oneme.exportJobs";
+const vrmJobsKey = "oneme.vrmExportJobs";
 const exportCacheKey = "oneme.exportCache";
 const aiJobsKey = "oneme.aiGenerationJobs";
 const recommendationFeedbackKey = "oneme.recommendationFeedback";
 let faceAnalysisCounter = 0;
 let currentPhotoUrl = null;
 let currentModelUrl = null;
+let currentVrmUrl = null;
 let facePreviewImage = null;
 let faceCutout = null;
 let latestAiJob = null;
@@ -383,7 +387,12 @@ function saveAvatar() {
 }
 
 function getLatestExportJob() {
-  return getJsonArray(exportJobsKey)[0] ?? null;
+  const [latestGlb] = getJsonArray(exportJobsKey);
+  const [latestVrm] = getJsonArray(vrmJobsKey);
+
+  if (!latestGlb) return latestVrm ?? null;
+  if (!latestVrm) return latestGlb ?? null;
+  return Date.parse(latestVrm.createdAt) > Date.parse(latestGlb.createdAt) ? latestVrm : latestGlb;
 }
 
 function getLatestSuccessfulExportJob(avatarId = appState.avatarId) {
@@ -396,6 +405,13 @@ function saveExportJob(job) {
   const jobs = getJsonArray(exportJobsKey).filter((item) => item.id !== job.id);
   jobs.unshift(job);
   window.localStorage.setItem(exportJobsKey, JSON.stringify(jobs.slice(0, 20)));
+  renderExportJob(job);
+}
+
+function saveVrmJob(job) {
+  const jobs = getJsonArray(vrmJobsKey).filter((item) => item.id !== job.id);
+  jobs.unshift(job);
+  window.localStorage.setItem(vrmJobsKey, JSON.stringify(jobs.slice(0, 20)));
   renderExportJob(job);
 }
 
@@ -519,6 +535,55 @@ function runExportJob(job, cached) {
   }
 }
 
+function exportVrm() {
+  const avatarConfig = cloneConfig();
+  const job = {
+    id: `vrm-local-${Date.now()}`,
+    status: "queued",
+    avatarConfig,
+    vrm: createVrmMetadata(avatarConfig),
+    createdAt: new Date().toISOString()
+  };
+
+  saveVrmJob(job);
+  saveStatus.textContent = "VRM export queued";
+
+  window.setTimeout(() => runVrmExportJob(job), 80);
+}
+
+function runVrmExportJob(job) {
+  try {
+    const runningJob = {
+      ...job,
+      status: "running"
+    };
+    saveVrmJob(runningJob);
+
+    const modelBlob = new Blob([createVrmBytes(runningJob.avatarConfig, runningJob.vrm)], {
+      type: "model/gltf-binary"
+    });
+    setVrmDownloadUrl(modelBlob, `${runningJob.avatarConfig.avatarId}.vrm`);
+    const modelResponse = createAvatarModelResponse(runningJob, false, "vrm", downloadVrmLink.href);
+
+    saveVrmJob({
+      ...runningJob,
+      status: "succeeded",
+      modelUrl: modelResponse.modelUrl,
+      modelResponse,
+      finishedAt: new Date().toISOString()
+    });
+    saveStatus.textContent = "Exported VRM";
+  } catch (error) {
+    saveVrmJob({
+      ...job,
+      status: "failed",
+      error: error instanceof Error ? error.message : String(error),
+      finishedAt: new Date().toISOString()
+    });
+    saveStatus.textContent = "VRM export failed";
+  }
+}
+
 function getAvatarModelUrl() {
   const job = getLatestSuccessfulExportJob();
   if (!job) {
@@ -540,7 +605,9 @@ function getAvatarModelUrl() {
       ...job,
       modelUrl: downloadGlbLink.href
     },
-    true
+    true,
+    "glb",
+    downloadGlbLink.href
   );
   saveExportJob({
     ...job,
@@ -551,11 +618,11 @@ function getAvatarModelUrl() {
   saveStatus.textContent = "Model URL response refreshed";
 }
 
-function createAvatarModelResponse(job, cacheHit) {
+function createAvatarModelResponse(job, cacheHit, format = "glb", modelUrl = downloadGlbLink.href) {
   return {
     avatarId: job.avatarConfig.avatarId,
-    format: "glb",
-    modelUrl: downloadGlbLink.href,
+    format,
+    modelUrl,
     exportJobId: job.id,
     cacheHit
   };
@@ -569,6 +636,14 @@ function setDownloadUrl(blob, fileName) {
   downloadGlbLink.hidden = false;
 }
 
+function setVrmDownloadUrl(blob, fileName) {
+  if (currentVrmUrl) URL.revokeObjectURL(currentVrmUrl);
+  currentVrmUrl = URL.createObjectURL(blob);
+  downloadVrmLink.href = currentVrmUrl;
+  downloadVrmLink.download = fileName;
+  downloadVrmLink.hidden = false;
+}
+
 function createGlbBytes(config, resolvedParts) {
   const gltf = {
     asset: {
@@ -580,6 +655,76 @@ function createGlbBytes(config, resolvedParts) {
           resolvedParts
         }
       }
+    },
+    scenes: [{ nodes: [] }],
+    scene: 0,
+    nodes: []
+  };
+
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(gltf));
+  const paddedJsonBytes = padBytes(jsonBytes, 0x20);
+  const totalLength = 12 + 8 + paddedJsonBytes.length;
+  const bytes = new Uint8Array(totalLength);
+  const view = new DataView(bytes.buffer);
+
+  view.setUint32(0, 0x46546c67, true);
+  view.setUint32(4, 2, true);
+  view.setUint32(8, totalLength, true);
+  view.setUint32(12, paddedJsonBytes.length, true);
+  view.setUint32(16, 0x4e4f534a, true);
+  bytes.set(paddedJsonBytes, 20);
+
+  return bytes;
+}
+
+function createVrmMetadata(config) {
+  return {
+    meta: {
+      name: config.avatarId,
+      version: config.version,
+      author: "oneme",
+      contactInformation: "https://github.com/piacerex/oneme",
+      licenseName: "repository"
+    },
+    humanoid: {
+      hips: "hips",
+      spine: "spine",
+      chest: "chest",
+      neck: "neck",
+      head: "head",
+      leftUpperArm: "leftUpperArm",
+      leftLowerArm: "leftLowerArm",
+      leftHand: "leftHand",
+      rightUpperArm: "rightUpperArm",
+      rightLowerArm: "rightLowerArm",
+      rightHand: "rightHand",
+      leftUpperLeg: "leftUpperLeg",
+      leftLowerLeg: "leftLowerLeg",
+      leftFoot: "leftFoot",
+      rightUpperLeg: "rightUpperLeg",
+      rightLowerLeg: "rightLowerLeg",
+      rightFoot: "rightFoot"
+    },
+    expressions: ["neutral", "happy", "blink", "surprised"],
+    springBones: ["hair", "accessory"]
+  };
+}
+
+function createVrmBytes(config, vrm) {
+  const gltf = {
+    asset: {
+      version: "2.0",
+      generator: "oneme local MVP VRM exporter",
+      extras: {
+        oneme: {
+          config
+        },
+        vrm
+      }
+    },
+    extensionsUsed: ["VRMC_vrm"],
+    extensions: {
+      VRMC_vrm: vrm
     },
     scenes: [{ nodes: [] }],
     scene: 0,
@@ -1283,6 +1428,7 @@ form.addEventListener("input", updateFromForm);
 saveButton.addEventListener("click", saveAvatar);
 loadButton.addEventListener("click", loadLatestAvatar);
 exportButton.addEventListener("click", exportGlb);
+exportVrmButton.addEventListener("click", exportVrm);
 getModelUrlButton.addEventListener("click", getAvatarModelUrl);
 generateAiButton.addEventListener("click", generateAiCandidates);
 aiCandidates.addEventListener("click", handleCandidateAction);

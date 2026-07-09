@@ -12,7 +12,7 @@
     },
     "format": {
       "type": "string",
-      "enum": ["glb"]
+      "enum": ["glb", "vrm"]
     },
     "modelUrl": {
       "type": "string",
