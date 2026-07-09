@@ -67,6 +67,10 @@ The admin dashboard should expose:
 - asset review queue
 - audit log search
 
+The local API mock exposes `GET /api/ops/summary` for dashboard testing. It
+aggregates usage events, open alerts, open incidents, pending asset reviews,
+webhook deliveries, and active legal records for the demo team/app.
+
 ## Webhooks
 
 Apps can subscribe to production events.

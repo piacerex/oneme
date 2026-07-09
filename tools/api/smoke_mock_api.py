@@ -264,6 +264,14 @@ def run_smoke(base_url: str) -> None:
     if "resolvedAt" not in resolved_alert:
         raise AssertionError("resolved monitoring alert did not include resolvedAt")
 
+    ops_summary = request_json(base_url, "/api/ops/summary")
+    if ops_summary["usageEventCount"] <= 0:
+        raise AssertionError("ops summary did not include usage events")
+    assert_equal(ops_summary["openIncidentCount"], 0, "ops summary open incident count")
+    assert_equal(ops_summary["activeLegalRecordCount"], 1, "ops summary active legal record count")
+    if ops_summary["webhookDeliveryCount"] <= 0:
+        raise AssertionError("ops summary did not include webhook deliveries")
+
 
 def main() -> int:
     port = free_port()

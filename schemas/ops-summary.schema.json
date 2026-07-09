@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/ops-summary.schema.json",
+  "title": "oneme Operations Summary",
+  "type": "object",
+  "required": [
+    "teamId",
+    "appId",
+    "usageEventCount",
+    "openAlertCount",
+    "openIncidentCount",
+    "pendingAssetReviewCount",
+    "webhookDeliveryCount",
+    "activeLegalRecordCount",
+    "generatedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "teamId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "appId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "usageEventCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "openAlertCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "openIncidentCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "pendingAssetReviewCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "webhookDeliveryCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "activeLegalRecordCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

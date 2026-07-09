@@ -102,6 +102,7 @@ PHASES = [
             "schemas/monitoring-alert.schema.json",
             "schemas/incident.schema.json",
             "schemas/legal-record.schema.json",
+            "schemas/ops-summary.schema.json",
         ],
     },
 ]

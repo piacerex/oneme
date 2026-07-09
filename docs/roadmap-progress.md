@@ -20,7 +20,7 @@ This document maps the current repository artifacts to the roadmap phases.
 | Phase 5: widget | `mvp_done` | `docs/widget-contract.md`, `apps/web/widget.html`, `apps/web/embed-example.html`, `schemas/widget-app.schema.json` |
 | Phase 6: SDKs | `mvp_done` | `docs/web-sdk.md`, `packages/sdk-web/package.json`, `docs/unity-sdk.md`, `packages/sdk-unity/package.json` |
 | Phase 7: VRM | `contract_done` | `docs/vrm.md`, `docs/vrm-validation.md`, `schemas/vrm-export-job.schema.json`, `tools/gltf/validate_vrm.py` |
-| Phase 8: commercial operations | `contract_done` | `docs/commercial-operations.md`, team, usage, billing, webhook, audit, asset review, monitoring, incident, and legal schemas |
+| Phase 8: commercial operations | `contract_done` | `docs/commercial-operations.md`, team, usage, billing, webhook, audit, asset review, monitoring, incident, legal, and ops summary schemas |
 
 ## Remaining Production Work
 

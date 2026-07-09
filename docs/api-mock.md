@@ -31,6 +31,7 @@ Implemented endpoints:
 - `GET /api/monitoring_alerts`
 - `GET /api/incidents`
 - `GET /api/legal_records`
+- `GET /api/ops/summary`
 - `GET /api/asset_reviews`
 - `GET /api/asset_reviews/:id`
 - `GET /api/incidents/:id`
@@ -75,6 +76,9 @@ so recovery workflows can be inspected locally.
 Legal records are stored in memory and can be created, listed, fetched, and
 updated through `/api/legal_records`. This covers terms, privacy, asset license,
 face-photo consent, and retention-policy records for local operations testing.
+Operations dashboard summaries are exposed at `GET /api/ops/summary`. The
+response aggregates usage events, open alerts, open incidents, pending asset
+reviews, webhook deliveries, and active legal records for the demo team/app.
 VRM animation compatibility can be checked through
 `GET /api/avatars/:id/animation_compat?format=vrm`. The MVP response reports
 the Phase 7 humanoid bone target set, expression presets, and the current
@@ -89,4 +93,4 @@ python3 tools/api/smoke_mock_api.py
 The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
 event, audit log, asset review, incident recovery, legal record, monitoring
-alert, rate limit, and webhook delivery endpoints.
+alert, operations summary, rate limit, and webhook delivery endpoints.
