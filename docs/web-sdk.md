@@ -94,6 +94,7 @@ Creates an API key for a widget app through `/api/apps/:id/api_keys`.
 ### `client.revokeAppApiKey(appId, apiKey)`
 
 Revokes an API key for a widget app through `/api/apps/:id/api_keys/:key`.
+The Web SDK smoke verifies this path against the local API mock.
 
 ### `client.fetchAdminDashboard()`
 

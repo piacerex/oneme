@@ -95,6 +95,9 @@ def main() -> int:
         parts = request_json(base_url, "/api/parts")
         animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
         request_json(base_url, "/api/teams", method="POST", payload={"id": "sdk-team", "planId": "plan-pro"})
+        request_json(base_url, "/api/apps", method="POST", payload={"id": "sdk-app", "name": "SDK App"})
+        request_json(base_url, "/api/apps/sdk-app/api_keys", method="POST", payload={"apiKey": "sdk-key"})
+        revoked_key = request_json(base_url, "/api/apps/sdk-app/api_keys/sdk-key", method="DELETE")
         billing_usage = request_json(base_url, "/api/billing_usage/sdk-team")
         dashboard = request_json(base_url, "/api/admin/dashboard")
         status_update = request_json(
@@ -121,6 +124,8 @@ def main() -> int:
         raise AssertionError("API mock did not return animation compatibility for SDK clients")
     if billing_usage["teamId"] != "sdk-team":
         raise AssertionError("API mock did not return billing usage for SDK clients")
+    if revoked_key["revoked"] is not True or "sdk-key" in revoked_key["apiKeys"]:
+        raise AssertionError("API mock did not revoke app API key for SDK clients")
     if "summary" not in dashboard:
         raise AssertionError("API mock did not return admin dashboard for SDK clients")
     if status_update["status"] != "monitoring":
