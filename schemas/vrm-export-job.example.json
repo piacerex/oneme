@@ -1,0 +1,25 @@
+{
+  "id": "vrm-local-1",
+  "status": "succeeded",
+  "avatarConfig": {
+    "avatarId": "demo-avatar"
+  },
+  "vrm": {
+    "meta": {
+      "name": "demo-avatar",
+      "version": "0.1.0",
+      "author": "oneme",
+      "licenseName": "repository"
+    },
+    "humanoid": {
+      "hips": "hips",
+      "spine": "spine",
+      "head": "head"
+    },
+    "expressions": ["neutral", "happy", "blink", "surprised"],
+    "springBones": ["hair", "accessory"]
+  },
+  "modelUrl": "blob:oneme-vrm-demo",
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "finishedAt": "2026-07-09T00:00:01.000Z"
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/vrm-export-job.schema.json",
+  "title": "oneme VRM Export Job",
+  "type": "object",
+  "required": ["id", "status", "avatarConfig", "vrm", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed"]
+    },
+    "avatarConfig": {
+      "type": "object"
+    },
+    "vrm": {
+      "type": "object",
+      "required": ["meta", "humanoid", "expressions", "springBones"],
+      "additionalProperties": false,
+      "properties": {
+        "meta": {
+          "type": "object"
+        },
+        "humanoid": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "expressions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "springBones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "modelUrl": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
