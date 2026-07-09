@@ -1,0 +1,39 @@
+{
+  "id": "export-local-1",
+  "status": "succeeded",
+  "cacheKey": "demo-cache-key",
+  "avatarConfig": {
+    "version": "0.1.0",
+    "avatarId": "demo-avatar",
+    "style": "semi_real_lightweight",
+    "parts": {
+      "baseBody": "base_body.default",
+      "face": "face.soft_01",
+      "hair": "hair.short_01",
+      "top": "top.basic_01",
+      "bottom": "bottom.basic_01",
+      "shoes": "shoes.basic_01",
+      "accessory": "accessory.none"
+    },
+    "colors": {
+      "skin": "#c98f6f",
+      "hair": "#2f2118"
+    },
+    "source": {
+      "kind": "manual"
+    }
+  },
+  "resolvedParts": [
+    {
+      "field": "hair",
+      "partId": "hair.short_01",
+      "category": "hair",
+      "assetPath": "assets/parts/hair/hair-short_01.glb",
+      "required": true,
+      "status": "placeholder"
+    }
+  ],
+  "modelUrl": "blob:oneme-local-demo",
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "finishedAt": "2026-07-09T00:00:01.000Z"
+}

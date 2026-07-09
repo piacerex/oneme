@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/export-job.schema.json",
+  "title": "oneme Export Job",
+  "type": "object",
+  "required": ["id", "status", "cacheKey", "avatarConfig", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed"]
+    },
+    "cacheKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "avatarConfig": {
+      "type": "object"
+    },
+    "resolvedParts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "partId", "category", "assetPath", "required", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "field": { "type": "string" },
+          "partId": { "type": "string" },
+          "category": { "type": "string" },
+          "assetPath": { "type": "string" },
+          "required": { "type": "boolean" },
+          "status": {
+            "type": "string",
+            "enum": ["available", "placeholder", "missing"]
+          }
+        }
+      }
+    },
+    "modelUrl": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
