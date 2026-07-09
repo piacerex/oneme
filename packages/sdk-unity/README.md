@@ -1,0 +1,22 @@
+# oneme Unity SDK
+
+This is the Phase 6 Unity SDK skeleton.
+
+## Install
+
+Use Unity Package Manager and add this folder as a local package:
+
+```text
+packages/sdk-unity
+```
+
+## Usage
+
+1. Add `OnemeAvatarLoader` to a GameObject.
+2. Set `Avatar Id`.
+3. Set `Model Endpoint Template`.
+4. Call `StartCoroutine(loader.Load())`.
+
+The current implementation fetches the avatar model response JSON and logs it.
+The next step is to connect a GLB runtime importer and instantiate the returned
+model URL.

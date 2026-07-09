@@ -1,0 +1,10 @@
+{
+  "name": "com.oneme.sdk",
+  "version": "0.1.0",
+  "displayName": "oneme SDK",
+  "description": "Unity runtime helpers for loading oneme avatar models.",
+  "unity": "2021.3",
+  "author": {
+    "name": "oneme"
+  }
+}
