@@ -66,7 +66,8 @@ The local API mock supports `POST /api/billing_plans`,
 Plan changes create `billing.plan_changed` audit records.
 `GET /api/billing_usage/:team_id` compares current app, member, API request,
 model export, storage, and webhook delivery usage against the assigned plan
-limits for quota dashboard testing.
+limits for quota dashboard testing. Public avatar URL reads count as API
+requests so sharing flows are visible in usage dashboards.
 
 ## Operations Dashboard
 

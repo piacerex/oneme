@@ -145,6 +145,7 @@ def run_smoke(base_url: str) -> None:
     assert_equal(billing_usage["limits"]["apps"], 5, "billing usage app limit")
     if billing_usage["remaining"]["members"] > billing_usage["limits"]["members"]:
         raise AssertionError("billing usage remaining members exceeded limit")
+    initial_api_request_usage = billing_usage["usage"]["monthlyApiRequests"]
 
     rate_policy = request_json(
         base_url,
@@ -490,6 +491,9 @@ def run_smoke(base_url: str) -> None:
         raise AssertionError("public avatar URL did not include avatar id")
     if "/api/avatars/smoke-avatar/config" not in public_avatar["configUrl"]:
         raise AssertionError("public avatar config URL did not point to avatar config")
+    public_billing_usage = request_json(base_url, "/api/billing_usage/team-smoke")
+    if public_billing_usage["usage"]["monthlyApiRequests"] <= initial_api_request_usage:
+        raise AssertionError("public avatar URL request was not reflected in billing API usage")
 
     glb = request_json(base_url, "/api/avatars/smoke-avatar/model?format=glb")
     assert_equal(glb["format"], "glb", "glb model format")
