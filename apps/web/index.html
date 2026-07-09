@@ -26,6 +26,26 @@
           </header>
 
           <form id="avatar-form" class="controls">
+            <fieldset class="face-analysis">
+              <legend>Face Photo</legend>
+              <label class="consent-row">
+                <input id="face-consent" type="checkbox">
+                Use this photo only for local recommendations
+              </label>
+              <label>
+                Photo
+                <input id="face-photo" type="file" accept="image/*">
+              </label>
+              <div class="face-actions">
+                <button id="analyze-face" type="button">Analyze</button>
+                <button id="clear-face" type="button">Clear Photo</button>
+              </div>
+              <p id="face-status" class="face-status" role="status">
+                Manual creation works without a photo.
+              </p>
+              <div id="face-result" class="face-result" hidden></div>
+            </fieldset>
+
             <fieldset>
               <legend>Parts</legend>
               <label>
