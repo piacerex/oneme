@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>oneme Avatar Builder</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="Avatar builder">
+        <div class="preview-panel">
+          <div id="avatar-preview" class="avatar-preview" aria-label="Avatar preview"></div>
+        </div>
+
+        <aside class="editor-panel" aria-label="Avatar editor">
+          <header class="editor-header">
+            <h1>oneme</h1>
+            <p>Avatar Builder MVP</p>
+          </header>
+
+          <form id="avatar-form" class="controls">
+            <fieldset>
+              <legend>Parts</legend>
+              <label>
+                Face
+                <select name="face" id="face-select"></select>
+              </label>
+              <label>
+                Hair
+                <select name="hair" id="hair-select"></select>
+              </label>
+              <label>
+                Top
+                <select name="top" id="top-select"></select>
+              </label>
+              <label>
+                Bottom
+                <select name="bottom" id="bottom-select"></select>
+              </label>
+              <label>
+                Shoes
+                <select name="shoes" id="shoes-select"></select>
+              </label>
+              <label>
+                Accessory
+                <select name="accessory" id="accessory-select"></select>
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Colors</legend>
+              <label>
+                Skin
+                <input name="skin" id="skin-color" type="color" value="#c98f6f">
+              </label>
+              <label>
+                Hair
+                <input name="hairColor" id="hair-color" type="color" value="#2f2118">
+              </label>
+            </fieldset>
+          </form>
+
+          <section class="config-panel" aria-label="Avatar config">
+            <h2>Config JSON</h2>
+            <pre id="config-output"></pre>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
