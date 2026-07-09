@@ -60,6 +60,7 @@ const form = document.querySelector("#avatar-form");
 const saveButton = document.querySelector("#save-avatar");
 const loadButton = document.querySelector("#load-avatar");
 const exportButton = document.querySelector("#export-glb");
+const getModelUrlButton = document.querySelector("#get-model-url");
 const generateAiButton = document.querySelector("#generate-ai");
 const downloadGlbLink = document.querySelector("#download-glb");
 const saveStatus = document.querySelector("#save-status");
@@ -342,6 +343,12 @@ function getLatestExportJob() {
   return getJsonArray(exportJobsKey)[0] ?? null;
 }
 
+function getLatestSuccessfulExportJob(avatarId = appState.avatarId) {
+  return getJsonArray(exportJobsKey).find(
+    (job) => job.status === "succeeded" && job.avatarConfig?.avatarId === avatarId
+  );
+}
+
 function saveExportJob(job) {
   const jobs = getJsonArray(exportJobsKey).filter((item) => item.id !== job.id);
   jobs.unshift(job);
@@ -447,11 +454,13 @@ function runExportJob(job, cached) {
 
     const modelBlob = base64ToBlob(modelBase64, "model/gltf-binary");
     setDownloadUrl(modelBlob, `${runningJob.avatarConfig.avatarId}.glb`);
+    const modelResponse = createAvatarModelResponse(runningJob, Boolean(cached));
 
     saveExportJob({
       ...runningJob,
       status: "succeeded",
-      modelUrl: downloadGlbLink.href,
+      modelUrl: modelResponse.modelUrl,
+      modelResponse,
       cacheHit: Boolean(cached),
       finishedAt: new Date().toISOString()
     });
@@ -465,6 +474,48 @@ function runExportJob(job, cached) {
     });
     saveStatus.textContent = "Export failed";
   }
+}
+
+function getAvatarModelUrl() {
+  const job = getLatestSuccessfulExportJob();
+  if (!job) {
+    saveStatus.textContent = "Export a GLB before requesting the model URL";
+    return;
+  }
+
+  const cached = getExportCache(job.cacheKey);
+  if (!cached?.modelBase64) {
+    saveStatus.textContent = "Cached model payload is missing. Export again.";
+    return;
+  }
+
+  const modelBlob = base64ToBlob(cached.modelBase64, "model/gltf-binary");
+  setDownloadUrl(modelBlob, `${job.avatarConfig.avatarId}.glb`);
+
+  const modelResponse = createAvatarModelResponse(
+    {
+      ...job,
+      modelUrl: downloadGlbLink.href
+    },
+    true
+  );
+  saveExportJob({
+    ...job,
+    modelUrl: modelResponse.modelUrl,
+    modelResponse,
+    cacheHit: true
+  });
+  saveStatus.textContent = "Model URL response refreshed";
+}
+
+function createAvatarModelResponse(job, cacheHit) {
+  return {
+    avatarId: job.avatarConfig.avatarId,
+    format: "glb",
+    modelUrl: downloadGlbLink.href,
+    exportJobId: job.id,
+    cacheHit
+  };
 }
 
 function setDownloadUrl(blob, fileName) {
@@ -958,6 +1009,7 @@ form.addEventListener("input", updateFromForm);
 saveButton.addEventListener("click", saveAvatar);
 loadButton.addEventListener("click", loadLatestAvatar);
 exportButton.addEventListener("click", exportGlb);
+getModelUrlButton.addEventListener("click", getAvatarModelUrl);
 generateAiButton.addEventListener("click", generateAiCandidates);
 aiCandidates.addEventListener("click", handleCandidateAction);
 analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
