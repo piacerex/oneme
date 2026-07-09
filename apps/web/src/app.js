@@ -82,6 +82,7 @@ const recommendationFeedbackKey = "oneme.recommendationFeedback";
 let faceAnalysisCounter = 0;
 let currentPhotoUrl = null;
 let currentModelUrl = null;
+let facePreviewImage = null;
 let latestAiJob = null;
 
 function renderConfig() {
@@ -197,6 +198,7 @@ function drawAvatar() {
   drawFace(centerX, 230, skin);
   drawHair(centerX, 188, hair);
   drawAccessory(centerX, 230);
+  drawFacePhotoReference();
 }
 
 function drawFace(centerX, y, skin) {
@@ -796,6 +798,7 @@ function clearFacePhoto() {
     currentPhotoUrl = null;
   }
 
+  facePreviewImage = null;
   facePhoto.value = "";
   faceResult.hidden = true;
   faceResult.textContent = "";
@@ -835,6 +838,7 @@ function analyzeFacePhoto() {
 
   const image = new Image();
   image.onload = () => {
+    facePreviewImage = image;
     const recommendation = recommendFromImage(image);
     URL.revokeObjectURL(currentPhotoUrl);
     currentPhotoUrl = null;
@@ -843,7 +847,9 @@ function analyzeFacePhoto() {
   image.onerror = () => {
     URL.revokeObjectURL(currentPhotoUrl);
     currentPhotoUrl = null;
+    facePreviewImage = null;
     setFaceStatus("Could not read this image.");
+    render();
   };
   image.src = currentPhotoUrl;
 }
@@ -952,7 +958,7 @@ function applyFaceRecommendation(recommendation) {
 
   syncForm();
   renderFaceResult(recommendation);
-  setFaceStatus("Recommendation applied. You can adjust every part manually.");
+  setFaceStatus("Recommendation applied with a temporary photo reference in preview.");
   render();
 }
 
@@ -965,6 +971,66 @@ function renderFaceResult(recommendation) {
     <span>Face: ${recommendation.facePreset}</span>
     <span>Hair part: ${recommendation.hairPreset}</span>
   `;
+}
+
+function drawFacePhotoReference() {
+  if (!facePreviewImage) return;
+
+  const { width } = previewCanvas;
+  const frameX = width - 196;
+  const frameY = 78;
+  const frameSize = 132;
+  const centerX = frameX + frameSize / 2;
+  const centerY = frameY + frameSize / 2;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+  ctx.beginPath();
+  ctx.roundRect(frameX - 18, frameY - 44, frameSize + 36, frameSize + 82, 28);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(31, 36, 35, 0.72)";
+  ctx.font = "700 20px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("photo ref", centerX, frameY - 16);
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, frameSize / 2, 0, Math.PI * 2);
+  ctx.clip();
+
+  const imageRatio = facePreviewImage.width / facePreviewImage.height;
+  const frameRatio = 1;
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = facePreviewImage.width;
+  let sourceHeight = facePreviewImage.height;
+
+  if (imageRatio > frameRatio) {
+    sourceWidth = facePreviewImage.height * frameRatio;
+    sourceX = (facePreviewImage.width - sourceWidth) / 2;
+  } else {
+    sourceHeight = facePreviewImage.width / frameRatio;
+    sourceY = (facePreviewImage.height - sourceHeight) / 2;
+  }
+
+  ctx.drawImage(
+    facePreviewImage,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    frameX,
+    frameY,
+    frameSize,
+    frameSize
+  );
+
+  ctx.restore();
+  ctx.strokeStyle = "rgba(34, 124, 114, 0.8)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, frameSize / 2, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function syncForm() {
