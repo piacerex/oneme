@@ -395,6 +395,13 @@ def run_smoke(base_url: str) -> None:
     deleted_face_job = request_json(base_url, "/api/face_analysis_jobs/face-job-smoke", method="DELETE")
     assert_equal(deleted_face_job["status"], "deleted", "deleted face analysis job status")
     assert_equal(deleted_face_job["recommendation"]["faceTexture"]["enabled"], False, "deleted face texture enabled")
+    deleted_face_avatar_status = request_status_json(
+        base_url,
+        "/api/avatars/from_face_analysis",
+        method="POST",
+        payload={"avatarId": "face-avatar-deleted", "faceAnalysisJobId": "face-job-smoke"},
+    )
+    assert_equal(deleted_face_avatar_status, 404, "deleted face analysis avatar create status")
 
     ai_job = request_json(
         base_url,

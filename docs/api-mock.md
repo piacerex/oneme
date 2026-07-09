@@ -101,7 +101,7 @@ Face analysis jobs are stored in memory and never retain the original photo.
 pseudo-3D morph, and temporary face-texture recommendations. Use
 `POST /api/avatars/from_face_analysis` to create an editable avatar from the
 recommendation, and `DELETE /api/face_analysis_jobs/:id` to clear the temporary
-texture state.
+texture state. Deleted face analysis jobs cannot be reused to create avatars.
 AI generation jobs are deterministic local MVP records. `POST
 /api/ai_generation_jobs` creates safe part and texture candidates from the
 current avatar config and safe hints only. `POST /api/avatars/from_ai_candidate`
