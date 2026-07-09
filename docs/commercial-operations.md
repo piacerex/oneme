@@ -171,6 +171,9 @@ The local API mock supports `POST /api/incidents`,
 `GET /api/incidents`, `GET /api/incidents/:id`, and
 `PATCH /api/incidents/:id` so incident detection, mitigation, resolution, and
 audit history can be tested locally.
+Failed GLB export recovery can be tested by creating a failed job with
+`POST /api/export_jobs` and `simulateFailure`, then retrying it with
+`PATCH /api/export_jobs/:id` and `{"action":"retry"}`.
 Status page publishing is covered by `POST /api/status_page_updates`,
 `GET /api/status_page_updates`, and `GET /api/status_page_updates/:id`, with
 each update linked to the incident being communicated.

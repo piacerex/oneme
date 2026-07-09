@@ -396,7 +396,11 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.create_app_api_key(parts[2])
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
-            job = self.create_export_job(payload.get("avatarConfig", DEFAULT_AVATAR), "glb")
+            job = self.create_export_job(
+                payload.get("avatarConfig", DEFAULT_AVATAR),
+                "glb",
+                simulate_failure=payload.get("simulateFailure", False),
+            )
             self.export_jobs[job["id"]] = job
             self.send_json(job, status=201)
         elif path == "/api/vrm_export_jobs":
@@ -430,6 +434,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 return
             if len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
                 self.patch_asset_review(parts[2])
+                return
+            if len(parts) == 3 and parts[:2] == ["api", "export_jobs"]:
+                self.patch_export_job(parts[2])
                 return
             if len(parts) == 3 and parts[:2] == ["api", "monitoring_alerts"]:
                 self.patch_monitoring_alert(parts[2])
@@ -495,6 +502,30 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         )
         self.queue_webhooks("asset.reviewed", {"assetReview": review})
         self.send_json(review)
+
+    def patch_export_job(self, job_id: str) -> None:
+        job = self.export_jobs.get(job_id)
+        if not job:
+            self.send_error_json(404, "export_job_not_found")
+            return
+
+        patch = self.read_json_body()
+        if patch.get("action") != "retry":
+            self.send_error_json(400, "unsupported_export_job_action")
+            return
+
+        avatar_config = job.get("avatarConfig", DEFAULT_AVATAR)
+        avatar_id = avatar_config.get("avatarId", DEFAULT_AVATAR["avatarId"])
+        job["status"] = "succeeded"
+        job["modelUrl"] = f"http://localhost:{self.server.server_port}/models/{avatar_id}.glb"
+        job["finishedAt"] = patch.get("finishedAt", "2026-07-09T00:00:02.000Z")
+        job["cacheHit"] = False
+        job.pop("error", None)
+        self.export_jobs[job_id] = job
+        self.record_usage("model_exported", {"avatarId": avatar_id, "format": "glb", "exportJobId": job_id, "retry": True})
+        self.record_audit("model.exported", "export_job", job_id, {"avatarId": avatar_id, "format": "glb", "retry": True})
+        self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": "glb", "exportJobId": job_id, "retry": True})
+        self.send_json(job)
 
     def patch_team_member(self, member_id: str) -> None:
         member = self.team_members.get(member_id)
@@ -1064,16 +1095,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             }
         )
 
-    def create_export_job(self, avatar_config: dict, model_format: str) -> dict:
+    def create_export_job(self, avatar_config: dict, model_format: str, simulate_failure: bool = False) -> dict:
         avatar_id = avatar_config.get("avatarId", DEFAULT_AVATAR["avatarId"])
         job = {
             "id": now_id(f"{model_format}-export"),
-            "status": "succeeded",
+            "status": "failed" if simulate_failure else "succeeded",
             "avatarConfig": avatar_config,
             "modelUrl": f"http://localhost:{self.server.server_port}/models/{avatar_id}.{model_format}",
             "createdAt": "2026-07-09T00:00:00.000Z",
             "finishedAt": "2026-07-09T00:00:01.000Z",
         }
+        if simulate_failure:
+            job["error"] = "simulated_export_failure"
+            job.pop("modelUrl", None)
+            job.pop("finishedAt", None)
         if model_format == "glb":
             job["cacheKey"] = f"mock-{avatar_id}"
             job["cacheHit"] = False
@@ -1084,9 +1119,12 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "expressions": ["neutral", "happy", "blink", "surprised"],
                 "springBones": ["hair", "accessory"],
             }
-        self.record_usage("model_exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
-        self.record_audit("model.exported", "export_job", job["id"], {"avatarId": avatar_id, "format": model_format})
-        self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
+        if simulate_failure:
+            self.record_alert("warning", "export_job_failed")
+        else:
+            self.record_usage("model_exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
+            self.record_audit("model.exported", "export_job", job["id"], {"avatarId": avatar_id, "format": model_format})
+            self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
         return job
 
     def create_vrm_meta(self, avatar_id: str, avatar_config: dict) -> dict:

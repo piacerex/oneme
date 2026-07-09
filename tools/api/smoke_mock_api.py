@@ -445,6 +445,23 @@ def run_smoke(base_url: str) -> None:
     if export_job["id"] not in {job["id"] for job in export_jobs.get("exportJobs", [])}:
         raise AssertionError("export jobs did not include created GLB job")
 
+    failed_export_job = request_json(
+        base_url,
+        "/api/export_jobs",
+        method="POST",
+        payload={"avatarConfig": config, "simulateFailure": True},
+    )
+    assert_equal(failed_export_job["status"], "failed", "failed glb export status")
+    retried_export_job = request_json(
+        base_url,
+        f"/api/export_jobs/{failed_export_job['id']}",
+        method="PATCH",
+        payload={"action": "retry"},
+    )
+    assert_equal(retried_export_job["status"], "succeeded", "retried glb export status")
+    if "modelUrl" not in retried_export_job:
+        raise AssertionError("retried export job did not include modelUrl")
+
     vrm_job = request_json(base_url, "/api/vrm_export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(vrm_job["status"], "succeeded", "vrm export status")
     if "vrm" not in vrm_job:
