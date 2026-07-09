@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/avatar-config.schema.json",
+  "title": "oneme Avatar Config",
+  "type": "object",
+  "required": ["version", "avatarId", "style", "parts", "colors"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "avatarId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "style": {
+      "type": "string",
+      "enum": ["semi_real_lightweight"]
+    },
+    "parts": {
+      "type": "object",
+      "required": ["baseBody", "face", "hair", "top", "bottom", "shoes", "accessory"],
+      "additionalProperties": false,
+      "properties": {
+        "baseBody": { "type": "string" },
+        "face": { "type": "string" },
+        "hair": { "type": "string" },
+        "top": { "type": "string" },
+        "bottom": { "type": "string" },
+        "shoes": { "type": "string" },
+        "accessory": { "type": "string" }
+      }
+    },
+    "colors": {
+      "type": "object",
+      "required": ["skin", "hair"],
+      "additionalProperties": false,
+      "properties": {
+        "skin": { "$ref": "#/$defs/hexColor" },
+        "hair": { "$ref": "#/$defs/hexColor" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["manual", "face_recommendation"]
+        },
+        "faceAnalysisJobId": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    }
+  }
+}
