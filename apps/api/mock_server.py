@@ -35,6 +35,7 @@ def now_id(prefix: str) -> str:
 
 class OnemeMockApi(BaseHTTPRequestHandler):
     avatars: dict[str, dict] = {DEFAULT_AVATAR["avatarId"]: DEFAULT_AVATAR}
+    usage_events: list[dict] = []
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
@@ -44,10 +45,15 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         if path == "/health":
             self.send_json({"ok": True, "service": "oneme-api-mock"})
         elif path == "/api/parts":
+            self.record_usage("api_request", {"endpoint": "/api/parts"})
             self.send_json({"parts": PARTS})
+        elif path == "/api/usage_events":
+            self.send_json({"usageEvents": self.usage_events})
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
+            self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "avatarId": parts[2]})
             self.send_avatar(parts[2])
         elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "config":
+            self.record_usage("api_request", {"endpoint": "/api/avatars/:id/config", "avatarId": parts[2]})
             self.send_avatar(parts[2])
         elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "model":
             query = parse_qs(parsed.query)
@@ -67,6 +73,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             avatar["colors"] = {**DEFAULT_AVATAR["colors"], **avatar.get("colors", {})}
             avatar["avatarId"] = avatar.get("avatarId") or now_id("avatar")
             self.avatars[avatar["avatarId"]] = avatar
+            self.record_usage("avatar_created", {"avatarId": avatar["avatarId"]})
             self.send_json(avatar, status=201)
         elif path == "/api/export_jobs":
             payload = self.read_json_body()
@@ -98,6 +105,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         if "colors" in patch:
             avatar["colors"] = {**DEFAULT_AVATAR["colors"], **patch["colors"]}
         self.avatars[parts[2]] = avatar
+        self.record_usage("api_request", {"endpoint": "/api/avatars/:id", "method": "PATCH", "avatarId": parts[2]})
         self.send_json(avatar)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -120,6 +128,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(400, "unsupported_model_format")
             return
 
+        self.record_usage("model_downloaded", {"avatarId": avatar_id, "format": model_format})
         self.send_json(
             {
                 "avatarId": avatar_id,
@@ -150,7 +159,22 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "expressions": ["neutral", "happy", "blink", "surprised"],
                 "springBones": ["hair", "accessory"],
             }
+        self.record_usage("model_exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
         return job
+
+    def record_usage(self, metric: str, metadata: dict) -> None:
+        self.usage_events.append(
+            {
+                "id": now_id("usage"),
+                "teamId": "team-demo",
+                "appId": "app-demo",
+                "apiKeyId": "key-demo",
+                "metric": metric,
+                "quantity": 1,
+                "metadata": metadata,
+                "occurredAt": "2026-07-09T00:00:00.000Z",
+            }
+        )
 
     def read_json_body(self) -> dict:
         length = int(self.headers.get("content-length", "0"))

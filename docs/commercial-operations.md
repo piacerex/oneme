@@ -28,6 +28,8 @@ Minimum billable metrics:
 - `storage_byte_hour`
 
 Usage is recorded per team and app. API key id is included when available.
+The local API mock exposes `GET /api/usage_events` so SDK and widget flows can
+inspect generated usage events before production telemetry exists.
 
 ## Rate Limits
 

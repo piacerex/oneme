@@ -19,6 +19,7 @@ Implemented endpoints:
 - `GET /api/avatars/:id/config`
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
+- `GET /api/usage_events`
 - `POST /api/export_jobs`
 - `POST /api/vrm_export_jobs`
 
@@ -33,4 +34,4 @@ python3 tools/api/smoke_mock_api.py
 ```
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
-parts, model URL, GLB export, and VRM export endpoints.
+parts, model URL, GLB export, VRM export, and usage event endpoints.

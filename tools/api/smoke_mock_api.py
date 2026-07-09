@@ -97,6 +97,12 @@ def run_smoke(base_url: str) -> None:
     if "vrm" not in vrm_job:
         raise AssertionError("vrm export job did not include VRM metadata")
 
+    usage = request_json(base_url, "/api/usage_events")
+    metrics = {event["metric"] for event in usage.get("usageEvents", [])}
+    for metric in {"avatar_created", "model_downloaded", "model_exported", "api_request"}:
+        if metric not in metrics:
+            raise AssertionError(f"usage events did not include {metric}")
+
 
 def main() -> int:
     port = free_port()
