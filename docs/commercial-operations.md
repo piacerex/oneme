@@ -62,3 +62,46 @@ The admin dashboard should expose:
 - webhook delivery failures
 - asset review queue
 - audit log search
+
+## Webhooks
+
+Apps can subscribe to production events.
+
+Minimum events:
+
+- `avatar.created`
+- `model.exported`
+- `export.failed`
+- `asset.reviewed`
+
+Deliveries use signed JSON payloads and exponential retry. Failed deliveries stay
+queryable from the operations dashboard.
+
+## Audit Logs
+
+Audit logs are append-only records for administrative and security-sensitive
+actions.
+
+Minimum actions:
+
+- `team.member.invited`
+- `team.member.role_changed`
+- `app.created`
+- `api_key.created`
+- `api_key.revoked`
+- `asset.reviewed`
+- `billing.plan_changed`
+
+## Asset Review
+
+Production assets must pass review before they can be used by commercial apps.
+
+Review states:
+
+- `draft`
+- `submitted`
+- `approved`
+- `rejected`
+- `archived`
+
+Review records keep the reviewer, decision, license status, and notes.

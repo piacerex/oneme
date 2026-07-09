@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/webhook-delivery.schema.json",
+  "title": "oneme Webhook Delivery",
+  "type": "object",
+  "required": ["id", "endpointId", "event", "payload", "status", "attempt", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "endpointId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event": {
+      "type": "string",
+      "enum": ["avatar.created", "model.exported", "export.failed", "asset.reviewed"]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "delivered", "failed", "abandoned"]
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "responseStatus": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 599
+    },
+    "nextAttemptAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deliveredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

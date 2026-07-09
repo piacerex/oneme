@@ -1,0 +1,12 @@
+{
+  "id": "audit-demo",
+  "teamId": "team-demo",
+  "actorId": "user-demo",
+  "action": "api_key.revoked",
+  "targetType": "api_key",
+  "targetId": "key-demo",
+  "metadata": {
+    "reason": "rotated"
+  },
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}
