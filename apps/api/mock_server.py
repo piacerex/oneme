@@ -1057,6 +1057,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         return {
             "id": candidate_id or f"candidate-{style}",
             "stylePreset": style,
+            "cacheKey": self.create_ai_candidate_cache_key(style, safe_hints, part_patch),
             "configPatch": {
                 "parts": part_patch,
                 "colors": {
@@ -1076,6 +1077,14 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "reasons": safety_reasons or ["uses safe color and part hints only"],
             },
         }
+
+    def create_ai_candidate_cache_key(self, style: str, safe_hints: dict, part_patch: dict) -> str:
+        payload = {
+            "stylePreset": style,
+            "safeHints": safe_hints,
+            "partPatch": part_patch,
+        }
+        return f"ai:{json.dumps(payload, sort_keys=True, separators=(',', ':'))}"
 
     def create_avatar_from_ai_candidate(self, payload: dict) -> dict | None:
         job = self.ai_generation_jobs.get(payload.get("jobId", ""))

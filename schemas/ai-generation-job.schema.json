@@ -55,13 +55,17 @@
   "$defs": {
     "candidate": {
       "type": "object",
-      "required": ["id", "stylePreset", "configPatch", "textureCandidate", "safety"],
+      "required": ["id", "stylePreset", "cacheKey", "configPatch", "textureCandidate", "safety"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
         "stylePreset": {
           "type": "string",
           "enum": ["clean", "expressive", "event"]
+        },
+        "cacheKey": {
+          "type": "string",
+          "minLength": 1
         },
         "configPatch": {
           "type": "object"

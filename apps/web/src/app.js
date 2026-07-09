@@ -882,6 +882,7 @@ function createLocalAiCandidates(config, hints) {
   return styles.map((style, index) => ({
     id: `candidate-${style.stylePreset}-${index + 1}`,
     stylePreset: style.stylePreset,
+    cacheKey: createAiCandidateCacheKey(style.stylePreset, hints, style.parts),
     configPatch: {
       parts: {
         ...style.parts,
@@ -902,6 +903,10 @@ function createLocalAiCandidates(config, hints) {
       reasons: ["uses safe color hints and existing part ids only"]
     }
   }));
+}
+
+function createAiCandidateCacheKey(stylePreset, hints, partPatch) {
+  return `ai:${stableStringify({ stylePreset, safeHints: hints, partPatch })}`;
 }
 
 function handleCandidateAction(event) {

@@ -34,6 +34,7 @@
     {
       "id": "candidate-clean",
       "stylePreset": "clean",
+      "cacheKey": "ai:{\"hairColor\":\"#2f2118\",\"hairPreset\":\"hair.short_01\",\"skinColor\":\"#c98f6f\"}:clean",
       "configPatch": {
         "parts": {
           "top": "top.basic_01",

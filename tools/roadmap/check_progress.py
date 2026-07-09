@@ -55,7 +55,7 @@ PHASES = [
             "schemas/ai-generation-job.schema.json",
             "schemas/recommendation-feedback.schema.json",
         ],
-        "checks": ["api_mock_smoke", "schema_example_validation"],
+        "checks": ["ai_generation_smoke", "api_mock_smoke", "schema_example_validation"],
     },
     {
         "phase": "phase_4",

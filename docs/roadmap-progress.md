@@ -19,7 +19,7 @@ that phase to the smoke or validation command exercised by `tools/check_all.py`.
 | Phase 0: planning | `mvp_done` | `docs/avatar-direction.md`, `docs/asset-conventions.md`, `docs/mvp-parts.md`, `schemas/avatar-config.schema.json` |
 | Phase 1: MVP builder | `mvp_done` | `apps/web/index.html`, `apps/web/src/app.js`, `apps/web/src/three-preview.js`, `docs/three-preview.md`; checked by `web_builder_smoke` |
 | Phase 2: face photo proposal | `mvp_done` | `apps/web/src/app.js`, `schemas/avatar-config.schema.json`, `schemas/face-analysis-job.schema.json`; checked by `face_photo_surface_smoke` |
-| Phase 3: AI generation MVP | `mvp_done` | `docs/ai-generation-mvp.md`, `schemas/ai-generation-job.schema.json`, `schemas/recommendation-feedback.schema.json` |
+| Phase 3: AI generation MVP | `mvp_done` | `docs/ai-generation-mvp.md`, `schemas/ai-generation-job.schema.json`, `schemas/recommendation-feedback.schema.json`; checked by `ai_generation_smoke` |
 | Phase 4: GLB export | `mvp_done` | `docs/export-api.md`, `docs/export-pipeline.md`, `tools/gltf/validate_glb.py`, `tools/blender/compose_avatar.py`; checked by `glb_contract_smoke` |
 | Phase 5: widget | `mvp_done` | `docs/widget-contract.md`, `apps/web/widget.html`, `apps/web/embed-example.html`, `apps/web/src/widget.js`, `schemas/widget-app.schema.json` |
 | Phase 6: SDKs | `mvp_done` | `docs/web-sdk.md`, `packages/sdk-web/package.json`, `docs/unity-sdk.md`, `packages/sdk-unity/package.json` |
@@ -44,9 +44,10 @@ python3 tools/check_all.py
 ```
 
 The full check runner validates schema JSON, Python tooling, and roadmap
-evidence coverage. It also runs API mock, Web builder, face photo surface, Web
-SDK, Widget API, admin dashboard, GLB contract, VRM sample validation, and VRM
-contract checks that are referenced by the phase progress output.
+evidence coverage. It also runs API mock, AI generation, Web builder, face photo
+surface, Web SDK, Widget API, admin dashboard, GLB contract, VRM sample
+validation, and VRM contract checks that are referenced by the phase progress
+output.
 `tools/roadmap/check_progress.py` can still be run directly when only phase
 evidence and check mapping should be inspected. These checks do not prove
 production readiness.

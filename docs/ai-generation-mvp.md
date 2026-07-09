@@ -62,3 +62,7 @@ Future recommendation models can learn from this without storing the original ph
 The API mock can include a rejected candidate with `includeRejectedCandidate`
 for safety workflow testing. Rejected candidates remain visible in the job
 result but cannot be converted into saved avatars.
+Each candidate includes a deterministic `cacheKey` derived from the style preset,
+safe hints, and existing-part patch. `tools/api/smoke_ai_generation.py` verifies
+approved candidates, rejected safety candidates, cache keys, avatar conversion,
+and recommendation feedback.

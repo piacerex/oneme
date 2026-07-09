@@ -13,6 +13,7 @@ The check runner covers:
 - example files matching the supported JSON Schema subset
 - Python syntax for local tooling
 - API mock smoke test
+- AI generation smoke test
 - Admin dashboard smoke test
 - Web SDK API smoke test
 - Widget API smoke test
