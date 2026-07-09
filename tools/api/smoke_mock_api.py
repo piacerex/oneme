@@ -172,6 +172,12 @@ def run_smoke(base_url: str) -> None:
     if "key-smoke" not in fetched_app["apiKeys"]:
         raise AssertionError("widget app did not include created API key")
 
+    revoked_api_key = request_json(base_url, "/api/apps/app-smoke/api_keys/key-smoke", method="DELETE")
+    assert_equal(revoked_api_key["revoked"], True, "revoked app api key")
+    fetched_app_after_revoke = request_json(base_url, "/api/apps/app-smoke")
+    if "key-smoke" in fetched_app_after_revoke["apiKeys"]:
+        raise AssertionError("widget app still included revoked API key")
+
     webhook = request_json(
         base_url,
         "/api/webhook_endpoints",
@@ -489,6 +495,7 @@ def run_smoke(base_url: str) -> None:
         "avatar.created",
         "avatar.updated",
         "api_key.created",
+        "api_key.revoked",
         "team.member.invited",
         "team.member.role_changed",
         "billing.plan_changed",

@@ -470,6 +470,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[:2] == ["api", "face_analysis_jobs"]:
             self.delete_face_analysis_job(parts[2])
             return
+        if len(parts) == 5 and parts[:2] == ["api", "apps"] and parts[3] == "api_keys":
+            self.revoke_app_api_key(parts[2], parts[4])
+            return
         self.send_error_json(404, "not_found")
 
     def patch_asset_review(self, review_id: str) -> None:
@@ -887,6 +890,19 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.apps[app_id] = app
         self.record_audit("api_key.created", "api_key", key, {"appId": app_id})
         self.send_json({"appId": app_id, "apiKey": key, "apiKeys": app["apiKeys"]}, status=201)
+
+    def revoke_app_api_key(self, app_id: str, key: str) -> None:
+        app = self.apps.get(app_id)
+        if not app:
+            self.send_error_json(404, "app_not_found")
+            return
+        if key not in app["apiKeys"]:
+            self.send_error_json(404, "api_key_not_found")
+            return
+        app["apiKeys"] = [item for item in app["apiKeys"] if item != key]
+        self.apps[app_id] = app
+        self.record_audit("api_key.revoked", "api_key", key, {"appId": app_id})
+        self.send_json({"appId": app_id, "apiKey": key, "apiKeys": app["apiKeys"], "revoked": True})
 
     def create_ai_generation_job(self, payload: dict) -> dict:
         avatar_config = payload.get("avatarConfig", DEFAULT_AVATAR)

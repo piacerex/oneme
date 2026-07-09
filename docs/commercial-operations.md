@@ -115,8 +115,9 @@ Minimum actions:
 - `asset.reviewed`
 - `billing.plan_changed`
 
-The local API mock exposes `GET /api/audit_logs` and records avatar, export, and
-webhook endpoint operations.
+The local API mock exposes `GET /api/audit_logs` and records avatar, export,
+API key revocation, webhook endpoint operations, and administrative workflow
+changes.
 
 ## Asset Review
 

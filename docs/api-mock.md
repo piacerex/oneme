@@ -109,8 +109,10 @@ Export jobs are stored in memory after `POST /api/export_jobs` and
 `POST /api/vrm_export_jobs`. They can be listed or fetched by id so SDK and
 operations flows can inspect async job state before a hosted queue exists.
 Widget apps are stored in memory through `POST /api/apps`. App API keys can be
-added with `POST /api/apps/:id/api_keys`, which lets widget embed flows test app
-configuration and credential lifecycle before production auth exists.
+added with `POST /api/apps/:id/api_keys` and revoked with
+`DELETE /api/apps/:id/api_keys/:key`, which lets widget embed flows test app
+configuration, credential lifecycle, and leaked-key recovery before production
+auth exists.
 Teams and members are stored in memory through `/api/teams` and
 `/api/team_members`. Member creation and role changes append audit log records
 for local role and access-control workflow testing.
