@@ -108,6 +108,36 @@ def run_smoke(base_url: str) -> None:
     )
     assert_equal(approved_review["status"], "approved", "approved asset review status")
 
+    incident = request_json(
+        base_url,
+        "/api/incidents",
+        method="POST",
+        payload={
+            "id": "incident-smoke",
+            "severity": "major",
+            "status": "mitigating",
+            "summary": "Smoke test export incident",
+            "recoveryActions": ["retry_export_jobs", "publish_status_update"],
+            "customerImpact": "Model exports are delayed in the smoke test.",
+        },
+    )
+    assert_equal(incident["status"], "mitigating", "created incident status")
+
+    incidents = request_json(base_url, "/api/incidents")
+    incident_ids = {item["id"] for item in incidents.get("incidents", [])}
+    if "incident-smoke" not in incident_ids:
+        raise AssertionError("incidents did not include incident-smoke")
+
+    resolved_incident = request_json(
+        base_url,
+        "/api/incidents/incident-smoke",
+        method="PATCH",
+        payload={"status": "resolved"},
+    )
+    assert_equal(resolved_incident["status"], "resolved", "resolved incident status")
+    if "resolvedAt" not in resolved_incident:
+        raise AssertionError("resolved incident did not include resolvedAt")
+
     created = request_json(
         base_url,
         "/api/avatars",
@@ -171,7 +201,15 @@ def run_smoke(base_url: str) -> None:
 
     audit = request_json(base_url, "/api/audit_logs")
     actions = {log["action"] for log in audit.get("auditLogs", [])}
-    for action in {"asset.reviewed", "avatar.created", "avatar.updated", "model.exported", "webhook_endpoint.created"}:
+    for action in {
+        "asset.reviewed",
+        "avatar.created",
+        "avatar.updated",
+        "incident.created",
+        "incident.updated",
+        "model.exported",
+        "webhook_endpoint.created",
+    }:
         if action not in actions:
             raise AssertionError(f"audit logs did not include {action}")
 

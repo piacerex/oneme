@@ -146,6 +146,11 @@ Minimum recovery actions:
 - roll back a rejected asset
 - publish a status page update
 
+The local API mock supports `POST /api/incidents`,
+`GET /api/incidents`, `GET /api/incidents/:id`, and
+`PATCH /api/incidents/:id` so incident detection, mitigation, resolution, and
+audit history can be tested locally.
+
 ## Legal and License Records
 
 Commercial operation keeps structured records for:
