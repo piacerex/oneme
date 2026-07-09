@@ -54,6 +54,8 @@ def assert_sdk_surface() -> None:
         "async fetchParts(",
         "async createFaceAnalysisJob(",
         "async createAiGenerationJob(",
+        "async fetchAiGenerationJob(",
+        "async listRecommendationFeedback(",
         "async createExportJob(",
         "async createWidgetApp(",
         "async createAppApiKey(",
@@ -62,6 +64,8 @@ def assert_sdk_surface() -> None:
         "async fetchBillingUsage(",
         "async createStatusPageUpdate(",
         '"/api/admin/dashboard"',
+        '"/api/recommendation_feedback"',
+        "`/api/ai_generation_jobs/",
         '"/api/status_page_updates"',
         "`/api/billing_usage/",
         "apiBaseUrl",
@@ -94,6 +98,29 @@ def main() -> int:
         model = request_json(base_url, "/api/avatars/demo-avatar/model?format=vrm")
         parts = request_json(base_url, "/api/parts")
         animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
+        ai_generation = request_json(
+            base_url,
+            "/api/ai_generation_jobs",
+            method="POST",
+            payload={
+                "id": "sdk-ai-generation",
+                "avatarConfig": avatar,
+                "includeRejectedCandidate": True,
+            },
+        )
+        fetched_ai_generation = request_json(base_url, "/api/ai_generation_jobs/sdk-ai-generation")
+        feedback = request_json(
+            base_url,
+            "/api/recommendation_feedback",
+            method="POST",
+            payload={
+                "id": "sdk-ai-feedback",
+                "jobId": "sdk-ai-generation",
+                "candidateId": "candidate-clean",
+                "action": "applied",
+            },
+        )
+        feedback_records = request_json(base_url, "/api/recommendation_feedback")
         vrm_export = request_json(base_url, "/api/vrm_export_jobs", method="POST", payload={"avatarConfig": avatar})
         fetched_vrm_export = request_json(base_url, f"/api/vrm_export_jobs/{vrm_export['id']}")
         request_json(base_url, "/api/teams", method="POST", payload={"id": "sdk-team", "planId": "plan-pro"})
@@ -124,6 +151,14 @@ def main() -> int:
         raise AssertionError("API mock did not return parts for SDK fetchParts")
     if animation["status"] != "contract_ready":
         raise AssertionError("API mock did not return animation compatibility for SDK clients")
+    if fetched_ai_generation["id"] != ai_generation["id"]:
+        raise AssertionError("API mock did not return AI generation job for SDK clients")
+    if not all(candidate.get("cacheKey") for candidate in fetched_ai_generation["candidates"]):
+        raise AssertionError("API mock did not return AI candidate cache keys for SDK clients")
+    if feedback["action"] != "applied":
+        raise AssertionError("API mock did not create recommendation feedback for SDK clients")
+    if "sdk-ai-feedback" not in {record["id"] for record in feedback_records.get("recommendationFeedback", [])}:
+        raise AssertionError("API mock did not list recommendation feedback for SDK clients")
     if fetched_vrm_export["vrm"]["meta"]["commercialUsage"] != "allowed":
         raise AssertionError("API mock did not return VRM export metadata for SDK clients")
     if len(fetched_vrm_export["vrm"]["humanoid"]) < 17:

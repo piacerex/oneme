@@ -65,6 +65,11 @@ Creates an editable avatar from a face analysis job through
 
 Creates deterministic local AI-style candidates through `/api/ai_generation_jobs`.
 
+### `client.fetchAiGenerationJob(jobId)`
+
+Fetches an AI generation job and its candidate cache keys through
+`/api/ai_generation_jobs/:id`.
+
 ### `client.createAvatarFromAiCandidate(payload)`
 
 Creates an editable avatar from an approved AI candidate through
@@ -73,6 +78,10 @@ Creates an editable avatar from an approved AI candidate through
 ### `client.createRecommendationFeedback(payload)`
 
 Records candidate feedback through `/api/recommendation_feedback`.
+
+### `client.listRecommendationFeedback()`
+
+Lists recommendation feedback records from `/api/recommendation_feedback`.
 
 ### `client.createExportJob(payload, options)`
 

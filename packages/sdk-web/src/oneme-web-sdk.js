@@ -73,6 +73,10 @@ export class OnemeClient {
     });
   }
 
+  async fetchAiGenerationJob(jobId) {
+    return this.#requestJson(`/api/ai_generation_jobs/${encodeURIComponent(jobId)}`);
+  }
+
   async createAvatarFromAiCandidate(payload) {
     return this.#requestJson("/api/avatars/from_ai_candidate", {
       method: "POST",
@@ -85,6 +89,11 @@ export class OnemeClient {
       method: "POST",
       body: payload
     });
+  }
+
+  async listRecommendationFeedback() {
+    const response = await this.#requestJson("/api/recommendation_feedback");
+    return response.recommendationFeedback ?? [];
   }
 
   async createExportJob(payload, options = {}) {
