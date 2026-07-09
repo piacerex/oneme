@@ -79,6 +79,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "model":
             query = parse_qs(parsed.query)
             self.send_model(parts[2], query.get("format", ["glb"])[0])
+        elif len(parts) == 4 and parts[:2] == ["api", "avatars"] and parts[3] == "animation_compat":
+            query = parse_qs(parsed.query)
+            self.send_animation_compat(parts[2], query.get("format", ["vrm"])[0])
         else:
             self.send_error_json(404, "not_found")
 
@@ -284,6 +287,47 @@ class OnemeMockApi(BaseHTTPRequestHandler):
                 "modelUrl": f"http://localhost:{self.server.server_port}/models/{avatar_id}.{model_format}",
                 "exportJobId": f"{model_format}-mock-{avatar_id}",
                 "cacheHit": False,
+            }
+        )
+
+    def send_animation_compat(self, avatar_id: str, model_format: str) -> None:
+        if avatar_id not in self.avatars:
+            self.send_error_json(404, "avatar_not_found")
+            return
+        if model_format != "vrm":
+            self.send_error_json(400, "unsupported_animation_format")
+            return
+
+        self.record_usage("api_request", {"endpoint": "/api/avatars/:id/animation_compat", "avatarId": avatar_id})
+        self.send_json(
+            {
+                "format": "vrm",
+                "status": "contract_ready",
+                "requiredHumanoidBones": [
+                    "hips",
+                    "spine",
+                    "chest",
+                    "neck",
+                    "head",
+                    "leftUpperArm",
+                    "leftLowerArm",
+                    "leftHand",
+                    "rightUpperArm",
+                    "rightLowerArm",
+                    "rightHand",
+                    "leftUpperLeg",
+                    "leftLowerLeg",
+                    "leftFoot",
+                    "rightUpperLeg",
+                    "rightLowerLeg",
+                    "rightFoot",
+                ],
+                "missingHumanoidBones": [],
+                "expressions": ["neutral", "happy", "blink", "surprised"],
+                "notes": [
+                    "MVP VRM exports include humanoid metadata.",
+                    "Runtime animation requires replacing the placeholder scene with rigged geometry.",
+                ],
             }
         )
 

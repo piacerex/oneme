@@ -18,6 +18,9 @@ real rigged assets exist.
 
 See `docs/vrm-validation.md` for viewer checks and animation compatibility
 criteria.
+The local API mock exposes
+`GET /api/avatars/:id/animation_compat?format=vrm` so clients can inspect the
+current humanoid bone and expression readiness before downloading a VRM model.
 
 ## Humanoid Bones
 

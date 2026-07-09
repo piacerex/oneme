@@ -25,6 +25,7 @@ Implemented endpoints:
 - `GET /api/avatars/:id/config`
 - `GET /api/avatars/:id/model?format=glb`
 - `GET /api/avatars/:id/model?format=vrm`
+- `GET /api/avatars/:id/animation_compat?format=vrm`
 - `GET /api/usage_events`
 - `GET /api/audit_logs`
 - `GET /api/monitoring_alerts`
@@ -60,6 +61,10 @@ and rate limits, create open `api_error_rate` alerts that can be resolved with
 `PATCH /api/monitoring_alerts/:id`.
 Asset reviews are stored in memory and can be submitted or approved through
 `/api/asset_reviews`.
+VRM animation compatibility can be checked through
+`GET /api/avatars/:id/animation_compat?format=vrm`. The MVP response reports
+the Phase 7 humanoid bone target set, expression presets, and the current
+contract-level readiness state.
 
 Smoke test:
 
@@ -68,5 +73,6 @@ python3 tools/api/smoke_mock_api.py
 ```
 
 The smoke test starts the mock on a temporary local port and verifies avatar,
-parts, model URL, GLB export, VRM export, usage event, audit log, asset review,
-monitoring alert, rate limit, and webhook delivery endpoints.
+parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
+event, audit log, asset review, monitoring alert, rate limit, and webhook
+delivery endpoints.

@@ -140,6 +140,15 @@ def run_smoke(base_url: str) -> None:
     vrm = request_json(base_url, "/api/avatars/smoke-avatar/model?format=vrm")
     assert_equal(vrm["format"], "vrm", "vrm model format")
 
+    animation_compat = request_json(base_url, "/api/avatars/smoke-avatar/animation_compat?format=vrm")
+    assert_equal(animation_compat["format"], "vrm", "animation compat format")
+    assert_equal(animation_compat["status"], "contract_ready", "animation compat status")
+    if animation_compat["missingHumanoidBones"]:
+        raise AssertionError("animation compatibility reported missing humanoid bones")
+    for expression in {"neutral", "happy", "blink", "surprised"}:
+        if expression not in animation_compat["expressions"]:
+            raise AssertionError(f"animation compatibility did not include {expression}")
+
     export_job = request_json(base_url, "/api/export_jobs", method="POST", payload={"avatarConfig": config})
     assert_equal(export_job["status"], "succeeded", "glb export status")
 
