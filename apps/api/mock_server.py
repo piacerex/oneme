@@ -778,8 +778,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             job["cacheHit"] = False
         else:
             job["vrm"] = {
-                "meta": {"name": avatar_id, "version": avatar_config.get("version", "0.1.0")},
-                "humanoid": {"hips": "hips", "spine": "spine", "head": "head"},
+                "meta": self.create_vrm_meta(avatar_id, avatar_config),
+                "humanoid": self.create_vrm_humanoid_map(),
                 "expressions": ["neutral", "happy", "blink", "surprised"],
                 "springBones": ["hair", "accessory"],
             }
@@ -787,6 +787,38 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.record_audit("model.exported", "export_job", job["id"], {"avatarId": avatar_id, "format": model_format})
         self.queue_webhooks("model.exported", {"avatarId": avatar_id, "format": model_format, "exportJobId": job["id"]})
         return job
+
+    def create_vrm_meta(self, avatar_id: str, avatar_config: dict) -> dict:
+        return {
+            "name": avatar_id,
+            "version": avatar_config.get("version", "0.1.0"),
+            "author": "oneme",
+            "contactInformation": "https://github.com/piacerex/oneme",
+            "licenseName": "repository",
+            "commercialUsage": "allowed",
+        }
+
+    def create_vrm_humanoid_map(self) -> dict:
+        bones = [
+            "hips",
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "leftUpperArm",
+            "leftLowerArm",
+            "leftHand",
+            "rightUpperArm",
+            "rightLowerArm",
+            "rightHand",
+            "leftUpperLeg",
+            "leftLowerLeg",
+            "leftFoot",
+            "rightUpperLeg",
+            "rightLowerLeg",
+            "rightFoot",
+        ]
+        return {bone: bone for bone in bones}
 
     def record_usage(self, metric: str, metadata: dict) -> None:
         self.usage_events.append(

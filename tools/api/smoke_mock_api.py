@@ -322,6 +322,10 @@ def run_smoke(base_url: str) -> None:
     assert_equal(vrm_job["status"], "succeeded", "vrm export status")
     if "vrm" not in vrm_job:
         raise AssertionError("vrm export job did not include VRM metadata")
+    if len(vrm_job["vrm"]["humanoid"]) < 17:
+        raise AssertionError("vrm export job did not include the minimum humanoid bone map")
+    assert_equal(vrm_job["vrm"]["meta"]["licenseName"], "repository", "vrm meta license")
+    assert_equal(vrm_job["vrm"]["meta"]["commercialUsage"], "allowed", "vrm meta commercial usage")
     fetched_vrm_job = request_json(base_url, f"/api/vrm_export_jobs/{vrm_job['id']}")
     assert_equal(fetched_vrm_job["id"], vrm_job["id"], "fetched vrm export job id")
 

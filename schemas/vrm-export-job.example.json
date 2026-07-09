@@ -9,12 +9,28 @@
       "name": "demo-avatar",
       "version": "0.1.0",
       "author": "oneme",
-      "licenseName": "repository"
+      "contactInformation": "https://github.com/piacerex/oneme",
+      "licenseName": "repository",
+      "commercialUsage": "allowed"
     },
     "humanoid": {
       "hips": "hips",
       "spine": "spine",
-      "head": "head"
+      "chest": "chest",
+      "neck": "neck",
+      "head": "head",
+      "leftUpperArm": "leftUpperArm",
+      "leftLowerArm": "leftLowerArm",
+      "leftHand": "leftHand",
+      "rightUpperArm": "rightUpperArm",
+      "rightLowerArm": "rightLowerArm",
+      "rightHand": "rightHand",
+      "leftUpperLeg": "leftUpperLeg",
+      "leftLowerLeg": "leftLowerLeg",
+      "leftFoot": "leftFoot",
+      "rightUpperLeg": "rightUpperLeg",
+      "rightLowerLeg": "rightLowerLeg",
+      "rightFoot": "rightFoot"
     },
     "expressions": ["neutral", "happy", "blink", "surprised"],
     "springBones": ["hair", "accessory"]

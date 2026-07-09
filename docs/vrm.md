@@ -21,6 +21,8 @@ criteria.
 The local API mock exposes
 `GET /api/avatars/:id/animation_compat?format=vrm` so clients can inspect the
 current humanoid bone and expression readiness before downloading a VRM model.
+`POST /api/vrm_export_jobs` returns the same minimum humanoid bone map plus VRM
+meta fields for author, contact, license, and commercial usage.
 
 ## Humanoid Bones
 
