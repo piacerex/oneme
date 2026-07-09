@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PYTHON_FILES = [
+    "apps/api/mock_server.py",
     "tools/blender/compose_avatar.py",
     "tools/gltf/validate_glb.py",
     "tools/gltf/validate_vrm.py",

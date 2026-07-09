@@ -53,6 +53,7 @@ in GitHub Actions when repository credentials allow workflow updates.
 - `docs/avatar-direction.md`: avatar style and MVP structure
 - `docs/three-preview.md`: Phase 1 Three.js preview
 - `docs/ai-generation-mvp.md`: Phase 3 local AI generation contract
+- `docs/api-mock.md`: dependency-free local API mock
 - `docs/export-api.md`: GLB/VRM model response contract
 - `docs/export-pipeline.md`: GLB export pipeline
 - `docs/widget-contract.md`: iframe widget integration
