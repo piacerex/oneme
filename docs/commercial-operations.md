@@ -64,6 +64,9 @@ Plans define soft and hard limits for:
 The local API mock supports `POST /api/billing_plans`,
 `GET /api/billing_plans/:id`, and `PATCH /api/teams/:id` for plan assignment.
 Plan changes create `billing.plan_changed` audit records.
+`GET /api/billing_usage/:team_id` compares current app, member, API request,
+model export, storage, and webhook delivery usage against the assigned plan
+limits for quota dashboard testing.
 
 ## Operations Dashboard
 

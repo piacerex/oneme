@@ -125,6 +125,11 @@ def run_smoke(base_url: str) -> None:
         payload={"planId": "plan-smoke"},
     )
     assert_equal(patched_team["planId"], "plan-smoke", "patched team billing plan")
+    billing_usage = request_json(base_url, "/api/billing_usage/team-smoke")
+    assert_equal(billing_usage["planId"], "plan-smoke", "billing usage plan id")
+    assert_equal(billing_usage["limits"]["apps"], 5, "billing usage app limit")
+    if billing_usage["remaining"]["members"] > billing_usage["limits"]["members"]:
+        raise AssertionError("billing usage remaining members exceeded limit")
 
     rate_policy = request_json(
         base_url,

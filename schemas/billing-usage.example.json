@@ -1,0 +1,30 @@
+{
+  "teamId": "team-demo",
+  "planId": "plan-pro",
+  "period": "2026-07",
+  "usage": {
+    "apps": 1,
+    "members": 3,
+    "monthlyApiRequests": 120,
+    "monthlyModelExports": 8,
+    "storageBytes": 0,
+    "webhookDeliveries": 4
+  },
+  "limits": {
+    "apps": 10,
+    "members": 20,
+    "monthlyApiRequests": 1000000,
+    "monthlyModelExports": 50000,
+    "storageBytes": 107374182400,
+    "webhookDeliveries": 250000
+  },
+  "remaining": {
+    "apps": 9,
+    "members": 17,
+    "monthlyApiRequests": 999880,
+    "monthlyModelExports": 49992,
+    "storageBytes": 107374182400,
+    "webhookDeliveries": 249996
+  },
+  "generatedAt": "2026-07-09T00:00:00.000Z"
+}

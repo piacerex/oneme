@@ -43,6 +43,8 @@ Implemented endpoints:
 - `GET /api/team_members/:id`
 - `GET /api/billing_plans`
 - `GET /api/billing_plans/:id`
+- `GET /api/billing_usage`
+- `GET /api/billing_usage/:team_id`
 - `GET /api/rate_limit_policies`
 - `GET /api/rate_limit_policies/:id`
 - `GET /api/webhook_endpoints`
@@ -122,7 +124,9 @@ Teams and members are stored in memory through `/api/teams` and
 for local role and access-control workflow testing.
 Billing plans are stored in memory through `/api/billing_plans`. Updating a
 team's `planId` with `PATCH /api/teams/:id` records a `billing.plan_changed`
-audit event.
+audit event. Billing usage can be inspected with `/api/billing_usage` or
+`/api/billing_usage/:team_id`; the response compares current app, member,
+request, export, storage, and webhook usage against the assigned plan limits.
 Rate limit policies are stored in memory through `/api/rate_limit_policies`.
 The runtime limiter still uses the mock server flags, while policy records let
 plan and dashboard flows inspect intended limits by plan and scope.
@@ -182,4 +186,4 @@ The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
 event, audit log, face analysis, AI generation, asset review, incident recovery,
 status page update, legal record, monitoring alert, operations summary, rate
-limit, admin dashboard, and webhook delivery endpoints.
+limit, billing usage, admin dashboard, and webhook delivery endpoints.

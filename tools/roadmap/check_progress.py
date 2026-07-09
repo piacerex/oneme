@@ -106,6 +106,7 @@ PHASES = [
             "schemas/admin-dashboard.schema.json",
             "schemas/usage-event.schema.json",
             "schemas/billing-plan.schema.json",
+            "schemas/billing-usage.schema.json",
             "schemas/webhook-endpoint.schema.json",
             "schemas/audit-log.schema.json",
             "schemas/asset-review.schema.json",

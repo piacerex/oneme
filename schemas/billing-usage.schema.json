@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/billing-usage.schema.json",
+  "title": "oneme Billing Usage",
+  "type": "object",
+  "required": ["teamId", "planId", "period", "usage", "limits", "remaining", "generatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "teamId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}$"
+    },
+    "usage": {
+      "$ref": "#/$defs/usageCounters"
+    },
+    "limits": {
+      "$ref": "#/$defs/usageCounters"
+    },
+    "remaining": {
+      "$ref": "#/$defs/usageCounters"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "usageCounters": {
+      "type": "object",
+      "required": [
+        "apps",
+        "members",
+        "monthlyApiRequests",
+        "monthlyModelExports",
+        "storageBytes",
+        "webhookDeliveries"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "members": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "monthlyApiRequests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "monthlyModelExports": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "storageBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "webhookDeliveries": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

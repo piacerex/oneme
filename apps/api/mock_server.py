@@ -106,6 +106,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"teamMembers": list(self.team_members.values())})
         elif path == "/api/billing_plans":
             self.send_json({"billingPlans": list(self.billing_plans.values())})
+        elif path == "/api/billing_usage":
+            self.send_json({"billingUsage": [self.build_billing_usage(team_id) for team_id in self.teams]})
         elif path == "/api/rate_limit_policies":
             self.send_json({"rateLimitPolicies": list(self.rate_limit_policies.values())})
         elif path == "/api/asset_reviews":
@@ -146,6 +148,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_team_member(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "billing_plans"]:
             self.send_billing_plan(parts[2])
+        elif len(parts) == 3 and parts[:2] == ["api", "billing_usage"]:
+            self.send_billing_usage(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "rate_limit_policies"]:
             self.send_rate_limit_policy(parts[2])
         elif len(parts) == 3 and parts[:2] == ["api", "avatars"]:
@@ -921,6 +925,49 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_error_json(404, "billing_plan_not_found")
             return
         self.send_json(plan)
+
+    def send_billing_usage(self, team_id: str) -> None:
+        if team_id not in self.teams:
+            self.send_error_json(404, "team_not_found")
+            return
+        self.send_json(self.build_billing_usage(team_id))
+
+    def build_billing_usage(self, team_id: str) -> dict:
+        team = self.teams[team_id]
+        plan = self.billing_plans.get(team["planId"]) or {
+            "id": team["planId"],
+            "limits": {
+                "apps": 10,
+                "members": 20,
+                "monthlyApiRequests": 1000000,
+                "monthlyModelExports": 50000,
+                "storageBytes": 107374182400,
+                "webhookDeliveries": 250000,
+            },
+        }
+        usage = {
+            "apps": len(self.apps),
+            "members": sum(1 for member in self.team_members.values() if member["teamId"] == team_id),
+            "monthlyApiRequests": sum(event["quantity"] for event in self.usage_events if event["metric"] == "api_request"),
+            "monthlyModelExports": sum(
+                event["quantity"] for event in self.usage_events if event["metric"] == "model_exported"
+            ),
+            "storageBytes": 0,
+            "webhookDeliveries": len(self.webhook_deliveries),
+        }
+        remaining = {
+            key: max(plan["limits"][key] - usage[key], 0)
+            for key in plan["limits"]
+        }
+        return {
+            "teamId": team_id,
+            "planId": team["planId"],
+            "period": "2026-07",
+            "usage": usage,
+            "limits": plan["limits"],
+            "remaining": remaining,
+            "generatedAt": "2026-07-09T00:00:00.000Z",
+        }
 
     def send_rate_limit_policy(self, policy_id: str) -> None:
         policy = self.rate_limit_policies.get(policy_id)
