@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>oneme Widget Embed Example</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(280px, 1fr);
+        gap: 20px;
+        padding: 20px;
+        background: #f4f0ea;
+        color: #25211d;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      iframe,
+      pre {
+        width: 100%;
+        height: min(720px, calc(100vh - 40px));
+        border: 1px solid #d8d0c6;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+
+      @media (max-width: 800px) {
+        body {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      title="oneme avatar widget"
+      src="./widget.html?app_id=demo-app&api_key=demo-key"
+      allow="clipboard-write"
+    ></iframe>
+    <pre id="events">Waiting for widget messages...</pre>
+
+    <script>
+      const events = document.querySelector("#events");
+      window.addEventListener("message", (event) => {
+        const message = JSON.stringify(event.data, null, 2);
+        events.textContent = `${new Date().toISOString()}\n${message}\n\n${events.textContent}`;
+      });
+    </script>
+  </body>
+</html>
