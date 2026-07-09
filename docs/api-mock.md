@@ -54,6 +54,7 @@ Implemented endpoints:
 - `GET /api/incidents`
 - `GET /api/legal_records`
 - `GET /api/ops/summary`
+- `GET /api/admin/dashboard`
 - `GET /api/asset_reviews`
 - `GET /api/asset_reviews/:id`
 - `GET /api/asset_validations`
@@ -162,6 +163,10 @@ face-photo consent, and retention-policy records for local operations testing.
 Operations dashboard summaries are exposed at `GET /api/ops/summary`. The
 response aggregates usage events, open alerts, open incidents, pending asset
 reviews, webhook deliveries, and active legal records for the demo team/app.
+Admin dashboard payloads are exposed at `GET /api/admin/dashboard`; the response
+combines the operations summary with teams, members, apps, pending asset
+reviews, open alerts, open incidents, failed webhook deliveries, and recent
+audit logs for local admin UI testing.
 VRM animation compatibility can be checked through
 `GET /api/avatars/:id/animation_compat?format=vrm`. The MVP response reports
 the Phase 7 humanoid bone target set, expression presets, and the current
@@ -177,4 +182,4 @@ The smoke test starts the mock on a temporary local port and verifies avatar,
 parts, model URL, GLB export, VRM export, VRM animation compatibility, usage
 event, audit log, face analysis, AI generation, asset review, incident recovery,
 status page update, legal record, monitoring alert, operations summary, rate
-limit, and webhook delivery endpoints.
+limit, admin dashboard, and webhook delivery endpoints.

@@ -103,6 +103,7 @@ PHASES = [
         "evidence": [
             "docs/commercial-operations.md",
             "schemas/team.schema.json",
+            "schemas/admin-dashboard.schema.json",
             "schemas/usage-event.schema.json",
             "schemas/billing-plan.schema.json",
             "schemas/webhook-endpoint.schema.json",

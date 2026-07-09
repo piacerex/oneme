@@ -80,6 +80,9 @@ The admin dashboard should expose:
 The local API mock exposes `GET /api/ops/summary` for dashboard testing. It
 aggregates usage events, open alerts, open incidents, pending asset reviews,
 webhook deliveries, and active legal records for the demo team/app.
+`GET /api/admin/dashboard` returns the same summary plus teams, members, apps,
+pending asset reviews, open alerts, open incidents, failed webhook deliveries,
+and recent audit logs for admin UI contract testing.
 
 ## Webhooks
 

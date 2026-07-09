@@ -583,6 +583,17 @@ def run_smoke(base_url: str) -> None:
     if ops_summary["webhookDeliveryCount"] <= 0:
         raise AssertionError("ops summary did not include webhook deliveries")
 
+    admin_dashboard = request_json(base_url, "/api/admin/dashboard")
+    assert_equal(
+        admin_dashboard["summary"]["usageEventCount"],
+        ops_summary["usageEventCount"],
+        "admin dashboard summary usage event count",
+    )
+    if not admin_dashboard["apps"]:
+        raise AssertionError("admin dashboard did not include apps")
+    if not admin_dashboard["recentAuditLogs"]:
+        raise AssertionError("admin dashboard did not include recent audit logs")
+
 
 def main() -> int:
     port = free_port()

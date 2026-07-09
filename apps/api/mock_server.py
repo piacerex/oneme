@@ -86,6 +86,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"legalRecords": list(self.legal_records.values())})
         elif path == "/api/ops/summary":
             self.send_ops_summary()
+        elif path == "/api/admin/dashboard":
+            self.send_admin_dashboard()
         elif path == "/api/face_analysis_jobs":
             self.send_json({"faceAnalysisJobs": list(self.face_analysis_jobs.values())})
         elif path == "/api/ai_generation_jobs":
@@ -1031,24 +1033,47 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         return avatar
 
     def send_ops_summary(self) -> None:
+        self.send_json(self.build_ops_summary())
+
+    def build_ops_summary(self) -> dict:
         pending_review_statuses = {"draft", "submitted"}
         open_incident_statuses = {"investigating", "mitigating"}
+        return {
+            "teamId": "team-demo",
+            "appId": "app-demo",
+            "usageEventCount": len(self.usage_events),
+            "openAlertCount": sum(1 for alert in self.monitoring_alerts if alert["status"] != "resolved"),
+            "openIncidentCount": sum(
+                1 for incident in self.incidents.values() if incident["status"] in open_incident_statuses
+            ),
+            "pendingAssetReviewCount": sum(
+                1 for review in self.asset_reviews.values() if review["status"] in pending_review_statuses
+            ),
+            "webhookDeliveryCount": len(self.webhook_deliveries),
+            "activeLegalRecordCount": sum(
+                1 for record in self.legal_records.values() if record["status"] == "active"
+            ),
+            "generatedAt": "2026-07-09T00:00:00.000Z",
+        }
+
+    def send_admin_dashboard(self) -> None:
+        failed_deliveries = [item for item in self.webhook_deliveries if item["status"] == "failed"]
+        pending_reviews = [item for item in self.asset_reviews.values() if item["status"] in {"draft", "submitted"}]
+        open_alerts = [item for item in self.monitoring_alerts if item["status"] != "resolved"]
+        open_incidents = [
+            item for item in self.incidents.values() if item["status"] in {"investigating", "mitigating"}
+        ]
         self.send_json(
             {
-                "teamId": "team-demo",
-                "appId": "app-demo",
-                "usageEventCount": len(self.usage_events),
-                "openAlertCount": sum(1 for alert in self.monitoring_alerts if alert["status"] != "resolved"),
-                "openIncidentCount": sum(
-                    1 for incident in self.incidents.values() if incident["status"] in open_incident_statuses
-                ),
-                "pendingAssetReviewCount": sum(
-                    1 for review in self.asset_reviews.values() if review["status"] in pending_review_statuses
-                ),
-                "webhookDeliveryCount": len(self.webhook_deliveries),
-                "activeLegalRecordCount": sum(
-                    1 for record in self.legal_records.values() if record["status"] == "active"
-                ),
+                "summary": self.build_ops_summary(),
+                "teams": list(self.teams.values()),
+                "members": list(self.team_members.values()),
+                "apps": list(self.apps.values()),
+                "pendingAssetReviews": pending_reviews,
+                "openAlerts": open_alerts,
+                "openIncidents": open_incidents,
+                "failedWebhookDeliveries": failed_deliveries,
+                "recentAuditLogs": self.audit_logs[-10:],
                 "generatedAt": "2026-07-09T00:00:00.000Z",
             }
         )

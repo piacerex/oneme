@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/admin-dashboard.schema.json",
+  "title": "oneme Admin Dashboard",
+  "type": "object",
+  "required": [
+    "summary",
+    "teams",
+    "members",
+    "apps",
+    "pendingAssetReviews",
+    "openAlerts",
+    "openIncidents",
+    "failedWebhookDeliveries",
+    "recentAuditLogs",
+    "generatedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "object"
+    },
+    "teams": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "apps": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "pendingAssetReviews": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "openAlerts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "openIncidents": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "failedWebhookDeliveries": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "recentAuditLogs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
