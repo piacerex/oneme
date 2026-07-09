@@ -82,6 +82,8 @@ Creates a GLB export job through `/api/export_jobs`, or a VRM job through
 ### `client.fetchExportJob(jobId, options)`
 
 Fetches a GLB or VRM export job by id.
+The Web SDK smoke verifies VRM export metadata and humanoid data against the
+local API mock.
 
 ### `client.createWidgetApp(payload)`
 

@@ -94,6 +94,8 @@ def main() -> int:
         model = request_json(base_url, "/api/avatars/demo-avatar/model?format=vrm")
         parts = request_json(base_url, "/api/parts")
         animation = request_json(base_url, "/api/avatars/demo-avatar/animation_compat?format=vrm")
+        vrm_export = request_json(base_url, "/api/vrm_export_jobs", method="POST", payload={"avatarConfig": avatar})
+        fetched_vrm_export = request_json(base_url, f"/api/vrm_export_jobs/{vrm_export['id']}")
         request_json(base_url, "/api/teams", method="POST", payload={"id": "sdk-team", "planId": "plan-pro"})
         request_json(base_url, "/api/apps", method="POST", payload={"id": "sdk-app", "name": "SDK App"})
         request_json(base_url, "/api/apps/sdk-app/api_keys", method="POST", payload={"apiKey": "sdk-key"})
@@ -122,6 +124,10 @@ def main() -> int:
         raise AssertionError("API mock did not return parts for SDK fetchParts")
     if animation["status"] != "contract_ready":
         raise AssertionError("API mock did not return animation compatibility for SDK clients")
+    if fetched_vrm_export["vrm"]["meta"]["commercialUsage"] != "allowed":
+        raise AssertionError("API mock did not return VRM export metadata for SDK clients")
+    if len(fetched_vrm_export["vrm"]["humanoid"]) < 17:
+        raise AssertionError("API mock did not return VRM humanoid data for SDK clients")
     if billing_usage["teamId"] != "sdk-team":
         raise AssertionError("API mock did not return billing usage for SDK clients")
     if revoked_key["revoked"] is not True or "sdk-key" in revoked_key["apiKeys"]:
