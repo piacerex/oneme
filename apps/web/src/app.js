@@ -97,6 +97,8 @@ let currentModelUrl = null;
 let facePreviewImage = null;
 let faceCutout = null;
 let latestAiJob = null;
+let rotationStartedAt = 0;
+let currentTurn = 0;
 
 function renderConfig() {
   configOutput.textContent = JSON.stringify(appState, null, 2);
@@ -191,6 +193,9 @@ function drawAvatar() {
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
 
+  ctx.save();
+  applyAvatarTurnTransform(centerX, 470);
+
   ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
   ctx.beginPath();
   ctx.ellipse(centerX, 850, 160, 34, 0, 0, Math.PI * 2);
@@ -211,7 +216,17 @@ function drawAvatar() {
   drawCapsule(centerX - 46, 304, 92, 82, skin);
   drawFace(centerX, 230, skin);
   drawAccessory(centerX, 230);
+  ctx.restore();
   drawFacePhotoReference();
+}
+
+function applyAvatarTurnTransform(centerX, pivotY) {
+  const scaleX = 0.86 + Math.cos(currentTurn) * 0.14;
+  const skew = Math.sin(currentTurn) * 0.045;
+
+  ctx.translate(centerX, pivotY);
+  ctx.transform(scaleX, 0, skew, 1, 0, 0);
+  ctx.translate(-centerX, -pivotY);
 }
 
 function drawFace(centerX, y, skin) {
@@ -1234,6 +1249,13 @@ function render() {
   renderAiCandidates();
 }
 
+function animateAvatar(timestamp) {
+  if (!rotationStartedAt) rotationStartedAt = timestamp;
+  currentTurn = ((timestamp - rotationStartedAt) / 9000) * Math.PI * 2;
+  drawAvatar();
+  window.requestAnimationFrame(animateAvatar);
+}
+
 const topPalette = {
   "top.basic_01": "#347f7b",
   "top.hoodie_01": "#6f4f8f",
@@ -1274,3 +1296,4 @@ mapFaceTexture.addEventListener("change", () => {
 analyzeFaceButton.addEventListener("click", analyzeFacePhoto);
 clearFaceButton.addEventListener("click", clearFacePhoto);
 render();
+window.requestAnimationFrame(animateAvatar);
