@@ -27,6 +27,35 @@ def check_json_files() -> None:
             json.load(file)
 
 
+def check_schema_examples() -> None:
+    missing_examples = []
+    orphan_examples = []
+    schema_names = {
+        path.name.removesuffix(".schema.json")
+        for path in (ROOT / "schemas").glob("*.schema.json")
+    }
+    example_names = {
+        path.name.removesuffix(".example.json")
+        for path in (ROOT / "schemas").glob("*.example.json")
+    }
+
+    for name in sorted(schema_names):
+        if name not in example_names:
+            missing_examples.append(f"schemas/{name}.example.json")
+
+    for name in sorted(example_names):
+        if name not in schema_names:
+            orphan_examples.append(f"schemas/{name}.example.json")
+
+    if missing_examples or orphan_examples:
+        details = []
+        if missing_examples:
+            details.append(f"missing examples: {', '.join(missing_examples)}")
+        if orphan_examples:
+            details.append(f"orphan examples: {', '.join(orphan_examples)}")
+        raise RuntimeError("; ".join(details))
+
+
 def check_python_files() -> None:
     for relative_path in PYTHON_FILES:
         py_compile.compile(str(ROOT / relative_path), doraise=True)
@@ -43,6 +72,7 @@ def check_roadmap_progress() -> None:
 def main() -> int:
     checks = [
         ("schemas", check_json_files),
+        ("schema examples", check_schema_examples),
         ("python", check_python_files),
         ("roadmap", check_roadmap_progress),
     ]
