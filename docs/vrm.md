@@ -16,6 +16,9 @@ metadata contract and a GLB container that stores:
 This allows the pipeline, API response, and validation flow to stabilize before
 real rigged assets exist.
 
+See `docs/vrm-validation.md` for viewer checks and animation compatibility
+criteria.
+
 ## Humanoid Bones
 
 Minimum bone map:
