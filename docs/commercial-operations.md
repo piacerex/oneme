@@ -129,6 +129,10 @@ Production monitoring tracks:
 - asset validation failures
 
 Alerts should include team id, app id, severity, metric, and a runbook link.
+The local API mock exposes `GET /api/monitoring_alerts` and
+`PATCH /api/monitoring_alerts/:id`; API errors create open `api_error_rate`
+alerts so dashboard and incident flows can be tested before production
+monitoring exists.
 
 ## Incident Recovery
 

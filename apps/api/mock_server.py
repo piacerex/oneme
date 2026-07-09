@@ -38,6 +38,7 @@ class OnemeMockApi(BaseHTTPRequestHandler):
     asset_reviews: dict[str, dict] = {}
     usage_events: list[dict] = []
     audit_logs: list[dict] = []
+    monitoring_alerts: list[dict] = []
     webhook_endpoints: dict[str, dict] = {}
     webhook_deliveries: list[dict] = []
     rate_limits: dict[str, dict] = {}
@@ -61,6 +62,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             self.send_json({"usageEvents": self.usage_events})
         elif path == "/api/audit_logs":
             self.send_json({"auditLogs": self.audit_logs})
+        elif path == "/api/monitoring_alerts":
+            self.send_json({"monitoringAlerts": self.monitoring_alerts})
         elif path == "/api/asset_reviews":
             self.send_json({"assetReviews": list(self.asset_reviews.values())})
         elif path == "/api/webhook_deliveries":
@@ -154,6 +157,9 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             if len(parts) == 3 and parts[:2] == ["api", "asset_reviews"]:
                 self.patch_asset_review(parts[2])
                 return
+            if len(parts) == 3 and parts[:2] == ["api", "monitoring_alerts"]:
+                self.patch_monitoring_alert(parts[2])
+                return
             self.send_error_json(404, "not_found")
             return
 
@@ -193,6 +199,20 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         )
         self.queue_webhooks("asset.reviewed", {"assetReview": review})
         self.send_json(review)
+
+    def patch_monitoring_alert(self, alert_id: str) -> None:
+        alert = next((item for item in self.monitoring_alerts if item["id"] == alert_id), None)
+        if not alert:
+            self.send_error_json(404, "monitoring_alert_not_found")
+            return
+
+        patch = self.read_json_body()
+        for key in ("status", "severity", "runbookUrl", "resolvedAt"):
+            if key in patch:
+                alert[key] = patch[key]
+        if alert.get("status") == "resolved" and "resolvedAt" not in alert:
+            alert["resolvedAt"] = "2026-07-09T00:00:01.000Z"
+        self.send_json(alert)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
@@ -320,6 +340,22 @@ class OnemeMockApi(BaseHTTPRequestHandler):
             }
         )
 
+    def record_alert(self, severity: str, metric: str, value: float = 1, threshold: float = 1) -> None:
+        self.monitoring_alerts.append(
+            {
+                "id": now_id("alert"),
+                "teamId": "team-demo",
+                "appId": "app-demo",
+                "severity": severity,
+                "metric": metric,
+                "status": "open",
+                "value": value,
+                "threshold": threshold,
+                "runbookUrl": "https://example.com/runbooks/oneme-api-mock",
+                "createdAt": "2026-07-09T00:00:00.000Z",
+            }
+        )
+
     def queue_webhooks(self, event: str, payload: dict) -> None:
         for endpoint in self.webhook_endpoints.values():
             if endpoint["status"] != "active" or event not in endpoint["events"]:
@@ -356,6 +392,8 @@ class OnemeMockApi(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def send_error_json(self, status: int, code: str) -> None:
+        if status >= 400:
+            self.record_alert("warning" if status < 500 else "critical", "api_error_rate")
         self.send_json({"error": code}, status=status)
 
     def send_common_headers(self) -> None:
@@ -380,6 +418,7 @@ def main() -> int:
     OnemeMockApi.rate_limits = {}
     OnemeMockApi.asset_reviews = {}
     OnemeMockApi.audit_logs = []
+    OnemeMockApi.monitoring_alerts = []
     OnemeMockApi.webhook_endpoints = {}
     OnemeMockApi.webhook_deliveries = []
     OnemeMockApi.rate_limit_max_requests = args.rate_limit

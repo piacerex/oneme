@@ -166,6 +166,27 @@ def run_smoke(base_url: str) -> None:
         if action not in actions:
             raise AssertionError(f"audit logs did not include {action}")
 
+    assert_equal(
+        request_status(base_url, "/api/avatars/smoke-avatar/model?format=fbx", api_key="alert-smoke"),
+        400,
+        "unsupported model format",
+    )
+    alerts = request_json(base_url, "/api/monitoring_alerts")
+    open_alerts = [alert for alert in alerts.get("monitoringAlerts", []) if alert["status"] == "open"]
+    if not open_alerts:
+        raise AssertionError("monitoring alerts did not include an open alert")
+    assert_equal(open_alerts[0]["metric"], "api_error_rate", "monitoring alert metric")
+
+    resolved_alert = request_json(
+        base_url,
+        f"/api/monitoring_alerts/{open_alerts[0]['id']}",
+        method="PATCH",
+        payload={"status": "resolved"},
+    )
+    assert_equal(resolved_alert["status"], "resolved", "resolved monitoring alert status")
+    if "resolvedAt" not in resolved_alert:
+        raise AssertionError("resolved monitoring alert did not include resolvedAt")
+
 
 def main() -> int:
     port = free_port()
