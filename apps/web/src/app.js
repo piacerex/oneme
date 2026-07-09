@@ -83,6 +83,7 @@ let faceAnalysisCounter = 0;
 let currentPhotoUrl = null;
 let currentModelUrl = null;
 let facePreviewImage = null;
+let faceCutout = null;
 let latestAiJob = null;
 
 function renderConfig() {
@@ -799,6 +800,7 @@ function clearFacePhoto() {
   }
 
   facePreviewImage = null;
+  faceCutout = null;
   facePhoto.value = "";
   faceResult.hidden = true;
   faceResult.textContent = "";
@@ -839,6 +841,7 @@ function analyzeFacePhoto() {
   const image = new Image();
   image.onload = () => {
     facePreviewImage = image;
+    faceCutout = detectFaceCutout(image);
     const recommendation = recommendFromImage(image);
     URL.revokeObjectURL(currentPhotoUrl);
     currentPhotoUrl = null;
@@ -848,6 +851,7 @@ function analyzeFacePhoto() {
     URL.revokeObjectURL(currentPhotoUrl);
     currentPhotoUrl = null;
     facePreviewImage = null;
+    faceCutout = null;
     setFaceStatus("Could not read this image.");
     render();
   };
@@ -958,7 +962,7 @@ function applyFaceRecommendation(recommendation) {
 
   syncForm();
   renderFaceResult(recommendation);
-  setFaceStatus("Recommendation applied with a temporary photo reference in preview.");
+  setFaceStatus("Recommendation applied with a temporary contour cutout in preview.");
   render();
 }
 
@@ -992,33 +996,20 @@ function drawFacePhotoReference() {
   ctx.fillStyle = "rgba(31, 36, 35, 0.72)";
   ctx.font = "700 20px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("photo ref", centerX, frameY - 16);
+  ctx.fillText("face cutout", centerX, frameY - 16);
 
   ctx.beginPath();
-  ctx.arc(centerX, centerY, frameSize / 2, 0, Math.PI * 2);
+  traceFaceContourPath(centerX, centerY, frameSize);
   ctx.clip();
 
-  const imageRatio = facePreviewImage.width / facePreviewImage.height;
-  const frameRatio = 1;
-  let sourceX = 0;
-  let sourceY = 0;
-  let sourceWidth = facePreviewImage.width;
-  let sourceHeight = facePreviewImage.height;
-
-  if (imageRatio > frameRatio) {
-    sourceWidth = facePreviewImage.height * frameRatio;
-    sourceX = (facePreviewImage.width - sourceWidth) / 2;
-  } else {
-    sourceHeight = facePreviewImage.width / frameRatio;
-    sourceY = (facePreviewImage.height - sourceHeight) / 2;
-  }
+  const crop = faceCutout ?? getCenteredSquareCrop(facePreviewImage);
 
   ctx.drawImage(
     facePreviewImage,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
     frameX,
     frameY,
     frameSize,
@@ -1029,8 +1020,84 @@ function drawFacePhotoReference() {
   ctx.strokeStyle = "rgba(34, 124, 114, 0.8)";
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(centerX, centerY, frameSize / 2, 0, Math.PI * 2);
+  traceFaceContourPath(centerX, centerY, frameSize);
   ctx.stroke();
+}
+
+function traceFaceContourPath(centerX, centerY, size) {
+  const top = centerY - size * 0.48;
+  const left = centerX - size * 0.39;
+  const right = centerX + size * 0.39;
+  const chin = centerY + size * 0.48;
+
+  ctx.moveTo(centerX, top);
+  ctx.bezierCurveTo(right, top + size * 0.05, right + size * 0.12, centerY + size * 0.08, right - size * 0.02, centerY + size * 0.31);
+  ctx.bezierCurveTo(centerX + size * 0.24, chin, centerX - size * 0.24, chin, left + size * 0.02, centerY + size * 0.31);
+  ctx.bezierCurveTo(left - size * 0.12, centerY + size * 0.08, left, top + size * 0.05, centerX, top);
+}
+
+function getCenteredSquareCrop(image) {
+  const size = Math.min(image.width, image.height);
+  return {
+    x: (image.width - size) / 2,
+    y: (image.height - size) / 2,
+    width: size,
+    height: size
+  };
+}
+
+function detectFaceCutout(image) {
+  const sampleCanvas = document.createElement("canvas");
+  const sampleWidth = 120;
+  const sampleHeight = 120;
+  sampleCanvas.width = sampleWidth;
+  sampleCanvas.height = sampleHeight;
+
+  const sampleContext = sampleCanvas.getContext("2d", { willReadFrequently: true });
+  sampleContext.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+  const pixels = sampleContext.getImageData(0, 0, sampleWidth, sampleHeight).data;
+
+  let minX = sampleWidth;
+  let minY = sampleHeight;
+  let maxX = 0;
+  let maxY = 0;
+  let count = 0;
+
+  for (let y = Math.round(sampleHeight * 0.18); y < Math.round(sampleHeight * 0.86); y += 1) {
+    for (let x = Math.round(sampleWidth * 0.18); x < Math.round(sampleWidth * 0.82); x += 1) {
+      const index = (y * sampleWidth + x) * 4;
+      const red = pixels[index];
+      const green = pixels[index + 1];
+      const blue = pixels[index + 2];
+      const brightness = (red + green + blue) / 3;
+      const warmth = red - blue;
+
+      if (brightness > 45 && brightness < 235 && warmth > -18 && red > green * 0.82) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        count += 1;
+      }
+    }
+  }
+
+  if (count < 80) return getCenteredSquareCrop(image);
+
+  const scaleX = image.width / sampleWidth;
+  const scaleY = image.height / sampleHeight;
+  const centerX = ((minX + maxX) / 2) * scaleX;
+  const centerY = ((minY + maxY) / 2) * scaleY;
+  const width = Math.max((maxX - minX) * scaleX * 1.55, image.width * 0.24);
+  const height = Math.max((maxY - minY) * scaleY * 1.55, image.height * 0.24);
+  const size = Math.min(Math.max(width, height), Math.min(image.width, image.height));
+
+  return {
+    x: Math.max(0, Math.min(image.width - size, centerX - size / 2)),
+    y: Math.max(0, Math.min(image.height - size, centerY - size / 2)),
+    width: size,
+    height: size
+  };
 }
 
 function syncForm() {
