@@ -49,10 +49,13 @@ def assert_widget_surface() -> None:
     expected = [
         'params.get("api")',
         "loadApiOptions",
+        "loadResumeState",
         "createRemoteAvatar",
         "fetchJson",
         '"/api/parts"',
         '"/api/avatars"',
+        '"oneme.widget.resumed"',
+        "`oneme.widget.${resumeAvatarId}`",
     ]
     missing = [token for token in expected if token not in source]
     if missing:

@@ -65,15 +65,45 @@ if (!app) {
 async function boot() {
   card.dataset.theme = requestedTheme || app.theme;
   appName.textContent = app.name;
+  loadResumeState();
   await loadApiOptions();
   populate("hair");
   populate("top");
   populate("accessory");
+  form.elements.skin.value = state.colors.skin;
   form.addEventListener("input", updateState);
   saveButton.addEventListener("click", saveAvatar);
   statusText.textContent = "Ready";
   render();
   post("oneme.widget.ready", { appId: app.id });
+}
+
+function loadResumeState() {
+  if (!resumeAvatarId) return;
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(`oneme.widget.${resumeAvatarId}`) ?? "null");
+    if (!saved || saved.avatarId !== resumeAvatarId) return;
+    state = {
+      ...state,
+      ...saved,
+      parts: {
+        ...state.parts,
+        ...saved.parts
+      },
+      colors: {
+        ...state.colors,
+        ...saved.colors
+      }
+    };
+    statusText.textContent = `Resumed ${resumeAvatarId}`;
+    post("oneme.widget.resumed", { appId: app.id, avatarId: resumeAvatarId, config: state });
+  } catch (error) {
+    post("oneme.widget.warning", {
+      appId: app.id,
+      warning: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 async function loadApiOptions() {
@@ -124,7 +154,8 @@ function populate(name) {
     select.append(option);
   }
 
-  state.parts[name] = filtered[0]?.[0] ?? state.parts[name];
+  const selected = filtered.find(([id]) => id === state.parts[name]);
+  state.parts[name] = selected?.[0] ?? filtered[0]?.[0] ?? state.parts[name];
   select.value = state.parts[name];
 }
 

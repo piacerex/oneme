@@ -21,7 +21,7 @@ that phase to the smoke or validation command exercised by `tools/check_all.py`.
 | Phase 2: face photo proposal | `mvp_done` | `apps/web/src/app.js`, `schemas/avatar-config.schema.json`, `schemas/face-analysis-job.schema.json` |
 | Phase 3: AI generation MVP | `mvp_done` | `docs/ai-generation-mvp.md`, `schemas/ai-generation-job.schema.json`, `schemas/recommendation-feedback.schema.json` |
 | Phase 4: GLB export | `mvp_done` | `docs/export-api.md`, `docs/export-pipeline.md`, `tools/gltf/validate_glb.py`, `tools/blender/compose_avatar.py` |
-| Phase 5: widget | `mvp_done` | `docs/widget-contract.md`, `apps/web/widget.html`, `apps/web/embed-example.html`, `schemas/widget-app.schema.json` |
+| Phase 5: widget | `mvp_done` | `docs/widget-contract.md`, `apps/web/widget.html`, `apps/web/embed-example.html`, `apps/web/src/widget.js`, `schemas/widget-app.schema.json` |
 | Phase 6: SDKs | `mvp_done` | `docs/web-sdk.md`, `packages/sdk-web/package.json`, `docs/unity-sdk.md`, `packages/sdk-unity/package.json` |
 | Phase 7: VRM | `contract_done` | `docs/vrm.md`, `docs/vrm-validation.md`, `schemas/vrm-export-job.schema.json`, `tools/gltf/create_sample_vrm.py`, `tools/gltf/validate_vrm.py` |
 | Phase 8: commercial operations | `contract_done` | `docs/commercial-operations.md`, team, admin dashboard, usage, billing usage, billing, webhook, audit, asset review, asset validation, monitoring, incident, status page update, legal, and ops summary schemas |

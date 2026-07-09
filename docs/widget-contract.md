@@ -14,6 +14,10 @@ Optional parameters:
 - `resume`: avatar id to resume from local storage
 - `api`: optional API base URL for loading parts and saving avatars through the API mock
 
+When `resume` is present, the static MVP reads `localStorage` from
+`oneme.widget.<avatarId>`, restores saved parts and colors, and then reapplies
+the app's allowed-part filter.
+
 ## App Configuration
 
 The widget resolves the app configuration from `apps/web/src/widget-apps.js` in the MVP.
@@ -63,6 +67,17 @@ The widget sends messages to `window.parent`.
 ```json
 {
   "type": "oneme.avatar.saved",
+  "appId": "demo-app",
+  "avatarId": "local-123",
+  "config": {}
+}
+```
+
+### Avatar Resumed
+
+```json
+{
+  "type": "oneme.widget.resumed",
   "appId": "demo-app",
   "avatarId": "local-123",
   "config": {}

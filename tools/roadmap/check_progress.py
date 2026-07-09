@@ -70,6 +70,7 @@ PHASES = [
             "docs/widget-contract.md",
             "apps/web/widget.html",
             "apps/web/embed-example.html",
+            "apps/web/src/widget.js",
             "schemas/widget-app.schema.json",
         ],
         "checks": ["widget_api_smoke"],
