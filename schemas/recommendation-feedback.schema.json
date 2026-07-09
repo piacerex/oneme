@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oneme.local/schemas/recommendation-feedback.schema.json",
+  "title": "oneme Recommendation Feedback",
+  "type": "object",
+  "required": ["id", "jobId", "candidateId", "action", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "candidateId": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["applied", "rejected", "saved_after_edit"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

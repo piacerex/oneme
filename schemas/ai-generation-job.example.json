@@ -1,0 +1,55 @@
+{
+  "id": "ai-local-1",
+  "status": "succeeded",
+  "input": {
+    "avatarConfig": {
+      "version": "0.1.0",
+      "avatarId": "demo-avatar",
+      "style": "semi_real_lightweight",
+      "parts": {
+        "baseBody": "base_body.default",
+        "face": "face.soft_01",
+        "hair": "hair.short_01",
+        "top": "top.basic_01",
+        "bottom": "bottom.basic_01",
+        "shoes": "shoes.basic_01",
+        "accessory": "accessory.none"
+      },
+      "colors": {
+        "skin": "#c98f6f",
+        "hair": "#2f2118"
+      },
+      "source": {
+        "kind": "manual"
+      }
+    },
+    "safeHints": {
+      "skinColor": "#c98f6f",
+      "hairColor": "#2f2118",
+      "facePreset": "face.soft_01",
+      "hairPreset": "hair.short_01"
+    }
+  },
+  "candidates": [
+    {
+      "id": "candidate-clean",
+      "stylePreset": "clean",
+      "configPatch": {
+        "parts": {
+          "top": "top.basic_01",
+          "accessory": "accessory.none"
+        }
+      },
+      "textureCandidate": {
+        "palette": ["#c98f6f", "#2f2118", "#347f7b"],
+        "notes": "Clean everyday palette."
+      },
+      "safety": {
+        "status": "approved",
+        "reasons": ["uses safe color and part hints only"]
+      }
+    }
+  ],
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "finishedAt": "2026-07-09T00:00:01.000Z"
+}
