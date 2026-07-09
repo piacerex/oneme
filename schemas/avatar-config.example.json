@@ -15,6 +15,13 @@
     "skin": "#c98f6f",
     "hair": "#2f2118"
   },
+  "faceMorph": {
+    "widthScale": 1,
+    "heightScale": 1,
+    "depth": 0.5,
+    "eyeOffsetY": 0,
+    "mouthOffsetY": 0
+  },
   "source": {
     "kind": "manual"
   }

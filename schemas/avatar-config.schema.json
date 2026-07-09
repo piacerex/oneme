@@ -41,6 +41,18 @@
         "hair": { "$ref": "#/$defs/hexColor" }
       }
     },
+    "faceMorph": {
+      "type": "object",
+      "required": ["widthScale", "heightScale", "depth", "eyeOffsetY", "mouthOffsetY"],
+      "additionalProperties": false,
+      "properties": {
+        "widthScale": { "type": "number" },
+        "heightScale": { "type": "number" },
+        "depth": { "type": "number" },
+        "eyeOffsetY": { "type": "number" },
+        "mouthOffsetY": { "type": "number" }
+      }
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,

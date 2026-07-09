@@ -15,6 +15,13 @@ const appState = {
     skin: "#c98f6f",
     hair: "#2f2118"
   },
+  faceMorph: {
+    widthScale: 1,
+    heightScale: 1,
+    depth: 0.5,
+    eyeOffsetY: 0,
+    mouthOffsetY: 0
+  },
   source: {
     kind: "manual"
   }
@@ -204,26 +211,42 @@ function drawAvatar() {
 
 function drawFace(centerX, y, skin) {
   const faceShape = appState.parts.face;
-  const width = faceShape.includes("round") ? 150 : faceShape.includes("sharp") ? 126 : 140;
-  const height = faceShape.includes("sharp") ? 170 : 154;
+  const morph = appState.faceMorph ?? getDefaultFaceMorph();
+  const width = (faceShape.includes("round") ? 150 : faceShape.includes("sharp") ? 126 : 140) * morph.widthScale;
+  const height = (faceShape.includes("sharp") ? 170 : 154) * morph.heightScale;
 
   ctx.fillStyle = skin;
   ctx.beginPath();
   ctx.ellipse(centerX, y, width / 2, height / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  const highlight = ctx.createRadialGradient(
+    centerX - width * 0.18,
+    y - height * 0.2,
+    8,
+    centerX,
+    y,
+    width * 0.54
+  );
+  highlight.addColorStop(0, `rgba(255, 255, 255, ${0.16 + morph.depth * 0.18})`);
+  highlight.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = highlight;
+  ctx.beginPath();
+  ctx.ellipse(centerX, y, width / 2, height / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = "#25211d";
   ctx.beginPath();
-  ctx.ellipse(centerX - 28, y - 8, 7, 10, 0, 0, Math.PI * 2);
-  ctx.ellipse(centerX + 28, y - 8, 7, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(centerX - width * 0.2, y - 8 + morph.eyeOffsetY, 7, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(centerX + width * 0.2, y - 8 + morph.eyeOffsetY, 7, 10, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = "rgba(37, 33, 29, 0.7)";
   ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(centerX - 22, y + 44);
-  ctx.quadraticCurveTo(centerX, y + 58, centerX + 22, y + 44);
+  ctx.moveTo(centerX - width * 0.16, y + 44 + morph.mouthOffsetY);
+  ctx.quadraticCurveTo(centerX, y + 58 + morph.mouthOffsetY, centerX + width * 0.16, y + 44 + morph.mouthOffsetY);
   ctx.stroke();
 }
 
@@ -595,6 +618,7 @@ function loadLatestAvatar() {
   appState.avatarId = latest.avatarId;
   appState.parts = { ...appState.parts, ...latest.parts };
   appState.colors = { ...appState.colors, ...latest.colors };
+  appState.faceMorph = { ...getDefaultFaceMorph(), ...latest.faceMorph };
   appState.source = latest.source ?? { kind: "manual" };
 
   syncForm();
@@ -843,6 +867,7 @@ function analyzeFacePhoto() {
     facePreviewImage = image;
     faceCutout = detectFaceCutout(image);
     const recommendation = recommendFromImage(image);
+    recommendation.faceMorph = estimateFaceMorph(image, faceCutout);
     URL.revokeObjectURL(currentPhotoUrl);
     currentPhotoUrl = null;
     applyFaceRecommendation(recommendation);
@@ -955,6 +980,7 @@ function applyFaceRecommendation(recommendation) {
   appState.parts.hair = recommendation.hairPreset;
   appState.colors.skin = recommendation.skinColor;
   appState.colors.hair = recommendation.hairColor;
+  appState.faceMorph = recommendation.faceMorph ?? appState.faceMorph ?? getDefaultFaceMorph();
   appState.source = {
     kind: "face_recommendation",
     faceAnalysisJobId: recommendation.jobId
@@ -974,7 +1000,44 @@ function renderFaceResult(recommendation) {
     <span>Hair: ${recommendation.hairColor}</span>
     <span>Face: ${recommendation.facePreset}</span>
     <span>Hair part: ${recommendation.hairPreset}</span>
+    <span>Morph: ${formatFaceMorph(recommendation.faceMorph)}</span>
   `;
+}
+
+function getDefaultFaceMorph() {
+  return {
+    widthScale: 1,
+    heightScale: 1,
+    depth: 0.5,
+    eyeOffsetY: 0,
+    mouthOffsetY: 0
+  };
+}
+
+function estimateFaceMorph(image, crop) {
+  const faceRatio = crop.width / crop.height;
+  const imageCenterX = image.width / 2;
+  const imageCenterY = image.height / 2;
+  const cropCenterX = crop.x + crop.width / 2;
+  const cropCenterY = crop.y + crop.height / 2;
+  const horizontalBias = (cropCenterX - imageCenterX) / image.width;
+  const verticalBias = (cropCenterY - imageCenterY) / image.height;
+
+  return {
+    widthScale: clampNumber(0.9 + faceRatio * 0.18, 0.86, 1.16),
+    heightScale: clampNumber(1.1 - faceRatio * 0.14, 0.9, 1.18),
+    depth: clampNumber(0.5 + Math.abs(horizontalBias) * 1.8, 0.35, 0.85),
+    eyeOffsetY: Math.round(clampNumber(verticalBias * 42, -10, 10)),
+    mouthOffsetY: Math.round(clampNumber((0.08 - verticalBias) * 36, -8, 12))
+  };
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatFaceMorph(morph = getDefaultFaceMorph()) {
+  return `w${morph.widthScale.toFixed(2)} h${morph.heightScale.toFixed(2)} d${morph.depth.toFixed(2)}`;
 }
 
 function drawFacePhotoReference() {
