@@ -37,6 +37,8 @@ APIは開発時には匿名互換で動作します。本番では`ONEME_AUTH_RE
 
 `GET /api/usage`はadmin以上のチーム利用量を日次カウンタから返します。APIはAPIキーまたはIP単位で固定窓レート制限を行い、`ONEME_RATE_LIMIT_PER_MINUTE`で上限を変更できます。`x-ratelimit-*`と超過時の`retry-after`を返します。
 
+`GET /api/billing`はチームのプラン、契約期間、期間内利用量、残り上限を返します。`PATCH /api/billing/subscription`で管理者が契約状態を更新でき、ownerは`POST /api/billing/plans`でprovider-neutralなプラン定義を追加できます。決済代行会社、請求書、カード情報はまだ接続していません。
+
 admin以上は`/api/webhooks`でWebhookを登録できます。秘密値は暗号化保存され、作成時のレスポンスで一度だけ返されます。`/api/webhooks/:id/test`は外部HTTP送信前の署名済みqueued deliveryを作成し、`deliver=true`または再試行APIで非同期workerへ渡します。workerは再起動時にDBのqueued deliveryを回収します。`/api/audit-logs`と`/api/audit-logs/retention`で監査記録の参照・保持期限削除を行います。
 
 `GET /api/assets/integrity`はadmin以上がアセットの参照元とライセンス契約を検査する管理APIです。現在のデモアセットは`procedural://`契約として検査され、実ファイルの審査・破損検知は別の運用工程です。
