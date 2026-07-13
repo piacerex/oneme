@@ -2,6 +2,7 @@ defmodule OnemeWeb.BuilderLive do
   use OnemeWeb, :live_view
 
   alias Oneme.Avatars
+  alias Oneme.Generations
   alias Oneme.Operations
 
   @default_config %{
@@ -46,6 +47,8 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:avatar_name, "My oneme avatar")
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
      |> assign(:face_export_consent, false)
+     |> assign(:generation_job, nil)
+     |> assign(:candidates, [])
      |> assign(:public_url, nil)
      |> assign(:widget_mode, Map.get(params, "widget") in ["1", "true"])
      |> assign(:parent_origin, valid_parent_origin(Map.get(params, "parent_origin")))
@@ -96,6 +99,71 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:config, next_config)
      |> assign(:status, "顔写真のマッピングをクリアしました。")
      |> push_event("face_mapping_cleared", %{})}
+  end
+
+  def handle_event("generate_candidates", _params, socket) do
+    case Generations.create_candidate_job(socket.assigns.config) do
+      {:ok, job} ->
+        {:noreply,
+         socket
+         |> assign(:generation_job, job)
+         |> assign(:candidates, Generations.candidate_items(job))
+         |> assign(:status, "3つの候補を生成しました。")}
+
+      {:error, _reason} ->
+        {:noreply, assign(socket, :status, "候補を生成できませんでした。")}
+    end
+  end
+
+  def handle_event("apply_candidate", %{"candidate_id" => candidate_id}, socket) do
+    case Enum.find(socket.assigns.candidates, &(&1["id"] == candidate_id)) do
+      nil ->
+        {:noreply, assign(socket, :status, "候補が見つかりませんでした。")}
+
+      candidate ->
+        generation_job =
+          case socket.assigns.generation_job do
+            nil ->
+              nil
+
+            job ->
+              case Generations.feedback(job, candidate_id, "adopt") do
+                {:ok, updated_job} -> updated_job
+                _error -> job
+              end
+          end
+
+        {:noreply,
+         socket
+         |> assign(:config, candidate["config"])
+         |> assign(:generation_job, generation_job)
+         |> assign(
+           :candidates,
+           update_candidate_status(socket.assigns.candidates, candidate_id, "adopted")
+         )
+         |> assign(:face_export_consent, face_export_consent?(candidate["config"]))
+         |> assign(:status, "候補を適用しました。")}
+    end
+  end
+
+  def handle_event("reject_candidate", %{"candidate_id" => candidate_id}, socket) do
+    case socket.assigns.generation_job do
+      nil ->
+        {:noreply, assign(socket, :status, "先に候補を生成してください。")}
+
+      job ->
+        case Generations.feedback(job, candidate_id, "reject") do
+          {:ok, updated_job} ->
+            {:noreply,
+             socket
+             |> assign(:generation_job, updated_job)
+             |> assign(:candidates, Generations.candidate_items(updated_job))
+             |> assign(:status, "候補を却下しました。")}
+
+          _error ->
+            {:noreply, assign(socket, :status, "候補を却下できませんでした。")}
+        end
+    end
   end
 
   def handle_event("update_name", %{"avatar_name" => name}, socket) do
@@ -186,6 +254,14 @@ defmodule OnemeWeb.BuilderLive do
       |> Map.get("exportConsent", false)
 
     value in [true, "true", "on"]
+  end
+
+  defp update_candidate_status(candidates, candidate_id, status) do
+    Enum.map(candidates, fn candidate ->
+      if candidate["id"] == candidate_id,
+        do: Map.put(candidate, "status", status),
+        else: candidate
+    end)
   end
 
   defp valid_parent_origin(nil), do: nil

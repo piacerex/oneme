@@ -10,6 +10,7 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert has_element?(view, "#avatar-preview[data-config]")
     assert has_element?(view, "#export-glb")
     assert has_element?(view, "#export-vrm")
+    assert has_element?(view, "#generate-candidates")
     assert has_element?(view, "button", "公開URLを発行")
 
     html =
@@ -60,5 +61,21 @@ defmodule OnemeWeb.BuilderLiveTest do
 
     html = render_click(view, "clear_face")
     assert html =~ "顔写真のマッピングをクリアしました。"
+  end
+
+  test "generates and applies a recommendation candidate", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    html = render_click(view, "generate_candidates")
+    assert html =~ "Soft Studio"
+    assert html =~ "Studio Edge"
+    assert html =~ "Expressive Color"
+
+    html = render_click(view, "apply_candidate", %{"candidate_id" => "candidate-studio"})
+    assert html =~ "候補を適用しました。"
+    assert html =~ "face.sharp_01"
+
+    html = render_click(view, "reject_candidate", %{"candidate_id" => "candidate-expressive"})
+    assert html =~ "候補を却下しました。"
   end
 end

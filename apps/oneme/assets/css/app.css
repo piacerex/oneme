@@ -75,6 +75,20 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .export-section .button { width: 100%; }
 .export-section .button-quiet { background: #f8fbf9; }
 .export-status { min-height: 17px; margin: 0; color: #7d8b87; font-size: 10px; line-height: 1.45; }
+.candidate-section { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; border-top: 1px solid #e5ece8; }
+.candidate-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.candidate-heading h3 { margin: 0; color: #243330; font-size: 15px; }
+.candidate-heading .button { flex: 0 0 auto; padding: 9px 11px; }
+.candidate-list { display: grid; gap: 8px; }
+.candidate-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; border: 1px solid #dce5e1; border-radius: 6px; background: #fbfcfa; }
+.candidate-copy { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.candidate-copy strong { color: #30423e; font-size: 11px; }
+.candidate-copy span { color: #7d8b87; font-size: 10px; line-height: 1.4; }
+.candidate-actions { display: flex; flex: 0 0 auto; gap: 5px; }
+.candidate-button { padding: 6px 8px; border: 1px solid #c9d9d4; border-radius: 4px; background: #fff; color: #4d6b66; font-size: 10px; font-weight: 800; }
+.candidate-apply { border-color: #4f8c88; color: #347f7b; }
+.candidate-reject { color: #8a6b65; }
+.generation-status { min-height: 17px; margin: 0; color: #7d8b87; font-size: 10px; line-height: 1.45; }
 @media (max-width: 900px) {
   .builder-shell { padding: 20px 16px 28px; }
   .builder-topbar { align-items: flex-start; flex-direction: column; gap: 12px; }
@@ -90,4 +104,9 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
   .upload-box small { width: 100%; margin-left: 34px; }
   .action-row { flex-direction: column-reverse; }
   .publish-row { align-items: flex-start; flex-direction: column; }
+  .candidate-heading { align-items: flex-start; flex-direction: column; }
+  .candidate-heading .button { width: 100%; }
+  .candidate-item { align-items: flex-start; flex-direction: column; }
+  .candidate-actions { width: 100%; }
+  .candidate-button { flex: 1; }
 }

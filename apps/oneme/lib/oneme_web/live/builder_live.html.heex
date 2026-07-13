@@ -112,6 +112,52 @@
         </fieldset>
       </form>
 
+      <section class="candidate-section" aria-label="候補生成">
+        <div class="candidate-heading">
+          <div>
+            <p class="section-kicker">RECOMMENDATIONS</p>
+            <h3>候補を試す</h3>
+          </div>
+          <button
+            id="generate-candidates"
+            type="button"
+            class="button button-quiet"
+            phx-click="generate_candidates"
+          >
+            3候補を生成
+          </button>
+        </div>
+        <div :if={@candidates != []} id="candidate-list" class="candidate-list">
+          <article :for={candidate <- @candidates} class="candidate-item">
+            <div class="candidate-copy">
+              <strong>{candidate["label"]}</strong>
+              <span>{candidate["reason"]}</span>
+            </div>
+            <div class="candidate-actions">
+              <button
+                type="button"
+                class="candidate-button candidate-apply"
+                phx-click="apply_candidate"
+                phx-value-candidate_id={candidate["id"]}
+              >
+                適用
+              </button>
+              <button
+                type="button"
+                class="candidate-button candidate-reject"
+                phx-click="reject_candidate"
+                phx-value-candidate_id={candidate["id"]}
+              >
+                却下
+              </button>
+            </div>
+          </article>
+        </div>
+        <p id="generation-status" class="generation-status" role="status">
+          顔写真なしでも現在の設定から候補を作成できます。
+        </p>
+      </section>
+
       <div class="action-row">
         <button type="button" class="button button-quiet" phx-click="load_latest">最新を読み込む</button>
         <button type="button" class="button button-primary" phx-click="save_avatar">
