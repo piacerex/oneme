@@ -212,6 +212,7 @@ function handleFacePhoto(input, hook) {
     return
   }
 
+  if (status) status.textContent = "顔写真を解析しています..."
   const objectUrl = URL.createObjectURL(file)
   const image = new Image()
   image.onload = async () => {
@@ -311,7 +312,7 @@ async function detectFaceGeometry(image) {
 
 async function detectFaceLandmarks(image) {
   try {
-    const landmarker = await window.onemeFaceLandmarkerReady
+    const landmarker = await waitForFaceLandmarker()
     const result = landmarker?.detect(image)
     const points = result?.faceLandmarks?.[0]
     if (!points || points.length < 468) return null
@@ -321,6 +322,23 @@ async function detectFaceLandmarks(image) {
   } catch (error) {
     console.debug("oneme: face landmark detection unavailable", error)
     return null
+  }
+}
+
+async function waitForFaceLandmarker(timeoutMs = 2500) {
+  const ready = window.onemeFaceLandmarkerReady
+  if (!ready) return null
+
+  let timeoutId
+  try {
+    return await Promise.race([
+      ready,
+      new Promise(resolve => {
+        timeoutId = window.setTimeout(() => resolve(null), timeoutMs)
+      })
+    ])
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 }
 
