@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>oneme SDK Example</title>
+  </head>
+  <body>
+    <pre id="output">公開アバターIDをURLの ?avatar_id= に指定してください。</pre>
+    <script type="module">
+      const output = document.querySelector("#output")
+      const avatarId = new URLSearchParams(location.search).get("avatar_id")
+      if (avatarId) {
+        const response = await fetch(`/api/avatars/${encodeURIComponent(avatarId)}/public`)
+        output.textContent = JSON.stringify(await response.json(), null, 2)
+      }
+    </script>
+  </body>
+</html>

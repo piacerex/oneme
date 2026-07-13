@@ -1,16 +1,9 @@
 {
   "name": "@oneme/sdk-web",
   "version": "0.1.0",
-  "description": "Browser SDK for oneme avatar previews and MVP avatar data.",
+  "description": "Small browser client for the oneme avatar API",
   "type": "module",
-  "main": "./src/oneme-web-sdk.js",
   "exports": {
-    ".": "./src/oneme-web-sdk.js"
-  },
-  "files": [
-    "src"
-  ],
-  "peerDependencies": {
-    "three": ">=0.160.0"
+    ".": "./src/oneme-client.js"
   }
 }

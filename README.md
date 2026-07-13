@@ -29,6 +29,10 @@ ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 
 `http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。
 
+## Web SDK
+
+`packages/sdk-web` に公開アバター、設定JSON、エクスポートジョブを取得する小さなクライアントを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。
+
 ## 検証
 
 ```bash
