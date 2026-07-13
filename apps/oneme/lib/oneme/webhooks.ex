@@ -33,6 +33,7 @@ defmodule Oneme.Webhooks do
   end
 
   def get_endpoint(id), do: Repo.get(WebhookEndpoint, id)
+  def get_delivery(id), do: Repo.get(WebhookDelivery, id)
 
   def create_test_delivery(%WebhookEndpoint{active: true} = endpoint, event_type, payload)
       when is_binary(event_type) and is_map(payload) do
@@ -57,6 +58,25 @@ defmodule Oneme.Webhooks do
   end
 
   def create_test_delivery(_endpoint, _event_type, _payload), do: {:error, :inactive_endpoint}
+
+  def deliver(id) do
+    case Repo.get(WebhookDelivery, id) do
+      nil ->
+        {:error, :not_found}
+
+      delivery ->
+        endpoint = Repo.get!(WebhookEndpoint, delivery.webhook_endpoint_id)
+        now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+        {:ok, delivery} =
+          delivery
+          |> WebhookDelivery.changeset(%{status: "delivering", attempts: delivery.attempts + 1})
+          |> Repo.update()
+
+        result = send_request(endpoint, delivery)
+        finish_delivery(delivery, endpoint, result, now)
+    end
+  end
 
   def list_deliveries(endpoint_id) do
     WebhookDelivery
@@ -98,6 +118,67 @@ defmodule Oneme.Webhooks do
 
   defp sign(secret, body),
     do: "sha256=" <> (:crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower))
+
+  defp send_request(endpoint, delivery) do
+    Application.ensure_all_started(:inets)
+    Application.ensure_all_started(:ssl)
+    body = Jason.encode!(delivery.payload)
+    url = String.to_charlist(endpoint.url)
+
+    headers = [
+      {~c"content-type", ~c"application/json"},
+      {~c"x-oneme-event", String.to_charlist(delivery.event_type)},
+      {~c"x-oneme-event-id", String.to_charlist(delivery.event_id)},
+      {~c"x-oneme-signature", String.to_charlist(delivery.signature)}
+    ]
+
+    case :httpc.request(
+           :post,
+           {url, headers, ~c"application/json", body},
+           [timeout: 5_000, connect_timeout: 2_000],
+           body_format: :binary
+         ) do
+      {:ok, {{_version, status, _reason}, _response_headers, _response_body}}
+      when status in 200..299 ->
+        {:ok, status}
+
+      {:ok, {{_version, status, _reason}, _response_headers, _response_body}} ->
+        {:error, "webhook responded with HTTP #{status}", status}
+
+      {:error, reason} ->
+        {:error, "webhook request failed: #{inspect(reason)}", nil}
+    end
+  rescue
+    error -> {:error, "webhook request failed: #{Exception.message(error)}", nil}
+  end
+
+  defp finish_delivery(delivery, endpoint, {:ok, status}, now) do
+    {:ok, updated} =
+      delivery
+      |> WebhookDelivery.changeset(%{
+        status: "succeeded",
+        response_status: status,
+        delivered_at: now
+      })
+      |> Repo.update()
+
+    endpoint
+    |> WebhookEndpoint.changeset(%{last_delivered_at: now})
+    |> Repo.update()
+
+    {:ok, updated}
+  end
+
+  defp finish_delivery(delivery, _endpoint, {:error, message, status}, now) do
+    delivery
+    |> WebhookDelivery.changeset(%{
+      status: "failed",
+      response_status: status,
+      error_message: String.slice(message, 0, 500),
+      delivered_at: now
+    })
+    |> Repo.update()
+  end
 
   defp encrypt_secret(secret) do
     Plug.Crypto.encrypt(key_base(), "oneme-webhook-secret", secret, max_age: :infinity)

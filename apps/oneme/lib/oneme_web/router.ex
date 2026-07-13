@@ -37,6 +37,7 @@ defmodule OnemeWeb.Router do
     get "/webhooks", WebhookController, :index
     post "/webhooks", WebhookController, :create
     post "/webhooks/:id/test", WebhookController, :test_delivery
+    post "/webhook-deliveries/:id/retry", WebhookController, :retry_delivery
     get "/audit-logs", AuditController, :index
     post "/audit-logs/retention", AuditController, :prune
     get "/parts", AssetsController, :index

@@ -24,4 +24,17 @@ defmodule Oneme.WebhooksTest do
     assert String.starts_with?(delivery.signature, "sha256=")
     refute delivery.signature =~ raw_secret
   end
+
+  test "marks an unreachable explicit delivery as failed and increments attempts" do
+    assert {:ok, team} = Access.create_team(%{name: "Delivery team", slug: "delivery-team"})
+
+    assert {:ok, endpoint, _raw_secret} =
+             Webhooks.create_endpoint(team.id, %{"url" => "http://127.0.0.1:1"})
+
+    assert {:ok, delivery} = Webhooks.create_test_delivery(endpoint, "avatar.exported", %{})
+    assert {:ok, failed} = Webhooks.deliver(delivery.id)
+    assert failed.status == "failed"
+    assert failed.attempts == 1
+    assert failed.error_message
+  end
 end
