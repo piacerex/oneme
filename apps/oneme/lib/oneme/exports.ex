@@ -192,13 +192,11 @@ defmodule Oneme.Exports do
   end
 
   defp convert(workspace, "fbx") do
-    glb_path = Path.join(workspace, "avatar-source.glb")
     fbx_path = Path.join(workspace, "avatar.fbx")
 
     with :ok <- ensure_fbx_backend_available(),
-         :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
-         :ok <- validate_glb(glb_path),
-         :ok <- convert_to_fbx(workspace, fbx_path, glb_path) do
+         :ok <- convert_fbx_source(workspace, fbx_path),
+         :ok <- validate_fbx(fbx_path) do
       {:ok, fbx_path}
     end
   end
@@ -242,6 +240,25 @@ defmodule Oneme.Exports do
       "assimp" -> convert_with_assimp(workspace, output_path, "fbx", source_path)
       "blender" -> convert_with_blender(output_path, source_path)
       backend -> {:error, "unsupported_fbx_backend", "Unsupported FBX backend: #{backend}"}
+    end
+  end
+
+  defp convert_fbx_source(workspace, output_path) do
+    case System.get_env("ONEME_FBX_BACKEND", "assimp") |> String.downcase() do
+      "assimp" ->
+        glb_path = Path.join(workspace, "avatar-source.glb")
+
+        with :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
+             :ok <- validate_glb(glb_path),
+             :ok <- convert_to_fbx(workspace, output_path, glb_path) do
+          :ok
+        end
+
+      "blender" ->
+        convert_with_blender(output_path, Path.join(workspace, "avatar.obj"))
+
+      backend ->
+        {:error, "unsupported_fbx_backend", "Unsupported FBX backend: #{backend}"}
     end
   end
 
@@ -313,6 +330,22 @@ defmodule Oneme.Exports do
       {output, status} ->
         {:error, "glb_validation_failed",
          "GLB validation failed (#{status}): #{String.slice(output, 0, 500)}"}
+    end
+  rescue
+    error in ErlangError -> {:error, "python_unavailable", Exception.message(error)}
+  end
+
+  defp validate_fbx(path) do
+    python = System.find_executable("python3") || "python3"
+    script = Path.join(:code.priv_dir(:oneme), "exporter/validate_fbx.py")
+
+    case System.cmd(python, [script, "--input", path], stderr_to_stdout: true) do
+      {_, 0} ->
+        :ok
+
+      {output, status} ->
+        {:error, "fbx_validation_failed",
+         "FBX validation failed (#{status}): #{String.slice(output, 0, 500)}"}
     end
   rescue
     error in ErlangError -> {:error, "python_unavailable", Exception.message(error)}

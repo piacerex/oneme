@@ -214,7 +214,8 @@ oneme/
 
 現段階の既定サーバー変換はAssimpを使う。Blenderを導入した環境では
 `ONEME_FBX_BACKEND=blender`と`ONEME_BLENDER_BIN`で、`priv/exporter/export_fbx_blender.py`を
-使うヘッドレス変換へ切り替えられる。Blender固有の書き出し差分とDCC実機検証は残課題である。
+使うヘッドレス変換へ切り替えられる。Blender経路は生成済みOBJを直接読み込むため、Assimpなしで
+FBXを生成できる。Blender固有の書き出し差分とDCC実機検証は残課題である。
 
 ### API
 

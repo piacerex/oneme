@@ -33,9 +33,27 @@ def clear_scene() -> None:
                 collection.remove(datablock)
 
 
+def import_scene(source: Path) -> None:
+    suffix = source.suffix.lower()
+
+    if suffix in {".glb", ".gltf"}:
+        bpy.ops.import_scene.gltf(filepath=str(source))
+        return
+
+    if suffix == ".obj":
+        if hasattr(bpy.ops.wm, "obj_import"):
+            bpy.ops.wm.obj_import(filepath=str(source))
+            return
+        if hasattr(bpy.ops.import_scene, "obj"):
+            bpy.ops.import_scene.obj(filepath=str(source))
+            return
+
+    raise RuntimeError(f"Unsupported Blender input format: {source.suffix}")
+
+
 def export_fbx(source: Path, output: Path) -> None:
     clear_scene()
-    bpy.ops.import_scene.gltf(filepath=str(source))
+    import_scene(source)
 
     imported = [
         obj

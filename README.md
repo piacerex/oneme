@@ -28,8 +28,8 @@ ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 ```
 
 BlenderのFBX exporterを使う場合は、`ONEME_FBX_BACKEND=blender`と
-`ONEME_BLENDER_BIN=/path/to/blender`を設定します。BlenderはヘッドレスでGLBを読み込み、
-選択したメッシュ・アーマチュアをFBXへ書き出します。
+`ONEME_BLENDER_BIN=/path/to/blender`を設定します。Blenderはヘッドレスで生成済みOBJを読み込み、
+選択したメッシュ・アーマチュアをFBXへ書き出します。この経路ではAssimpを使いません。
 
 `POST /api/export-jobs` に `format: "fbx"` または `format: "vrm"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
 
