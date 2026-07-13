@@ -58,6 +58,25 @@ defmodule Oneme.ExportsTest do
     assert job.error_code == "blender_unavailable"
   end
 
+  test "accepts front and profile textures for a consented export" do
+    System.put_env("ONEME_ASSIMP_BIN", "/definitely/missing/assimp")
+    on_exit(fn -> System.delete_env("ONEME_ASSIMP_BIN") end)
+
+    texture = "data:image/png;base64," <> Base.encode64("fixture")
+
+    assert {:ok, job} =
+             Exports.create_export_job(%{
+               avatar_config: %{"faceTexture" => %{"exportConsent" => true}},
+               format: "glb",
+               face_texture_data_url: texture,
+               profile_texture_data_url: texture
+             })
+
+    assert job.includes_face_texture == true
+    assert job.status == "failed"
+    assert job.error_code == "assimp_unavailable"
+  end
+
   test "requires the original face texture source when retrying a textured job" do
     assert {:error, :face_texture_retry_requires_source} =
              Exports.retry_export_job(%ExportJob{includes_face_texture: true})

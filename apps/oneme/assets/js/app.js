@@ -133,7 +133,8 @@ async function runServerExport(format, label, filename) {
       body: JSON.stringify({
         avatarConfig: config,
         format,
-        faceTextureDataUrl: includeFaceTexture ? window.onemeThreePreview?.getFaceTextureDataUrl() : null
+        faceTextureDataUrl: includeFaceTexture ? window.onemeThreePreview?.getFaceTextureDataUrl() : null,
+        profileTextureDataUrl: includeFaceTexture ? window.onemeThreePreview?.getFaceCompletionDataUrl?.() : null
       })
     })
     const payload = await response.json()
@@ -161,8 +162,18 @@ async function completeFaceProfile(hook) {
     return
   }
 
+  const faceVersion = window.onemeThreePreview?.getFaceImageVersion?.() ?? null
   hook.el.disabled = true
-  if (status) status.textContent = "正面画像から側面・背面を補完しています..."
+  if (status) status.textContent = "正面画像から側面・背面の暫定推定を生成しています..."
+
+  try {
+    const localProfile = await createLocalProfileEstimate(faceTextureDataUrl)
+    if (faceVersion === null || window.onemeThreePreview?.getFaceImageVersion?.() === faceVersion) {
+      window.onemeThreePreview?.setFaceCompletion(localProfile, faceVersion)
+    }
+  } catch (error) {
+    console.debug("oneme: local profile estimate unavailable", error)
+  }
 
   try {
     const response = await fetch("/api/face-completion", {
@@ -171,13 +182,19 @@ async function completeFaceProfile(hook) {
       body: JSON.stringify({faceTextureDataUrl, calibration})
     })
     const payload = await response.json()
-    if (!response.ok) throw new Error(payload.message || payload.error || "face completion failed")
+    if (!response.ok) {
+      if (payload.error === "face_completion_not_configured") {
+        if (status) status.textContent = "暫定推定を表示しました。AI補完を使うにはOpenAI設定が必要です。"
+        return
+      }
+      throw new Error(payload.message || payload.error || "face completion failed")
+    }
 
-    window.onemeThreePreview?.setFaceCompletion(payload.imageDataUrl)
-    if (status) status.textContent = "側面・背面の補完をプレビューへ反映しました。"
+    window.onemeThreePreview?.setFaceCompletion(payload.imageDataUrl, faceVersion)
+    if (status) status.textContent = "AIで補完した側面・背面をプレビューへ反映しました。"
   } catch (error) {
     console.error(error)
-    if (status) status.textContent = "側面・背面の補完に失敗しました。設定を確認してください。"
+    if (status) status.textContent = "暫定推定を表示しました。AI補完は設定を確認してください。"
   } finally {
     hook.el.disabled = false
   }
@@ -200,10 +217,17 @@ function handleFacePhoto(input, hook) {
   image.onload = async () => {
     const geometry = await detectFaceGeometry(image)
     const bounds = geometry?.bounds || null
-    const calibration = calibrateFaceTexture(image, bounds, geometry?.landmarks || null)
+    const calibration = calibrateFaceTexture(image, bounds, geometry?.landmarks || null, geometry?.pose || null)
     URL.revokeObjectURL(objectUrl)
 
-    window.onemeThreePreview?.setFaceImage(calibration.dataUrl, calibration.metadata)
+    const faceVersion = window.onemeThreePreview?.setFaceImage(calibration.dataUrl, calibration.metadata)
+    createLocalProfileEstimate(calibration.dataUrl)
+      .then(profileDataUrl => {
+        if (window.onemeThreePreview?.getFaceImageVersion?.() === faceVersion) {
+          window.onemeThreePreview?.setFaceCompletion(profileDataUrl, faceVersion)
+        }
+      })
+      .catch(error => console.debug("oneme: local profile estimate unavailable", error))
     const faceColors = estimateFaceColors(calibration.canvas.getContext("2d"))
     const ratio = bounds ? bounds.width / Math.max(bounds.height, 1) : image.width / image.height
     hook.pushEvent("face_analyzed", {
@@ -219,7 +243,7 @@ function handleFacePhoto(input, hook) {
     if (status) {
       status.textContent = bounds
         ? geometry?.landmarks
-          ? "目の傾きを補正し、目・鼻・口を基準に正面へマッピングしました。"
+          ? "顔の傾き・向き・縦ずれを補正し、目・鼻・口を正面基準へマッピングしました。"
           : "顔を検出し、正面向けに補正してプレビューへマッピングしました。"
         : "顔検出を利用できないため、中央を基準に正面へ補正しました。"
     }
@@ -272,7 +296,11 @@ function rgbToHex(rgb) {
 async function detectFaceGeometry(image) {
   const bounds = await detectFaceBounds(image)
   const landmarks = await detectFaceLandmarks(image)
-  return {bounds: bounds || landmarks?.bounds || null, landmarks: landmarks?.points || null}
+  return {
+    bounds: landmarks?.bounds || bounds || null,
+    landmarks: landmarks?.points || null,
+    pose: landmarks?.pose || null
+  }
 }
 
 async function detectFaceLandmarks(image) {
@@ -283,7 +311,7 @@ async function detectFaceLandmarks(image) {
     if (!points || points.length < 468) return null
 
     const mapped = landmarkPoints(points, image)
-    return {points: mapped, bounds: landmarkBounds(mapped)}
+    return {points: mapped, bounds: landmarkBounds(mapped), pose: estimateFacePose(mapped)}
   } catch (error) {
     console.debug("oneme: face landmark detection unavailable", error)
     return null
@@ -291,7 +319,11 @@ async function detectFaceLandmarks(image) {
 }
 
 function landmarkPoints(points, image) {
-  const point = index => ({x: points[index].x * image.width, y: points[index].y * image.height})
+  const point = index => ({
+    x: points[index].x * image.width,
+    y: points[index].y * image.height,
+    z: (points[index].z || 0) * image.width
+  })
   const average = indexes => ({
     x: indexes.reduce((total, index) => total + point(index).x, 0) / indexes.length,
     y: indexes.reduce((total, index) => total + point(index).y, 0) / indexes.length
@@ -307,6 +339,35 @@ function landmarkPoints(points, image) {
     forehead: point(10),
     leftCheek: point(234),
     rightCheek: point(454)
+  }
+}
+
+function estimateFacePose(points) {
+  const leftEye = points?.leftEye
+  const rightEye = points?.rightEye
+  const nose = points?.nose
+  const forehead = points?.forehead
+  const chin = points?.chin
+  const leftCheek = points?.leftCheek
+  const rightCheek = points?.rightCheek
+  if (!leftEye || !rightEye || !nose || !forehead || !chin) return null
+
+  const eyeDistance = Math.max(Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y), 1)
+  const eyeCenter = {
+    x: (leftEye.x + rightEye.x) / 2,
+    y: (leftEye.y + rightEye.y) / 2
+  }
+  const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
+  const faceHeight = Math.max(Math.hypot(chin.x - forehead.x, chin.y - forehead.y), 1)
+  const cheekAsymmetry = leftCheek && rightCheek
+    ? (Math.hypot(nose.x - leftCheek.x, nose.y - leftCheek.y) -
+        Math.hypot(rightCheek.x - nose.x, rightCheek.y - nose.y)) / eyeDistance
+    : 0
+
+  return {
+    roll: Number((roll * 180 / Math.PI).toFixed(2)),
+    yaw: Number(clamp(cheekAsymmetry * 18, -35, 35).toFixed(2)),
+    pitch: Number((((nose.y - eyeCenter.y) / faceHeight - 0.2) * 90).toFixed(2))
   }
 }
 
@@ -335,7 +396,7 @@ async function detectFaceBounds(image) {
   }
 }
 
-function calibrateFaceTexture(image, bounds, landmarks) {
+function calibrateFaceTexture(image, bounds, landmarks, pose) {
   const canvas = document.createElement("canvas")
   canvas.width = 512
   canvas.height = 512
@@ -350,8 +411,29 @@ function calibrateFaceTexture(image, bounds, landmarks) {
   let transformScale = 1
   let eyeAngle = 0
   const targetEyeCenter = {x: 256, y: 226}
+  const targetLandmarks = {
+    leftEye: {x: 179, y: 226},
+    rightEye: {x: 333, y: 226},
+    nose: {x: 256, y: 294},
+    mouth: {x: 256, y: 354}
+  }
+  const sourceAnchors = hasEyes && landmarks?.nose && landmarks?.mouth
+    ? [leftEye, rightEye, landmarks.nose, landmarks.mouth]
+    : null
+  const affine = sourceAnchors
+    ? affineFromLandmarks(
+        sourceAnchors,
+        [targetLandmarks.leftEye, targetLandmarks.rightEye, targetLandmarks.nose, targetLandmarks.mouth],
+        [2, 2, 3, 3]
+      )
+    : null
 
-  if (hasEyes) {
+  if (affine) {
+    context.save()
+    context.setTransform(affine.a, affine.b, affine.c, affine.d, affine.e, affine.f)
+    context.drawImage(image, 0, 0)
+    context.restore()
+  } else if (hasEyes) {
     eyeCenter = {x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2}
     const eyeDistance = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y)
     eyeAngle = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
@@ -396,7 +478,12 @@ function calibrateFaceTexture(image, bounds, landmarks) {
     heightScale: clamp(sourceHeight / Math.max(sourceWidth * 1.08, 1), 0.94, 1.2)
   }
 
-  const mapPoint = hasEyes
+  const mapPoint = affine
+    ? point => ({
+        x: affine.a * point.x + affine.c * point.y + affine.e,
+        y: affine.b * point.x + affine.d * point.y + affine.f
+      })
+    : hasEyes
     ? point => {
         const dx = point.x - eyeCenter.x
         const dy = point.y - eyeCenter.y
@@ -424,12 +511,113 @@ function calibrateFaceTexture(image, bounds, landmarks) {
     morph,
     metadata: {
       version: 1,
-      orientation: hasEyes ? "eye-line-corrected" : "fallback",
+      orientation: affine ? "landmark-affine-corrected" : hasEyes ? "eye-line-corrected" : "fallback",
+      pose,
+      targetLandmarks,
       mappedLandmarks,
       sourceBounds: normalizeRect(sourceBounds, image)
     },
     faceCenter
   }
+}
+
+function affineFromLandmarks(source, target, weights) {
+  const normal = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+  const rightX = [0, 0, 0]
+  const rightY = [0, 0, 0]
+
+  source.forEach((point, index) => {
+    const row = [point.x, point.y, 1]
+    const weight = weights[index] || 1
+    for (let rowIndex = 0; rowIndex < 3; rowIndex += 1) {
+      for (let columnIndex = 0; columnIndex < 3; columnIndex += 1) {
+        normal[rowIndex][columnIndex] += weight * row[rowIndex] * row[columnIndex]
+      }
+      rightX[rowIndex] += weight * row[rowIndex] * target[index].x
+      rightY[rowIndex] += weight * row[rowIndex] * target[index].y
+    }
+  })
+
+  const determinant = determinant3(normal)
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 0.0001) return null
+
+  const solve = values => {
+    const coefficients = []
+    for (let column = 0; column < 3; column += 1) {
+      const replaced = normal.map((row, rowIndex) =>
+        row.map((value, valueIndex) => valueIndex === column ? values[rowIndex] : value)
+      )
+      coefficients.push(determinant3(replaced) / determinant)
+    }
+    return coefficients
+  }
+
+  const x = solve(rightX)
+  const y = solve(rightY)
+  const transform = {a: x[0], c: x[1], e: x[2], b: y[0], d: y[1], f: y[2]}
+  return Object.values(transform).every(Number.isFinite) ? transform : null
+}
+
+function determinant3(matrix) {
+  return matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
+    - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
+    + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0])
+}
+
+function createLocalProfileEstimate(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const context = canvas.getContext("2d")
+      context.drawImage(image, 0, 0, 512, 512)
+      const skin = averageOpaqueRegion(context, 150, 190, 212, 218) || [201, 143, 111]
+      context.clearRect(0, 0, 512, 512)
+
+      const gradient = context.createLinearGradient(0, 0, 512, 512)
+      gradient.addColorStop(0, colorString(scaleColor(skin, 1.08)))
+      gradient.addColorStop(0.46, colorString(skin))
+      gradient.addColorStop(1, colorString(scaleColor(skin, 0.7)))
+      context.fillStyle = gradient
+      context.fillRect(0, 0, 512, 512)
+
+      const contour = context.createRadialGradient(256, 236, 80, 256, 256, 360)
+      contour.addColorStop(0, "rgba(255, 255, 255, 0.10)")
+      contour.addColorStop(0.62, "rgba(0, 0, 0, 0)")
+      contour.addColorStop(1, "rgba(0, 0, 0, 0.22)")
+      context.fillStyle = contour
+      context.fillRect(0, 0, 512, 512)
+      resolve(canvas.toDataURL("image/png"))
+    }
+    image.onerror = reject
+    image.src = dataUrl
+  })
+}
+
+function averageOpaqueRegion(context, x, y, width, height) {
+  const pixels = context.getImageData(x, y, width, height).data
+  const total = [0, 0, 0]
+  let count = 0
+
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 3] < 40) continue
+    total[0] += pixels[index]
+    total[1] += pixels[index + 1]
+    total[2] += pixels[index + 2]
+    count += 1
+  }
+
+  return count ? total.map(value => Math.round(value / count)) : null
+}
+
+function scaleColor(color, factor) {
+  return color.map(value => clamp(value * factor, 0, 255))
+}
+
+function colorString(color) {
+  return `rgb(${color.map(value => Math.round(value)).join(",")})`
 }
 
 function normalizePoint(point) {

@@ -16,10 +16,18 @@ defmodule Oneme.Exports do
     format = Map.get(attrs, :format, "glb")
 
     include_face_texture =
-      face_export_allowed?(config) and is_binary(Map.get(attrs, :face_texture_data_url))
+      face_export_allowed?(config) and
+        (is_binary(Map.get(attrs, :face_texture_data_url)) or
+           is_binary(Map.get(attrs, :profile_texture_data_url)))
 
     cache_key =
-      cache_key(config, format, include_face_texture, Map.get(attrs, :face_texture_data_url))
+      cache_key(
+        config,
+        format,
+        include_face_texture,
+        Map.get(attrs, :face_texture_data_url),
+        Map.get(attrs, :profile_texture_data_url)
+      )
 
     export_attrs = %{
       avatar_config: config,
@@ -41,7 +49,11 @@ defmodule Oneme.Exports do
             Operations.track_usage("export_requested", %{
               subject_type: "export_job",
               subject_id: job.id,
-              metadata: %{"format" => format, "includesFaceTexture" => include_face_texture}
+              metadata: %{
+                "format" => format,
+                "includesFaceTexture" => include_face_texture,
+                "includesProfileTexture" => is_binary(Map.get(attrs, :profile_texture_data_url))
+              }
             })
 
             Operations.track_audit("export_requested", %{
@@ -50,7 +62,13 @@ defmodule Oneme.Exports do
               metadata: %{"format" => format}
             })
 
-            {:ok, execute(job, Map.get(attrs, :face_texture_data_url), include_face_texture)}
+            {:ok,
+             execute(
+               job,
+               Map.get(attrs, :face_texture_data_url),
+               Map.get(attrs, :profile_texture_data_url),
+               include_face_texture
+             )}
           end
       end
     end
@@ -63,11 +81,16 @@ defmodule Oneme.Exports do
     create_export_job(%{avatar_config: job.avatar_config, format: job.format})
   end
 
-  defp execute(job, face_texture_data_url, include_face_texture) do
+  defp execute(job, face_texture_data_url, profile_texture_data_url, include_face_texture) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     {:ok, running_job} = update_job(job, %{status: "running"})
 
-    case run_export(running_job, face_texture_data_url, include_face_texture) do
+    case run_export(
+           running_job,
+           face_texture_data_url,
+           profile_texture_data_url,
+           include_face_texture
+         ) do
       {:ok, model_path} ->
         {:ok, finished_job} =
           update_job(running_job, %{status: "succeeded", model_path: model_path, finished_at: now})
@@ -99,12 +122,17 @@ defmodule Oneme.Exports do
     end
   end
 
-  defp run_export(job, face_texture_data_url, include_face_texture) do
+  defp run_export(job, face_texture_data_url, profile_texture_data_url, include_face_texture) do
     with {:ok, workspace} <- create_workspace(job),
          :ok <- write_config(workspace, job.avatar_config),
-         {:ok, texture_path} <-
-           write_face_texture(workspace, face_texture_data_url, include_face_texture),
-         :ok <- create_obj(workspace, texture_path),
+         {:ok, texture_paths} <-
+           write_face_textures(
+             workspace,
+             face_texture_data_url,
+             profile_texture_data_url,
+             include_face_texture
+           ),
+         :ok <- create_obj(workspace, texture_paths),
          {:ok, output_path} <- convert(workspace, job.format) do
       {:ok, public_model_path(workspace, output_path)}
     else
@@ -135,26 +163,39 @@ defmodule Oneme.Exports do
     end
   end
 
-  defp write_face_texture(_workspace, _data_url, false), do: {:ok, nil}
+  defp write_face_textures(_workspace, _face_data_url, _profile_data_url, false),
+    do: {:ok, %{}}
 
-  defp write_face_texture(workspace, data_url, true) do
+  defp write_face_textures(workspace, face_data_url, profile_data_url, true) do
+    with {:ok, face_path} <- write_texture(workspace, face_data_url, "face.png"),
+         {:ok, profile_path} <- write_texture(workspace, profile_data_url, "profile.png") do
+      {:ok, %{face: face_path, profile: profile_path}}
+    end
+  end
+
+  defp write_texture(_workspace, nil, _filename), do: {:ok, nil}
+
+  defp write_texture(workspace, data_url, filename) when is_binary(data_url) do
     with [_, encoded] <- Regex.run(~r/^data:image\/png;base64,(.+)$/, data_url),
          {:ok, bytes} <- Base.decode64(encoded) do
-      path = Path.join(workspace, "face.png")
+      path = Path.join(workspace, filename)
 
       case File.write(path, bytes) do
         :ok ->
           {:ok, path}
 
         {:error, reason} ->
-          {:error, "texture_write_failed", "Could not write face texture: #{inspect(reason)}"}
+          {:error, "texture_write_failed", "Could not write texture: #{inspect(reason)}"}
       end
     else
-      _ -> {:error, "invalid_face_texture", "Face texture must be a base64 PNG data URL."}
+      _ -> {:error, "invalid_face_texture", "Face textures must be base64 PNG data URLs."}
     end
   end
 
-  defp create_obj(workspace, texture_path) do
+  defp write_texture(_workspace, _data_url, _filename),
+    do: {:error, "invalid_face_texture", "Face texture must be a base64 PNG data URL."}
+
+  defp create_obj(workspace, texture_paths) do
     python = System.find_executable("python3") || "python3"
     script = Path.join(:code.priv_dir(:oneme), "exporter/create_avatar_obj.py")
 
@@ -166,8 +207,20 @@ defmodule Oneme.Exports do
       Path.join(workspace, "avatar.obj")
     ]
 
-    args = if texture_path, do: args ++ ["--face-texture", texture_path], else: args
+    args =
+      if texture_path = Map.get(texture_paths, :face),
+        do: args ++ ["--face-texture", texture_path],
+        else: args
 
+    args =
+      if profile_path = Map.get(texture_paths, :profile),
+        do: args ++ ["--profile-texture", profile_path],
+        else: args
+
+    run_obj_generator(python, args)
+  end
+
+  defp run_obj_generator(python, args) do
     case System.cmd(python, args, stderr_to_stdout: true) do
       {_, 0} ->
         :ok
@@ -404,6 +457,11 @@ defmodule Oneme.Exports do
 
     texture = Path.join(workspace, "face.png")
     if File.exists?(texture), do: File.cp!(texture, Path.join(public_dir, "face.png"))
+    profile_texture = Path.join(workspace, "profile.png")
+
+    if File.exists?(profile_texture),
+      do: File.cp!(profile_texture, Path.join(public_dir, "profile.png"))
+
     "/exports/#{folder}/#{filename}"
   end
 
@@ -431,11 +489,23 @@ defmodule Oneme.Exports do
     File.exists?(Path.join(static_dir, String.trim_leading(model_path, "/")))
   end
 
-  defp cache_key(config, format, include_face_texture, face_texture_data_url),
-    do:
-      :crypto.hash(
-        :sha256,
-        :erlang.term_to_binary({format, config, include_face_texture, face_texture_data_url})
-      )
-      |> Base.encode16(case: :lower)
+  defp cache_key(
+         config,
+         format,
+         include_face_texture,
+         face_texture_data_url,
+         profile_texture_data_url
+       ),
+       do:
+         :crypto.hash(
+           :sha256,
+           :erlang.term_to_binary({
+             format,
+             config,
+             include_face_texture,
+             face_texture_data_url,
+             profile_texture_data_url
+           })
+         )
+         |> Base.encode16(case: :lower)
 end

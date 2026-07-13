@@ -118,6 +118,7 @@ if (container) {
   let faceCalibration = null;
   let profileTexture = null;
   let profileDataUrl = null;
+  let faceImageVersion = 0;
   window.onemeThreePreview = {
     mount(nextContainer) {
       if (!(nextContainer instanceof HTMLElement)) return;
@@ -149,13 +150,22 @@ if (container) {
       mouth.position.y = 1.64 + (morph.mouthOffsetY || 0) / 120;
       applyFeatureMapping(config?.faceAnalysis?.calibration || faceCalibration);
       faceWrap.visible = Boolean(faceTexture);
+      updateFeatureOverlayVisibility();
     },
     setFaceImage(dataUrl, calibration) {
+      const version = ++faceImageVersion;
       faceDataUrl = dataUrl;
       faceCalibration = calibration || null;
+      profileDataUrl = null;
+      profileTexture?.dispose();
+      profileTexture = null;
+      materials.profileWrap.map = null;
+      materials.profileWrap.needsUpdate = true;
+      profileWrap.visible = false;
       applyFeatureMapping(faceCalibration);
       const image = new Image();
       image.onload = () => {
+        if (version !== faceImageVersion) return;
         faceTexture?.dispose();
         faceTexture = new THREE.Texture(image);
         faceTexture.colorSpace = THREE.SRGBColorSpace;
@@ -164,13 +174,17 @@ if (container) {
         materials.faceWrap.opacity = 1;
         materials.faceWrap.needsUpdate = true;
         faceWrap.visible = true;
+        updateFeatureOverlayVisibility();
       };
       image.src = dataUrl;
+      return version;
     },
-    setFaceCompletion(dataUrl) {
+    setFaceCompletion(dataUrl, version = null) {
+      if (version !== null && version !== faceImageVersion) return;
       profileDataUrl = dataUrl;
       const image = new Image();
       image.onload = () => {
+        if (version !== null && version !== faceImageVersion) return;
         profileTexture?.dispose();
         profileTexture = new THREE.Texture(image);
         profileTexture.colorSpace = THREE.SRGBColorSpace;
@@ -179,10 +193,12 @@ if (container) {
         materials.profileWrap.opacity = 1;
         materials.profileWrap.needsUpdate = true;
         profileWrap.visible = true;
+        updateFeatureOverlayVisibility();
       };
       image.src = dataUrl;
     },
     clearFaceImage() {
+      faceImageVersion += 1;
       faceTexture?.dispose();
       faceTexture = null;
       faceDataUrl = null;
@@ -198,6 +214,7 @@ if (container) {
       materials.profileWrap.needsUpdate = true;
       faceWrap.visible = false;
       profileWrap.visible = false;
+      updateFeatureOverlayVisibility();
     },
     getFaceTextureDataUrl() {
       return faceDataUrl;
@@ -207,6 +224,9 @@ if (container) {
     },
     getFaceCompletionDataUrl() {
       return profileDataUrl;
+    },
+    getFaceImageVersion() {
+      return faceImageVersion;
     },
     exportGlb(config, filename) {
       return new Promise((resolve, reject) => {
@@ -290,6 +310,12 @@ if (container) {
       mouth.position.x = 0;
       mouth.position.y = 1.64;
     }
+  }
+
+  function updateFeatureOverlayVisibility() {
+    const showProceduralFace = !faceTexture && !profileTexture;
+    eyes.visible = showProceduralFace;
+    mouth.visible = showProceduralFace;
   }
 
   function createShoe(x) {

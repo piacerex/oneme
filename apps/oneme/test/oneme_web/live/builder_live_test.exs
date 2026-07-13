@@ -110,11 +110,19 @@ defmodule OnemeWeb.BuilderLiveTest do
       render_hook(view, "face_analyzed", %{
         "face_detected" => true,
         "face_morph" => %{"widthScale" => 1.08, "heightScale" => 1.12, "depth" => 0.55},
-        "face_colors" => %{"skin" => "#d5a083", "hair" => "#332211"}
+        "face_colors" => %{"skin" => "#d5a083", "hair" => "#332211"},
+        "face_calibration" => %{
+          "orientation" => "landmark-affine-corrected",
+          "pose" => %{"roll" => 2.1, "yaw" => -8.4, "pitch" => 1.7},
+          "targetLandmarks" => %{"leftEye" => %{"x" => 179, "y" => 226}},
+          "mappedLandmarks" => %{"mouth" => %{"x" => 256, "y" => 354}}
+        }
       })
 
     assert html =~ "顔の比率と肌色・髪色を推定してプレビューへ反映しました。"
     assert html =~ "value=\"#d5a083\""
+    assert html =~ "landmark-affine-corrected"
+    assert html =~ "yaw&quot;:-8.4"
     refute html =~ "data:image"
 
     html = render_click(view, "clear_face")

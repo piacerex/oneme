@@ -179,7 +179,8 @@ defmodule OnemeWeb.AvatarController do
     Exports.create_export_job(%{
       avatar_config: Map.get(params, "avatarConfig", avatar.config),
       format: Map.get(params, "format", "glb"),
-      face_texture_data_url: Map.get(params, "faceTextureDataUrl")
+      face_texture_data_url: Map.get(params, "faceTextureDataUrl"),
+      profile_texture_data_url: Map.get(params, "profileTextureDataUrl")
     })
   end
 

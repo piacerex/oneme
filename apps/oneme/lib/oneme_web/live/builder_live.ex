@@ -340,6 +340,8 @@ defmodule OnemeWeb.BuilderLive do
     |> Map.take([
       "version",
       "orientation",
+      "targetLandmarks",
+      "pose",
       "mappedLandmarks",
       "sourceBounds"
     ])
@@ -349,23 +351,30 @@ defmodule OnemeWeb.BuilderLive do
   defp normalize_face_calibration(_params), do: %{}
 
   defp normalize_face_calibration_value(value) when is_map(value) do
-    if Map.has_key?(value, "x") or Map.has_key?(value, "y") do
-      value
-      |> Map.take(["x", "y", "width", "height"])
-      |> Map.new(fn {key, number} -> {key, normalize_calibration_number(number)} end)
-    else
-      value
-      |> Map.take([
-        "leftEye",
-        "rightEye",
-        "nose",
-        "mouth",
-        "chin",
-        "forehead",
-        "leftCheek",
-        "rightCheek"
-      ])
-      |> Map.new(fn {key, point} -> {key, normalize_face_calibration_value(point)} end)
+    cond do
+      Map.has_key?(value, "x") or Map.has_key?(value, "y") ->
+        value
+        |> Map.take(["x", "y", "width", "height"])
+        |> Map.new(fn {key, number} -> {key, normalize_calibration_number(number)} end)
+
+      Map.has_key?(value, "roll") or Map.has_key?(value, "yaw") or Map.has_key?(value, "pitch") ->
+        value
+        |> Map.take(["roll", "yaw", "pitch"])
+        |> Map.new(fn {key, number} -> {key, normalize_calibration_number(number)} end)
+
+      true ->
+        value
+        |> Map.take([
+          "leftEye",
+          "rightEye",
+          "nose",
+          "mouth",
+          "chin",
+          "forehead",
+          "leftCheek",
+          "rightCheek"
+        ])
+        |> Map.new(fn {key, point} -> {key, normalize_face_calibration_value(point)} end)
     end
   end
 

@@ -66,28 +66,32 @@ class ObjBuilder:
         material: str,
         segments: int = 20,
         rings: int = 12,
-        theta_offset: float = 0.0,
+        theta_start: float = 0.0,
+        theta_length: float = math.pi * 2,
     ) -> None:
         cx, cy, cz = center
         rx, ry, rz = radius
+        partial = abs(abs(theta_length) - math.pi * 2) > 0.0001
+        segment_count = segments + 1 if partial else segments
         points: list[list[tuple[int, int]]] = []
         for ring in range(rings + 1):
             v = ring / rings
             phi = math.pi * v
             row = []
-            for segment in range(segments):
-                u = segment / segments
-                theta = math.pi * 2 * u + theta_offset
+            for segment in range(segment_count):
+                u = segment / (segment_count - 1) if partial else segment / segments
+                theta = theta_start + theta_length * u
                 point = (cx + rx * math.sin(phi) * math.cos(theta), cy + ry * math.cos(phi), cz + rz * math.sin(phi) * math.sin(theta))
                 row.append((self.vertex(point), self.uv((u, 1 - v))))
             points.append(row)
 
         for ring in range(rings):
-            for segment in range(segments):
-                next_segment = (segment + 1) % segments
+            segment_limit = segment_count - 1 if partial else segments
+            for segment in range(segment_limit):
+                next_segment = segment + 1 if partial else (segment + 1) % segments
                 self.face(material, [points[ring][segment], points[ring][next_segment], points[ring + 1][next_segment], points[ring + 1][segment]])
 
-    def write(self, output: Path, materials: dict[str, tuple[float, float, float]], texture: Path | None) -> None:
+    def write(self, output: Path, materials: dict[str, tuple[float, float, float]], textures: dict[str, Path]) -> None:
         mtl_path = output.with_suffix(".mtl")
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("w", encoding="utf-8") as obj:
@@ -107,8 +111,8 @@ class ObjBuilder:
         with mtl_path.open("w", encoding="utf-8") as mtl:
             for name, color in materials.items():
                 mtl.write(f"newmtl {name}\nKd {color[0]:.5f} {color[1]:.5f} {color[2]:.5f}\nKa 0 0 0\nKs 0.1 0.1 0.1\nNs 24\n\n")
-            if texture:
-                mtl.write(f"newmtl face_texture\nKd 1 1 1\nmap_Kd {texture.name}\n\n")
+            for name, texture in textures.items():
+                mtl.write(f"newmtl {name}\nKd 1 1 1\nmap_Kd {texture.name}\n\n")
 
 
 def hex_color(value: str, fallback: tuple[float, float, float]) -> tuple[float, float, float]:
@@ -119,7 +123,7 @@ def hex_color(value: str, fallback: tuple[float, float, float]) -> tuple[float, 
         return fallback
 
 
-def build(config: dict, output: Path, texture: Path | None) -> None:
+def build(config: dict, output: Path, face_texture: Path | None, profile_texture: Path | None) -> None:
     parts = config.get("parts", {})
     colors = config.get("colors", {})
     builder = ObjBuilder()
@@ -127,19 +131,30 @@ def build(config: dict, output: Path, texture: Path | None) -> None:
     top = PALETTES.get(parts.get("top"), (0.204, 0.498, 0.482))
     bottom = PALETTES.get(parts.get("bottom"), (0.212, 0.239, 0.286))
     materials = {"skin": skin, "top": top, "bottom": bottom, "shoes": (0.14, 0.14, 0.14)}
+    textures: dict[str, Path] = {}
 
     builder.add_box((0, 0.35, 0), (1.35, 1.35, 0.82), "top")
     builder.add_box((0, 1.23, 0), (0.32, 0.28, 0.32), "skin")
     builder.add_sphere((0, 1.78, 0), (0.5, 0.56, 0.45), "skin")
-    if texture:
-        # Use the same spherical projection as the browser preview. The
-        # texture's horizontal center is aligned to +Z, so the photo remains
-        # visible around the entire head instead of being a front-only quad.
+    if face_texture:
+        materials["face_texture"] = (1.0, 1.0, 1.0)
+        textures["face_texture"] = face_texture
         builder.add_sphere(
             (0, 1.78, 0),
             (0.505, 0.566, 0.455),
             "face_texture",
-            theta_offset=-math.pi / 2,
+            theta_start=math.pi,
+            theta_length=-math.pi,
+        )
+    if profile_texture:
+        materials["profile_texture"] = (1.0, 1.0, 1.0)
+        textures["profile_texture"] = profile_texture
+        builder.add_sphere(
+            (0, 1.78, 0),
+            (0.505, 0.566, 0.455),
+            "profile_texture",
+            theta_start=0,
+            theta_length=-math.pi,
         )
     builder.add_box((-0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")
     builder.add_box((0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")
@@ -150,7 +165,7 @@ def build(config: dict, output: Path, texture: Path | None) -> None:
     builder.add_box((-0.22, -1.56, 0.08), (0.5, 0.22, 0.72), "shoes")
     builder.add_box((0.22, -1.56, 0.08), (0.5, 0.22, 0.72), "shoes")
 
-    builder.write(output, materials, texture)
+    builder.write(output, materials, textures)
 
 
 def main() -> int:
@@ -158,9 +173,15 @@ def main() -> int:
     parser.add_argument("--config", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--face-texture")
+    parser.add_argument("--profile-texture")
     args = parser.parse_args()
     config = json.loads(Path(args.config).read_text(encoding="utf-8"))
-    build(config, Path(args.out), Path(args.face_texture) if args.face_texture else None)
+    build(
+        config,
+        Path(args.out),
+        Path(args.face_texture) if args.face_texture else None,
+        Path(args.profile_texture) if args.profile_texture else None,
+    )
     return 0
 
 

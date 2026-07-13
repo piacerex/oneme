@@ -8,7 +8,8 @@ defmodule OnemeWeb.ExportJobController do
     attrs = %{
       avatar_config: Map.get(params, "avatarConfig", %{}),
       format: Map.get(params, "format", "glb"),
-      face_texture_data_url: Map.get(params, "faceTextureDataUrl")
+      face_texture_data_url: Map.get(params, "faceTextureDataUrl"),
+      profile_texture_data_url: Map.get(params, "profileTextureDataUrl")
     }
 
     case authorize(conn, "editor") do
