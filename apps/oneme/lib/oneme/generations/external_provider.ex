@@ -1,10 +1,16 @@
 defmodule Oneme.Generations.ExternalProvider do
   @moduledoc "HTTP JSON adapter for image-aware generation providers."
 
-  @timeout 30_000
+  @api_version "v1"
+  @default_timeout 30_000
+  @default_connect_timeout 5_000
+  @default_max_attempts 2
+  @default_retry_delay_ms 250
   @blocked_keys ~w(faceImageDataUrl facePhotoDataUrl imageDataUrl imageData rawImage photo)
 
-  def generate(input_config) when is_map(input_config) do
+  def generate(input_config, request_id \\ nil) when is_map(input_config) do
+    request_id = normalize_request_id(request_id)
+
     case provider_url() do
       nil ->
         {:error, :not_configured}
@@ -12,14 +18,20 @@ defmodule Oneme.Generations.ExternalProvider do
       url ->
         Application.ensure_all_started(:inets)
         Application.ensure_all_started(:ssl)
-        request(url, sanitize(input_config))
+        request(url, sanitize(input_config), request_id)
     end
   end
 
-  defp request(url, input_config) do
+  defp request(url, input_config, request_id), do: request(url, input_config, request_id, 1)
+
+  defp request(url, input_config, request_id, attempt) do
     headers =
-      [{~c"content-type", ~c"application/json"}]
+      [
+        {~c"content-type", ~c"application/json"},
+        {~c"x-oneme-api-version", String.to_charlist(@api_version)}
+      ]
       |> maybe_authorization()
+      |> maybe_request_id(request_id)
 
     body =
       Jason.encode!(%{
@@ -30,19 +42,31 @@ defmodule Oneme.Generations.ExternalProvider do
     case :httpc.request(
            :post,
            {String.to_charlist(url), headers, ~c"application/json", body},
-           [timeout: @timeout, connect_timeout: 5_000],
+           [timeout: timeout_ms(), connect_timeout: connect_timeout_ms()],
            body_format: :binary
          ) do
       {:ok, {{_version, status, _reason}, _response_headers, response_body}}
       when status in 200..299 ->
-        decode_response(response_body)
+        with {:ok, response} <- decode_response(response_body) do
+          {:ok, put_request_metadata(response, request_id)}
+        end
 
       {:ok, {{_version, status, _reason}, _response_headers, response_body}} ->
-        {:error, :provider_http_error,
-         "provider responded with HTTP #{status}: #{truncate(response_body)}"}
+        if retryable?(request_id, attempt, status) do
+          retry_after_delay()
+          request(url, input_config, request_id, attempt + 1)
+        else
+          {:error, :provider_http_error,
+           "provider responded with HTTP #{status}: #{truncate(response_body)}"}
+        end
 
       {:error, reason} ->
-        {:error, :provider_request_failed, inspect(reason)}
+        if retryable?(request_id, attempt, reason) do
+          retry_after_delay()
+          request(url, input_config, request_id, attempt + 1)
+        else
+          {:error, :provider_request_failed, inspect(reason)}
+        end
     end
   rescue
     error -> {:error, :provider_request_failed, Exception.message(error)}
@@ -167,6 +191,70 @@ defmodule Oneme.Generations.ExternalProvider do
 
       _ ->
         headers
+    end
+  end
+
+  defp maybe_request_id(headers, nil), do: headers
+
+  defp maybe_request_id(headers, request_id) do
+    value = String.to_charlist(request_id)
+    headers ++ [{~c"x-oneme-request-id", value}, {~c"idempotency-key", value}]
+  end
+
+  defp put_request_metadata(response, nil), do: response
+
+  defp put_request_metadata(%{metadata: metadata} = response, request_id) do
+    %{response | metadata: Map.put(metadata, "requestId", request_id)}
+  end
+
+  defp normalize_request_id(value) when is_binary(value) do
+    value = String.trim(value)
+
+    if value == "" or String.contains?(value, "\r") or String.contains?(value, "\n") do
+      nil
+    else
+      String.slice(value, 0, 128)
+    end
+  end
+
+  defp normalize_request_id(_value), do: nil
+
+  defp retryable_status?(status) when is_integer(status),
+    do: status in [408, 425, 429] or status >= 500
+
+  defp retryable_status?(_status), do: false
+
+  defp retryable?(request_id, attempt, reason_or_status) do
+    is_binary(request_id) and attempt < max_attempts() and
+      (retryable_status?(reason_or_status) or retryable_reason?(reason_or_status))
+  end
+
+  defp retryable_reason?(reason) do
+    reason in [:timeout, :closed, :econnreset, :econnrefused] or
+      match?({:failed_connect, _}, reason) or
+      match?({:shutdown, _}, reason)
+  end
+
+  defp retry_after_delay do
+    case integer_env("ONEME_GENERATION_RETRY_DELAY_MS", @default_retry_delay_ms, 0, 5_000) do
+      0 -> :ok
+      delay -> Process.sleep(delay)
+    end
+  end
+
+  defp timeout_ms,
+    do: integer_env("ONEME_GENERATION_TIMEOUT_MS", @default_timeout, 1_000, 120_000)
+
+  defp connect_timeout_ms,
+    do: integer_env("ONEME_GENERATION_CONNECT_TIMEOUT_MS", @default_connect_timeout, 500, 30_000)
+
+  defp max_attempts,
+    do: integer_env("ONEME_GENERATION_MAX_ATTEMPTS", @default_max_attempts, 1, 5)
+
+  defp integer_env(name, default, min, max) do
+    case Integer.parse(System.get_env(name, Integer.to_string(default))) do
+      {value, ""} when value >= min and value <= max -> value
+      _ -> default
     end
   end
 

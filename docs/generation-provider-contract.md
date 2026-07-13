@@ -22,6 +22,20 @@
 `avatarConfig`から元写真のdata URL、画像バイナリ、元写真フィールドは除外する。
 APIキーは`ONEME_GENERATION_PROVIDER_API_KEY`からBearerトークンとして送信し、ログへ出さない。
 
+ジョブIDがある場合、次のヘッダーを付ける。`x-oneme-request-id`と`idempotency-key`には同じ
+ジョブIDを設定し、プロバイダー側で再試行を同じ生成要求として重複排除できるようにする。
+APIバージョンは`x-oneme-api-version: v1`で固定する。
+
+通信設定は次の環境変数で調整できる。`MAX_ATTEMPTS`は1から5、タイムアウトは安全な範囲へ
+制限される。再試行するのは、ジョブIDがあり、408／425／429／5xxまたは接続障害になった場合だけ。
+
+- `ONEME_GENERATION_TIMEOUT_MS`（既定30秒）
+- `ONEME_GENERATION_CONNECT_TIMEOUT_MS`（既定5秒）
+- `ONEME_GENERATION_MAX_ATTEMPTS`（既定2）
+- `ONEME_GENERATION_RETRY_DELAY_MS`（既定250ミリ秒）
+
+生成APIの再試行で課金が重複しないよう、接続先は`idempotency-key`を必ず処理する。
+
 ## レスポンス
 
 ```json

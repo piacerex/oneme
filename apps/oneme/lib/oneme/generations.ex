@@ -132,7 +132,9 @@ defmodule Oneme.Generations do
       |> GenerationJob.changeset(%{status: "running", attempts: job.attempts + 1})
       |> Repo.update()
 
-    {provider, candidates, metadata} = generate_candidates(running_job.input_config)
+    {provider, candidates, metadata} =
+      generate_candidates(running_job.input_config, to_string(running_job.id))
+
     finished_at = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, finished_job} =
@@ -186,13 +188,13 @@ defmodule Oneme.Generations do
     Map.merge(preset, %{"status" => "available", "config" => config})
   end
 
-  defp generate_candidates(input_config) do
+  defp generate_candidates(input_config, request_id) do
     case System.get_env("ONEME_GENERATION_PROVIDER", "local_recommendation") do
       "local_recommendation" ->
         {"local_recommendation", Enum.map(@presets, &build_candidate(&1, input_config)), %{}}
 
       "http_json" ->
-        case ExternalProvider.generate(input_config) do
+        case ExternalProvider.generate(input_config, request_id) do
           {:ok, %{provider: provider, candidates: candidates, metadata: metadata}} ->
             {provider, normalize_external_candidates(candidates, input_config), metadata}
 
