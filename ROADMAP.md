@@ -246,7 +246,7 @@ oneme/
 - [x] Three.js向け表示ヘルパーを提供する
 - [x] Unity SDKでGLB/VRMバイナリを取得する
 - [x] 再試行とAPIバージョンヘッダーを定義する
-- [ ] UnityのglTFランタイムへ取得バイト列を接続する
+- [x] UnityのglTFランタイムへ取得バイト列を接続する
 - [x] SDKの最小サンプルと互換性テストを用意する
 
 ## Phase 7: VRM

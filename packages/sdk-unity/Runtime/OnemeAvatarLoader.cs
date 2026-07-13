@@ -34,6 +34,9 @@ namespace Oneme
 
         public IEnumerator Load()
         {
+            LastModelResponse = null;
+            LastModelBytes = null;
+
             if (string.IsNullOrWhiteSpace(avatarId))
             {
                 yield return Fail("oneme avatar id is empty.");

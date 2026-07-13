@@ -1,7 +1,10 @@
 {
   "name": "com.piacerex.oneme-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "oneme Avatar SDK",
-  "description": "Download oneme GLB and VRM model artifacts from Unity.",
-  "unity": "2021.3"
+  "description": "Download and instantiate oneme GLB and VRM model artifacts from Unity.",
+  "unity": "2021.3",
+  "dependencies": {
+    "com.atteneder.gltfast": "https://github.com/atteneder/glTFast.git#v5.0.0"
+  }
 }
