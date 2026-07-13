@@ -29,7 +29,7 @@ ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 
 `POST /api/export-jobs` に `format: "fbx"` または `format: "vrm"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
 
-VRMは実メッシュGLBへVRM 1.0のhumanoidノード、skin（JOINTS/WEIGHTS）、表情モーフ、`VRMC_springBone`を付与した`.vrm`として出力します。外部VRMビューア、Unity、Webランタイムでの読み込み互換性は引き続き検証工程です。
+VRMは実メッシュGLBへVRM 1.0のhumanoidノード、skin（JOINTS/WEIGHTS）、表情モーフ、`VRMC_springBone`を付与した`.vrm`として出力します。`/model-viewer.html?model_url=/exports/.../avatar.vrm`で、three-vrmを使ったWeb表示とVRM拡張の読み込みを確認できます。外部VRMビューアとUnityでの互換性は引き続き検証工程です。
 
 `GET /api/health` はPhoenixとPostgreSQLの稼働状態を返します。エクスポート要求、公開アバターの読み取り、公開・エクスポート完了は利用イベントまたは監査ログへ記録します。これらの記録には元写真や顔テクスチャ本体を含めません。
 
@@ -72,6 +72,8 @@ WSLやコンテナの外から開発画面を確認する場合は、`ONEME_BIND
 ## Web SDK
 
 `packages/sdk-web` にパーツ、アバター、候補生成、公開モデル、エクスポートジョブを扱うクライアントとThree.js表示ヘルパーを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。`packages/sdk-unity`はモデルAPIからGLB/VRMバイナリを取得し、glTFastでSceneへ展開するUnity向けSDKです。
+
+`http://localhost:4000/model-viewer.html?model_url=/exports/avatar-oneme-export-19/avatar.vrm`で、URLまたはローカルファイルのGLB／VRM／FBXを確認できます。VRMは`@pixiv/three-vrm`、GLBとFBXはThree.jsのローダーを使います。
 
 ## 検証
 

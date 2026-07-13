@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>oneme Model Viewer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #edf4f1;
+        --muted: #9eafaa;
+        --line: #31403e;
+        --panel: #182321;
+        --panel-deep: #111a19;
+        --accent: #78d4c6;
+        --accent-strong: #b8f0e6;
+        --danger: #f3a48e;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; }
+      body {
+        margin: 0;
+        background: #0c1212;
+        color: var(--ink);
+        font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button, input, select { font: inherit; }
+      button { cursor: pointer; }
+
+      .viewer-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .viewer-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 18px clamp(18px, 4vw, 56px);
+        border-bottom: 1px solid var(--line);
+        background: #101918;
+      }
+
+      .eyebrow, .section-label {
+        margin: 0;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+      }
+
+      h1 { margin: 3px 0 0; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; }
+      .topbar-link { color: var(--muted); text-decoration: none; }
+      .topbar-link:hover { color: var(--accent-strong); }
+
+      .viewer-layout {
+        width: min(1500px, 100%);
+        margin: 0 auto;
+        padding: clamp(16px, 3vw, 36px);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
+        gap: 18px;
+      }
+
+      .viewer-stage {
+        position: relative;
+        min-height: min(760px, calc(100vh - 150px));
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #101819;
+      }
+
+      #model-viewer-canvas { position: absolute; inset: 0; }
+      #model-viewer-canvas canvas { display: block; width: 100%; height: 100%; }
+      .stage-overlay {
+        position: absolute;
+        inset: auto 16px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        pointer-events: none;
+      }
+
+      .stage-badge {
+        padding: 6px 9px;
+        border: 1px solid #49615c;
+        border-radius: 999px;
+        background: rgba(16, 24, 25, .82);
+        color: var(--accent-strong);
+        font-size: 12px;
+      }
+
+      .viewer-controls {
+        align-self: start;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .control-group + .control-group { margin-top: 22px; }
+      .control-label { display: block; margin: 8px 0 6px; color: var(--muted); font-size: 13px; }
+      .input-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; }
+      input[type="url"], select {
+        width: 100%;
+        min-height: 40px;
+        padding: 8px 10px;
+        border: 1px solid #435550;
+        border-radius: 5px;
+        background: var(--panel-deep);
+        color: var(--ink);
+      }
+
+      input[type="file"] { width: 100%; color: var(--muted); font-size: 12px; }
+      input[type="file"]::file-selector-button {
+        margin-right: 8px;
+        padding: 7px 9px;
+        border: 1px solid #435550;
+        border-radius: 5px;
+        background: #22302d;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      .button {
+        min-height: 40px;
+        padding: 8px 12px;
+        border: 1px solid #4b6861;
+        border-radius: 5px;
+        background: #22302d;
+        color: var(--ink);
+      }
+
+      .button:hover { border-color: var(--accent); background: #293b37; }
+      .button-primary { border-color: var(--accent); background: var(--accent); color: #10201d; font-weight: 750; }
+      .button-primary:hover { background: var(--accent-strong); }
+      .status-line { min-height: 44px; margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+      .status-line[data-state="ready"] { color: var(--accent-strong); }
+      .status-line[data-state="error"] { color: var(--danger); }
+      .model-details { min-height: 28px; margin: 6px 0 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+      .model-details:empty { display: none; }
+      .viewer-note { margin: 22px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+      @media (max-width: 860px) {
+        .viewer-topbar { align-items: flex-start; }
+        .viewer-layout { grid-template-columns: 1fr; }
+        .viewer-stage { min-height: 62vh; }
+        .viewer-controls { width: 100%; }
+      }
+
+      @media (max-width: 520px) {
+        .viewer-topbar { padding: 15px 16px; }
+        .topbar-link { font-size: 12px; }
+        .viewer-layout { padding: 12px; gap: 12px; }
+        .viewer-stage { min-height: 58vh; }
+        .input-row { grid-template-columns: 1fr; }
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="viewer-shell" data-model-viewer>
+      <header class="viewer-topbar">
+        <div>
+          <p class="eyebrow">ONEME / MODEL VIEWER</p>
+          <h1>エクスポートモデルを確認</h1>
+        </div>
+        <a class="topbar-link" href="/">ビルダーへ戻る</a>
+      </header>
+
+      <section class="viewer-layout" aria-label="モデルビューア">
+        <div class="viewer-stage">
+          <div id="model-viewer-canvas" aria-label="3Dモデル表示"></div>
+          <div class="stage-overlay">
+            <span id="model-format-label" class="stage-badge">待機中</span>
+            <span id="model-status" class="stage-badge" role="status">読み込み準備中</span>
+          </div>
+        </div>
+
+        <aside class="viewer-controls" aria-label="モデル操作">
+          <form id="model-viewer-form" class="control-group">
+            <p class="section-label">SOURCE</p>
+            <label class="control-label" for="model-url">モデルURL</label>
+            <div class="input-row">
+              <input id="model-url" type="url" placeholder="/exports/.../avatar.vrm" autocomplete="off">
+              <select id="model-format" aria-label="モデル形式">
+                <option value="auto">自動</option>
+                <option value="glb">GLB</option>
+                <option value="vrm">VRM</option>
+                <option value="fbx">FBX</option>
+              </select>
+            </div>
+            <button class="button button-primary" type="submit" style="width:100%;margin-top:10px">モデルを読み込む</button>
+            <label class="control-label" for="model-file">ローカルファイル</label>
+            <input id="model-file" type="file" accept=".glb,.vrm,.fbx,model/gltf-binary,application/octet-stream">
+          </form>
+
+          <div class="control-group">
+            <p class="section-label">VIEW</p>
+            <div class="button-row">
+              <button id="reset-camera" class="button" type="button">カメラを戻す</button>
+              <button id="toggle-rotation" class="button" type="button" aria-pressed="true">回転を停止</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <p class="section-label">MODEL</p>
+            <p id="model-details" class="model-details"></p>
+          </div>
+
+          <p class="viewer-note">VRMはVRM 1.0プラグインで読み込み、拡張メタデータと揺れ物を含むシーンを表示します。</p>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/js/model_viewer.js"></script>
+  </body>
+</html>

@@ -263,7 +263,8 @@ oneme/
 - [x] 実際のVRM 1.0 humanoidボーンリグへ変換する
 - [x] 表情モーフターゲットと揺れ物を実ノードへ接続する
 - [x] Three.js GLTFLoaderでVRMコンテナ、`VRMC_vrm`、`VRMC_springBone`を読み込み検証する
-- [ ] VRMビューア、UnityでVRMの互換性を検証する
+- [x] WebのVRMビューアでVRMシーンを表示し、回転・カメラ操作を検証する
+- [ ] 外部VRMビューア、UnityでVRMの互換性を検証する
 
 Phase 7では、既存の実メッシュGLBへ決定的なhumanoidノード階層、skin、表情モーフターゲット、`VRMC_springBone`を追加する。外部ランタイムの読み込み検証と、アセットごとの細かなウェイト・表情調整は残課題として扱う。
 

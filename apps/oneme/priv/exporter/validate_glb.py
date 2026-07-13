@@ -12,6 +12,9 @@ from pathlib import Path
 GLB_MAGIC = 0x46546C67
 GLB_JSON = 0x4E4F534A
 GLB_BIN = 0x004E4942
+UNSIGNED_BYTE = 5121
+UNSIGNED_SHORT = 5123
+UNSIGNED_INT = 5125
 
 REQUIRED_HUMANOID_BONES = (
     "hips",
@@ -32,7 +35,7 @@ REQUIRED_HUMANOID_BONES = (
 )
 
 
-def read_gltf(path: Path) -> tuple[dict, list[int]]:
+def read_gltf(path: Path) -> tuple[dict, list[int], bytes]:
     data = path.read_bytes()
     if len(data) < 20:
         raise ValueError("file is too small to be a GLB")
@@ -47,6 +50,7 @@ def read_gltf(path: Path) -> tuple[dict, list[int]]:
 
     offset = 12
     gltf = None
+    binary = None
     chunk_types = []
     while offset < len(data):
         if offset + 8 > len(data):
@@ -62,13 +66,47 @@ def read_gltf(path: Path) -> tuple[dict, list[int]]:
             if gltf is not None:
                 raise ValueError("GLB contains multiple JSON chunks")
             gltf = json.loads(body.decode("utf-8").rstrip(" "))
+        elif chunk_type == GLB_BIN:
+            binary = body
         offset = end
 
     if gltf is None:
         raise ValueError("GLB JSON chunk is missing")
     if GLB_BIN not in chunk_types:
         raise ValueError("GLB binary chunk is missing")
-    return gltf, chunk_types
+    if binary is None:
+        raise ValueError("GLB binary chunk is missing")
+    return gltf, chunk_types, binary
+
+
+def validate_joint_attributes(gltf: dict, binary: bytes, skin: dict, mesh_indexes: list[int]) -> None:
+    joint_count = len(skin["joints"])
+    component_formats = {
+        UNSIGNED_BYTE: ("<4B", 4),
+        UNSIGNED_SHORT: ("<4H", 8),
+        UNSIGNED_INT: ("<4I", 16),
+    }
+
+    for mesh_index in mesh_indexes:
+        mesh = gltf["meshes"][mesh_index]
+        for primitive in mesh.get("primitives", []):
+            accessor_index = primitive.get("attributes", {}).get("JOINTS_0")
+            if not isinstance(accessor_index, int):
+                raise ValueError("every skinned primitive must contain JOINTS_0")
+            accessor = gltf.get("accessors", [])[accessor_index]
+            if accessor.get("type") != "VEC4" or accessor.get("componentType") not in component_formats:
+                raise ValueError("JOINTS_0 must be an unsigned VEC4 accessor")
+            buffer_view = gltf.get("bufferViews", [])[accessor["bufferView"]]
+            format_string, element_size = component_formats[accessor["componentType"]]
+            stride = buffer_view.get("byteStride", element_size)
+            start = buffer_view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
+            end = start + max(accessor.get("count", 0) - 1, 0) * stride + element_size
+            if start < 0 or end > len(binary):
+                raise ValueError("JOINTS_0 accessor exceeds the GLB binary chunk")
+            for index in range(accessor["count"]):
+                values = struct.unpack_from(format_string, binary, start + index * stride)
+                if any(value >= joint_count for value in values):
+                    raise ValueError("JOINTS_0 references a skin joint outside skin.joints")
 
 
 def validate_vrm(gltf: dict) -> None:
@@ -152,7 +190,7 @@ def validate_vrm(gltf: dict) -> None:
 
 
 def validate(path: Path, require_vrm: bool) -> dict:
-    gltf, chunk_types = read_gltf(path)
+    gltf, chunk_types, binary = read_gltf(path)
     asset = gltf.get("asset", {})
     if asset.get("version") != "2.0":
         raise ValueError("gltf asset version is not 2.0")
@@ -168,6 +206,14 @@ def validate(path: Path, require_vrm: bool) -> dict:
         if not isinstance(vrm, dict) or not isinstance(extras_vrm, dict):
             raise ValueError("VRM metadata is missing")
         validate_vrm(gltf)
+        mesh_node_indexes = [index for index, node in enumerate(gltf["nodes"]) if isinstance(node.get("mesh"), int)]
+        skin_index = gltf["nodes"][mesh_node_indexes[0]]["skin"]
+        validate_joint_attributes(
+            gltf,
+            binary,
+            gltf["skins"][skin_index],
+            [gltf["nodes"][index]["mesh"] for index in mesh_node_indexes],
+        )
 
     return {
         "file": str(path),

@@ -348,10 +348,12 @@ def add_vertex_attributes(
 ) -> None:
     mesh = gltf["meshes"][gltf["nodes"][mesh_node_index]["mesh"]]
     mesh.setdefault("extras", {})["targetNames"] = list(MORPH_TARGETS)
+    # JOINTS_0 stores indexes into skin.joints, not glTF node indexes.
+    skin_joint_indexes = {name: index for index, name in enumerate(SKIN_JOINTS)}
     for primitive in mesh.get("primitives", []):
         positions = accessor_positions(gltf, bytes(blob), primitive["attributes"]["POSITION"])
         material = material_name(gltf, primitive)
-        joints = [choose_joint(position, material, joint_indexes) for position in positions]
+        joints = [choose_joint(position, material, skin_joint_indexes) for position in positions]
         joints_payload = b"".join(struct.pack("<4H", joint, 0, 0, 0) for joint in joints)
         weights_payload = b"".join(struct.pack("<4f", 1.0, 0.0, 0.0, 0.0) for _ in positions)
         primitive["attributes"]["JOINTS_0"] = append_accessor(
