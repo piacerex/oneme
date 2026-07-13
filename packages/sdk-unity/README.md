@@ -22,4 +22,6 @@ public sealed class AvatarScreen : MonoBehaviour
 ```
 
 `SceneLoaded`は新しいルート、`LoadFailed`はエラーメッセージを通知します。SDKはモデルURL
-の解決、HTTPエラー、再読み込み、glTFastによるScene展開を担当します。
+の解決、APIバージョンヘッダー、最大試行回数までのHTTP再試行、再読み込み、glTFastによる
+Scene展開を担当します。`ApiVersion`、`MaxAttempts`、`RetryDelaySeconds`で通信条件を
+上書きできます。
