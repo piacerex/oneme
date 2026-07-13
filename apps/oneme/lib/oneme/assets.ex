@@ -7,6 +7,8 @@ defmodule Oneme.Assets do
   alias Oneme.Repo
 
   @repo_url "https://github.com/piacerex/oneme"
+  @hash_chunk_size 65_536
+  @default_max_asset_bytes 200 * 1024 * 1024
   @slot_atoms %{
     "baseBody" => :baseBody,
     "face" => :face,
@@ -53,6 +55,33 @@ defmodule Oneme.Assets do
 
   def get_asset!(asset_key), do: Repo.get_by!(AssetFile, asset_key: asset_key)
 
+  def inspect_asset(asset_key) when is_binary(asset_key) do
+    case Repo.get_by(AssetFile, asset_key: asset_key) do
+      nil ->
+        {:error, :not_found}
+
+      asset ->
+        attrs = inspection_attrs(asset)
+
+        case asset |> AssetFile.changeset(attrs) |> Repo.update() do
+          {:ok, updated} -> {:ok, updated}
+          {:error, changeset} -> {:error, changeset}
+        end
+    end
+  end
+
+  def inspect_all do
+    ensure_seeded()
+
+    Repo.all(from asset in AssetFile, order_by: [asc: asset.asset_key])
+    |> Enum.map(fn asset ->
+      case inspect_asset(asset.asset_key) do
+        {:ok, inspected} -> inspected
+        {:error, _reason} -> Repo.get!(AssetFile, asset.id)
+      end
+    end)
+  end
+
   def integrity_report do
     ensure_seeded()
 
@@ -69,8 +98,17 @@ defmodule Oneme.Assets do
           assetKey: asset.asset_key,
           sourcePath: asset.source_path,
           sourceAvailable: source_ok,
+          contentSha256: asset.content_sha256,
+          contentBytes: asset.content_bytes,
+          inspectionStatus: asset.inspection_status,
+          inspectionError: asset.inspection_error,
+          inspectedAt: asset.inspected_at,
           licenseValid: license_ok,
-          status: if(source_ok and license_ok, do: "ok", else: "review")
+          status:
+            if(source_ok and license_ok and inspection_ok?(asset),
+              do: "ok",
+              else: "review"
+            )
         }
       end)
 
@@ -128,4 +166,140 @@ defmodule Oneme.Assets do
   defp source_available?("procedural://" <> _asset_key), do: true
   defp source_available?(path) when is_binary(path), do: File.exists?(path)
   defp source_available?(_path), do: false
+
+  defp inspection_ok?(%AssetFile{asset_type: "procedural"}), do: true
+  defp inspection_ok?(%AssetFile{inspection_status: "passed"}), do: true
+  defp inspection_ok?(_asset), do: false
+
+  defp inspection_attrs(%AssetFile{asset_type: "procedural"}) do
+    %{
+      content_sha256: nil,
+      content_bytes: nil,
+      inspection_status: "passed",
+      inspection_error: nil,
+      inspected_at: inspection_time()
+    }
+  end
+
+  defp inspection_attrs(asset) do
+    case inspect_source(asset) do
+      {:ok, digest, bytes} ->
+        %{
+          content_sha256: digest,
+          content_bytes: bytes,
+          inspection_status: "passed",
+          inspection_error: nil,
+          inspected_at: inspection_time()
+        }
+
+      {:error, reason} ->
+        %{
+          content_sha256: nil,
+          content_bytes: file_size(asset.source_path),
+          inspection_status: "failed",
+          inspection_error: String.slice(to_string(reason), 0, 500),
+          inspected_at: inspection_time()
+        }
+    end
+  end
+
+  defp inspect_source(%AssetFile{source_path: path} = asset) do
+    with {:ok, stat} <- File.stat(path),
+         :ok <- validate_size(stat.size),
+         {:ok, digest, bytes, header} <- hash_file(path),
+         :ok <- validate_format(asset, header) do
+      {:ok, digest, bytes}
+    end
+  end
+
+  defp validate_size(bytes) when is_integer(bytes) do
+    if bytes <= max_asset_bytes(), do: :ok, else: {:error, "asset exceeds maximum allowed size"}
+  end
+
+  defp validate_size(_bytes), do: {:error, "asset size is unavailable"}
+
+  defp max_asset_bytes do
+    case Integer.parse(System.get_env("ONEME_MAX_ASSET_BYTES", "#{@default_max_asset_bytes}")) do
+      {value, ""} when value > 0 -> value
+      _ -> @default_max_asset_bytes
+    end
+  end
+
+  defp hash_file(path) do
+    case File.open(path, [:read, :binary]) do
+      {:ok, device} ->
+        try do
+          read_file(device, :crypto.hash_init(:sha256), 0, <<>>)
+        after
+          File.close(device)
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp read_file(device, context, bytes, header) do
+    case IO.binread(device, @hash_chunk_size) do
+      :eof ->
+        {:ok, :crypto.hash_final(context) |> Base.encode16(case: :lower), bytes, header}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      chunk when is_binary(chunk) ->
+        combined = header <> chunk
+        next_header = binary_part(combined, 0, min(byte_size(combined), 64))
+
+        read_file(
+          device,
+          :crypto.hash_update(context, chunk),
+          bytes + byte_size(chunk),
+          next_header
+        )
+    end
+  end
+
+  defp validate_format(%AssetFile{asset_type: "glb", source_path: path}, header) do
+    valid =
+      Path.extname(path) |> String.downcase() == ".glb" and
+        binary_part(header, 0, min(byte_size(header), 4)) == "glTF"
+
+    if valid, do: :ok, else: {:error, "GLB header or extension is invalid"}
+  end
+
+  defp validate_format(%AssetFile{asset_type: "fbx", source_path: path}, header) do
+    binary = binary_part(header, 0, min(byte_size(header), 23))
+    ascii = String.contains?(header, "FBXHeaderExtension")
+
+    valid =
+      Path.extname(path) |> String.downcase() == ".fbx" and
+        (String.starts_with?(binary, "Kaydara FBX Binary") or ascii)
+
+    if valid, do: :ok, else: {:error, "FBX header or extension is invalid"}
+  end
+
+  defp validate_format(%AssetFile{asset_type: "texture", source_path: path}, header) do
+    png =
+      byte_size(header) >= 8 and
+        binary_part(header, 0, 8) == <<137, 80, 78, 71, 13, 10, 26, 10>>
+
+    jpeg = byte_size(header) >= 3 and binary_part(header, 0, 3) == <<255, 216, 255>>
+
+    extension = Path.extname(path) |> String.downcase()
+    valid = extension in [".png", ".jpg", ".jpeg"] and (png or jpeg)
+
+    if valid, do: :ok, else: {:error, "texture header or extension is invalid"}
+  end
+
+  defp validate_format(_asset, _header), do: :ok
+
+  defp file_size(path) do
+    case File.stat(path) do
+      {:ok, stat} -> stat.size
+      _ -> nil
+    end
+  end
+
+  defp inspection_time, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end

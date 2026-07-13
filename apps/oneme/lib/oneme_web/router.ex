@@ -46,6 +46,8 @@ defmodule OnemeWeb.Router do
     post "/audit-logs/retention", AuditController, :prune
     get "/parts", AssetsController, :index
     get "/assets/integrity", AssetsController, :integrity
+    post "/assets/inspect", AssetsController, :inspect_all
+    post "/assets/:asset_key/inspect", AssetsController, :inspect_asset
     post "/face-analysis-jobs", FaceAnalysisController, :create
     get "/face-analysis-jobs/:id", FaceAnalysisController, :show
     post "/avatars/from-face-analysis", FaceAnalysisController, :create_avatar

@@ -11,6 +11,11 @@ defmodule Oneme.Assets.AssetFile do
     field :license_name, :string
     field :license_url, :string
     field :redistributable, :boolean, default: false
+    field :content_sha256, :string
+    field :content_bytes, :integer
+    field :inspection_status, :string, default: "pending"
+    field :inspection_error, :string
+    field :inspected_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end
@@ -25,8 +30,15 @@ defmodule Oneme.Assets.AssetFile do
       :scale,
       :license_name,
       :license_url,
-      :redistributable
+      :redistributable,
+      :content_sha256,
+      :content_bytes,
+      :inspection_status,
+      :inspection_error,
+      :inspected_at
     ])
     |> validate_required([:asset_key, :asset_type, :source_path, :origin, :scale, :license_name])
+    |> validate_inclusion(:inspection_status, ~w(pending passed failed))
+    |> validate_number(:content_bytes, greater_than_or_equal_to: 0)
   end
 end

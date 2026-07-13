@@ -41,7 +41,7 @@ APIは開発時には匿名互換で動作します。本番では`ONEME_AUTH_RE
 
 admin以上は`/api/webhooks`でWebhookを登録できます。秘密値は暗号化保存され、作成時のレスポンスで一度だけ返されます。`/api/webhooks/:id/test`は外部HTTP送信前の署名済みqueued deliveryを作成し、`deliver=true`または再試行APIで非同期workerへ渡します。workerは再起動時にDBのqueued deliveryを回収します。`/api/audit-logs`と`/api/audit-logs/retention`で監査記録の参照・保持期限削除を行います。
 
-`GET /api/assets/integrity`はadmin以上がアセットの参照元とライセンス契約を検査する管理APIです。現在のデモアセットは`procedural://`契約として検査され、実ファイルの審査・破損検知は別の運用工程です。
+`GET /api/assets/integrity`はadmin以上がアセットの参照元、ライセンス契約、審査状態を確認する管理APIです。`POST /api/assets/:asset_key/inspect`または`POST /api/assets/inspect`で実ファイルのSHA-256、サイズ、GLB/FBX/PNG/JPEGのヘッダーを検査し、結果を台帳へ保存します。現在のデモアセットは`procedural://`契約として検査されます。
 
 `POST /api/generation-jobs` は現在のアバター設定から3つの候補を作り、`POST /api/generation-jobs/:id/feedback` で採用・却下を記録します。現段階のプロバイダーは既存パーツを推薦するローカル実装で、画像生成サービスへ差し替えられるジョブ境界を使います。
 
