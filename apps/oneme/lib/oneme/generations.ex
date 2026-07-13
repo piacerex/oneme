@@ -132,7 +132,7 @@ defmodule Oneme.Generations do
       |> GenerationJob.changeset(%{status: "running", attempts: job.attempts + 1})
       |> Repo.update()
 
-    {provider, candidates} = generate_candidates(running_job.input_config)
+    {provider, candidates, metadata} = generate_candidates(running_job.input_config)
     finished_at = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, finished_job} =
@@ -148,6 +148,12 @@ defmodule Oneme.Generations do
       resource_type: "generation_job",
       resource_id: finished_job.id,
       metadata: %{"candidateCount" => length(candidates), "provider" => provider}
+    })
+
+    Operations.track_usage("generation_provider_usage", %{
+      subject_type: "generation_job",
+      subject_id: finished_job.id,
+      metadata: Map.put(metadata, "provider", provider)
     })
 
     finished_job
@@ -183,12 +189,12 @@ defmodule Oneme.Generations do
   defp generate_candidates(input_config) do
     case System.get_env("ONEME_GENERATION_PROVIDER", "local_recommendation") do
       "local_recommendation" ->
-        {"local_recommendation", Enum.map(@presets, &build_candidate(&1, input_config))}
+        {"local_recommendation", Enum.map(@presets, &build_candidate(&1, input_config)), %{}}
 
       "http_json" ->
         case ExternalProvider.generate(input_config) do
-          {:ok, %{provider: provider, candidates: candidates}} ->
-            {provider, normalize_external_candidates(candidates, input_config)}
+          {:ok, %{provider: provider, candidates: candidates, metadata: metadata}} ->
+            {provider, normalize_external_candidates(candidates, input_config), metadata}
 
           {:error, code, message} ->
             raise "#{code}: #{message}"

@@ -9,6 +9,7 @@ config :oneme, Oneme.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
+  port: String.to_integer(System.get_env("ONEME_TEST_DB_PORT", "5432")),
   database: "oneme_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2

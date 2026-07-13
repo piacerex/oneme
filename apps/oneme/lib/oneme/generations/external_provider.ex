@@ -51,11 +51,13 @@ defmodule Oneme.Generations.ExternalProvider do
   defp decode_response(response_body) do
     with {:ok, payload} <- Jason.decode(response_body),
          candidates when is_list(candidates) <- Map.get(payload, "candidates"),
-         true <- candidates != [] do
+         true <- candidates != [],
+         :ok <- moderation_result(payload) do
       {:ok,
        %{
-         provider: Map.get(payload, "provider", "external_http"),
-         candidates: Enum.take(candidates, 3)
+         provider: provider_name(payload),
+         candidates: Enum.take(candidates, 3),
+         metadata: response_metadata(payload)
        }}
     else
       {:error, %Jason.DecodeError{}} ->
@@ -67,9 +69,72 @@ defmodule Oneme.Generations.ExternalProvider do
       false ->
         {:error, :provider_invalid_response, "provider returned no candidates"}
 
+      {:error, code, message} ->
+        {:error, code, message}
+
       _ ->
         {:error, :provider_invalid_response, "provider response is not an object"}
     end
+  end
+
+  defp moderation_result(payload) do
+    case moderation_status(payload) do
+      status when status in ["blocked", "rejected", "failed"] ->
+        {:error, :content_moderation_blocked,
+         "provider moderation rejected the generated candidate."}
+
+      nil ->
+        if require_moderation?() do
+          {:error, :moderation_required, "provider moderation result is required."}
+        else
+          :ok
+        end
+
+      _status ->
+        :ok
+    end
+  end
+
+  defp moderation_status(payload) do
+    moderation = Map.get(payload, "moderation", %{})
+
+    if is_map(moderation) do
+      case Map.get(moderation, "status") do
+        status when is_binary(status) -> String.downcase(status)
+        _ -> nil
+      end
+    end
+  end
+
+  defp response_metadata(payload) do
+    usage = Map.get(payload, "usage", %{})
+    moderation = Map.get(payload, "moderation", %{})
+    usage = if is_map(usage), do: usage, else: %{}
+    moderation = if is_map(moderation), do: moderation, else: %{}
+
+    %{}
+    |> put_integer("inputTokens", Map.get(usage, "inputTokens"))
+    |> put_integer("outputTokens", Map.get(usage, "outputTokens"))
+    |> put_integer("costCents", Map.get(usage, "costCents"))
+    |> put_text("moderationProvider", Map.get(moderation, "provider"))
+    |> put_text("moderationStatus", moderation_status(payload))
+  end
+
+  defp provider_name(payload) do
+    case Map.get(payload, "provider") do
+      provider when is_binary(provider) and provider != "" -> String.slice(provider, 0, 100)
+      _ -> "external_http"
+    end
+  end
+
+  defp put_integer(metadata, _key, value) when not is_integer(value), do: metadata
+  defp put_integer(metadata, key, value), do: Map.put(metadata, key, value)
+
+  defp put_text(metadata, _key, value) when not is_binary(value) or value == "", do: metadata
+  defp put_text(metadata, key, value), do: Map.put(metadata, key, String.slice(value, 0, 100))
+
+  defp require_moderation? do
+    System.get_env("ONEME_GENERATION_REQUIRE_MODERATION", "false") in ["1", "true"]
   end
 
   defp provider_url do

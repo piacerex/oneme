@@ -3,6 +3,8 @@ defmodule Oneme.GenerationsExternalProviderTest do
 
   alias Oneme.Generations.ExternalProvider
   alias Oneme.Generations
+  alias Oneme.Operations.UsageEvent
+  alias Oneme.Repo
 
   test "returns not configured without an external provider URL" do
     previous = System.get_env("ONEME_GENERATION_PROVIDER_URL")
@@ -25,13 +27,15 @@ defmodule Oneme.GenerationsExternalProviderTest do
       send(server, :stop)
     end)
 
-    assert {:ok, %{provider: "test-image-provider", candidates: [candidate]}} =
+    assert {:ok, %{provider: "test-image-provider", candidates: [candidate], metadata: metadata}} =
              ExternalProvider.generate(%{
                "parts" => %{"face" => "face.soft_01"},
                "faceImageDataUrl" => "data:image/png;base64,must-not-be-sent"
              })
 
     assert candidate["id"] == "remote-1"
+    assert metadata["costCents"] == 7
+    assert metadata["moderationStatus"] == "passed"
   end
 
   test "generation jobs use the configured external provider" do
@@ -60,9 +64,52 @@ defmodule Oneme.GenerationsExternalProviderTest do
     assert job.candidates["provider"] == "test-image-provider"
     assert hd(Generations.candidate_items(job))["id"] == "remote-1"
     refute Jason.encode!(job.input_config) =~ "must-not-persist"
+
+    assert %UsageEvent{metadata: %{"costCents" => 7, "moderationStatus" => "passed"}} =
+             Repo.get_by(UsageEvent,
+               event_type: "generation_provider_usage",
+               subject_id: to_string(job.id)
+             )
   end
 
-  defp start_json_server do
+  test "blocks candidates rejected by provider moderation" do
+    {server, port} = start_json_server(%{"moderation" => %{"status" => "blocked"}})
+    previous_url = System.get_env("ONEME_GENERATION_PROVIDER_URL")
+    previous_http = System.get_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP")
+    System.put_env("ONEME_GENERATION_PROVIDER_URL", "http://127.0.0.1:#{port}")
+    System.put_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP", "true")
+
+    on_exit(fn ->
+      restore_env("ONEME_GENERATION_PROVIDER_URL", previous_url)
+      restore_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP", previous_http)
+      send(server, :stop)
+    end)
+
+    assert {:error, :content_moderation_blocked, _message} =
+             ExternalProvider.generate(%{"parts" => %{}})
+  end
+
+  test "requires provider moderation when production enforcement is enabled" do
+    {server, port} = start_json_server(%{"moderation" => nil})
+    previous_url = System.get_env("ONEME_GENERATION_PROVIDER_URL")
+    previous_http = System.get_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP")
+    previous_required = System.get_env("ONEME_GENERATION_REQUIRE_MODERATION")
+    System.put_env("ONEME_GENERATION_PROVIDER_URL", "http://127.0.0.1:#{port}")
+    System.put_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP", "true")
+    System.put_env("ONEME_GENERATION_REQUIRE_MODERATION", "true")
+
+    on_exit(fn ->
+      restore_env("ONEME_GENERATION_PROVIDER_URL", previous_url)
+      restore_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP", previous_http)
+      restore_env("ONEME_GENERATION_REQUIRE_MODERATION", previous_required)
+      send(server, :stop)
+    end)
+
+    assert {:error, :moderation_required, _message} =
+             ExternalProvider.generate(%{"parts" => %{}})
+  end
+
+  defp start_json_server(overrides \\ %{}) do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true])
     {:ok, {_address, port}} = :inet.sockname(listener)
 
@@ -73,10 +120,19 @@ defmodule Oneme.GenerationsExternalProviderTest do
         refute_contains_data_url(request)
 
         body =
-          Jason.encode!(%{
-            "provider" => "test-image-provider",
-            "candidates" => [%{"id" => "remote-1", "parts" => %{"face" => "face.soft_01"}}]
-          })
+          Jason.encode!(
+            Map.merge(
+              %{
+                "provider" => "test-image-provider",
+                "candidates" => [
+                  %{"id" => "remote-1", "parts" => %{"face" => "face.soft_01"}}
+                ],
+                "moderation" => %{"provider" => "test-moderator", "status" => "passed"},
+                "usage" => %{"inputTokens" => 12, "outputTokens" => 34, "costCents" => 7}
+              },
+              overrides
+            )
+          )
 
         response =
           "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n#{body}"
