@@ -17,6 +17,41 @@ defmodule OnemeWeb.BillingController do
     end
   end
 
+  def invoices(conn, _params) do
+    with {:ok, team_id} <- admin_team(conn) do
+      json(conn, %{invoices: Enum.map(Billing.list_invoices(team_id), &serialize_invoice/1)})
+    else
+      {:error, :forbidden} -> forbidden(conn)
+    end
+  end
+
+  def provider_webhook(conn, %{"provider" => provider} = params) do
+    body = conn.assigns[:raw_body] || Jason.encode!(Map.delete(params, "provider"))
+    signature = List.first(get_req_header(conn, "x-oneme-billing-signature"))
+
+    with true <- is_binary(signature),
+         :ok <- Billing.verify_provider_webhook(provider, body, signature),
+         {:ok, result} <- Billing.process_provider_event(provider, params) do
+      json(conn, %{received: true, duplicate: result.duplicate})
+    else
+      false ->
+        conn |> put_status(:unauthorized) |> json(%{error: "billing_signature_required"})
+
+      {:error, :secret_not_configured} ->
+        conn
+        |> put_status(:service_unavailable)
+        |> json(%{error: "billing_webhook_not_configured"})
+
+      {:error, :invalid_signature} ->
+        conn |> put_status(:unauthorized) |> json(%{error: "invalid_billing_signature"})
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "invalid_billing_event", reason: inspect(reason)})
+    end
+  end
+
   def update_subscription(conn, params) do
     with {:ok, team_id} <- admin_team(conn),
          {:ok, subscription} <- Billing.change_subscription(team_id, params),
@@ -80,6 +115,29 @@ defmodule OnemeWeb.BillingController do
       provider: subscription.provider,
       providerCustomerId: subscription.provider_customer_id,
       providerSubscriptionId: subscription.provider_subscription_id
+    }
+  end
+
+  defp serialize_invoice(invoice) do
+    %{
+      id: invoice.id,
+      teamId: invoice.team_id,
+      provider: invoice.provider,
+      externalId: invoice.external_id,
+      number: invoice.number,
+      status: invoice.status,
+      currency: invoice.currency,
+      subtotalCents: invoice.subtotal_cents,
+      totalCents: invoice.total_cents,
+      amountDueCents: invoice.amount_due_cents,
+      amountPaidCents: invoice.amount_paid_cents,
+      hostedUrl: invoice.hosted_url,
+      invoicePdfUrl: invoice.invoice_pdf_url,
+      dueDate: invoice.due_date,
+      paidAt: invoice.paid_at,
+      metadata: invoice.metadata,
+      createdAt: invoice.inserted_at,
+      updatedAt: invoice.updated_at
     }
   end
 

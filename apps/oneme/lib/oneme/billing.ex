@@ -3,7 +3,14 @@ defmodule Oneme.Billing do
 
   import Ecto.Query
 
-  alias Oneme.Billing.{BillingEvent, BillingPlan, TeamSubscription}
+  alias Oneme.Billing.{
+    BillingEvent,
+    BillingInvoice,
+    BillingPlan,
+    ProviderWebhook,
+    TeamSubscription
+  }
+
   alias Oneme.Repo
   alias Oneme.Usage
 
@@ -35,6 +42,25 @@ defmodule Oneme.Billing do
 
   def get_plan_by_slug(slug) when is_binary(slug), do: Repo.get_by(BillingPlan, slug: slug)
   def get_subscription(team_id), do: Repo.get_by(TeamSubscription, team_id: team_id)
+
+  def list_invoices(team_id) when is_integer(team_id) do
+    BillingInvoice
+    |> where([invoice], invoice.team_id == ^team_id)
+    |> order_by([invoice], desc: invoice.inserted_at)
+    |> limit(100)
+    |> Repo.all()
+  end
+
+  def verify_provider_webhook(provider, body, signature),
+    do: ProviderWebhook.verify(provider, body, signature)
+
+  def process_provider_event(provider, attrs) when is_binary(provider) and is_map(attrs) do
+    with {:ok, normalized} <- normalize_provider_event(attrs) do
+      Repo.transaction(fn -> process_normalized_event(provider, normalized) end)
+    end
+  end
+
+  def process_provider_event(_provider, _attrs), do: {:error, :invalid_provider_event}
 
   def overview(team_id) when is_integer(team_id) do
     with {:ok, subscription} <- ensure_subscription(team_id),
@@ -99,6 +125,290 @@ defmodule Oneme.Billing do
     |> BillingEvent.changeset(normalize_event_attrs(attrs))
     |> Repo.insert()
   end
+
+  defp process_normalized_event(provider, normalized) do
+    case Repo.get_by(BillingEvent, provider: provider, external_id: normalized.external_id) do
+      %BillingEvent{} = event ->
+        %{event: event, duplicate: true, invoice: nil}
+
+      nil ->
+        attrs = Map.put(normalized, :provider, provider)
+
+        with {:ok, event} <- %BillingEvent{} |> BillingEvent.changeset(attrs) |> Repo.insert(),
+             {:ok, invoice} <- apply_provider_event(provider, normalized),
+             {:ok, event} <-
+               event
+               |> BillingEvent.changeset(%{
+                 processed_at: DateTime.utc_now() |> DateTime.truncate(:second)
+               })
+               |> Repo.update() do
+          %{event: event, duplicate: false, invoice: invoice}
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+    end
+  end
+
+  defp normalize_provider_event(attrs) do
+    external_id = first_value(attrs, ["id", "eventId", "externalId"])
+    event_type = first_value(attrs, ["type", "eventType"])
+
+    if is_binary(external_id) and external_id != "" and is_binary(event_type) and event_type != "" do
+      {:ok,
+       %{
+         external_id: external_id,
+         event_type: event_type,
+         team_id: integer_value(first_value(attrs, ["teamId"])),
+         payload: attrs
+       }}
+    else
+      {:error, :provider_event_id_and_type_required}
+    end
+  end
+
+  defp apply_provider_event(provider, %{
+         event_type: event_type,
+         payload: payload,
+         team_id: team_id
+       }) do
+    cond do
+      String.starts_with?(event_type, "invoice.") ->
+        upsert_invoice(provider, event_type, payload, team_id)
+
+      String.starts_with?(event_type, "customer.subscription") or
+          String.starts_with?(event_type, "subscription.") ->
+        sync_subscription(provider, event_type, payload, team_id)
+
+      true ->
+        {:ok, nil}
+    end
+  end
+
+  defp upsert_invoice(provider, event_type, payload, event_team_id) do
+    source = nested_object(payload, "invoice")
+    external_id = first_value(source, ["id", "externalId"])
+
+    if is_binary(external_id) and external_id != "" do
+      present_attrs =
+        %{
+          team_id: event_team_id || metadata_team_id(source),
+          provider: provider,
+          external_id: external_id,
+          number: first_value(source, ["number", "invoiceNumber"]),
+          status: invoice_status(event_type, source),
+          currency: currency_value(first_value(source, ["currency"])),
+          subtotal_cents: integer_value(first_value(source, ["subtotal", "subtotalCents"])),
+          total_cents: integer_value(first_value(source, ["total", "totalCents"])),
+          amount_due_cents: integer_value(first_value(source, ["amountDue", "amountDueCents"])),
+          amount_paid_cents:
+            integer_value(first_value(source, ["amountPaid", "amountPaidCents"])),
+          hosted_url: first_value(source, ["hostedUrl", "hostedInvoiceUrl"]),
+          invoice_pdf_url: first_value(source, ["invoicePdfUrl", "invoicePdf"]),
+          due_date: date_value(first_value(source, ["dueDate"])),
+          paid_at: paid_at(event_type, source),
+          metadata:
+            if(is_map(first_value(source, ["metadata"])), do: first_value(source, ["metadata"]))
+        }
+        |> drop_nil_values()
+
+      insert_attrs =
+        Map.merge(
+          %{
+            currency: "jpy",
+            subtotal_cents: 0,
+            total_cents: 0,
+            amount_due_cents: 0,
+            amount_paid_cents: 0,
+            metadata: %{}
+          },
+          present_attrs
+        )
+
+      invoice = Repo.get_by(BillingInvoice, provider: provider, external_id: external_id)
+
+      case invoice do
+        nil ->
+          %BillingInvoice{}
+          |> BillingInvoice.changeset(insert_attrs)
+          |> Repo.insert()
+
+        %BillingInvoice{} = invoice ->
+          invoice
+          |> BillingInvoice.changeset(present_attrs)
+          |> Repo.update()
+      end
+    else
+      {:error, :invoice_id_required}
+    end
+  end
+
+  defp sync_subscription(provider, event_type, payload, event_team_id) do
+    source = nested_object(payload, "subscription")
+    team_id = event_team_id || metadata_team_id(source)
+
+    if is_integer(team_id) do
+      plan_slug = first_value(source, ["planSlug", "plan_slug"])
+      status = subscription_status(event_type, first_value(source, ["status"]))
+
+      with {:ok, current} <- ensure_subscription(team_id),
+           %BillingPlan{} = plan <- get_plan_by_slug(plan_slug || current_plan_slug(current)),
+           {:ok, subscription} <-
+             current
+             |> TeamSubscription.changeset(%{
+               plan_id: plan.id,
+               status: status,
+               provider: provider,
+               provider_customer_id: first_value(source, ["providerCustomerId", "customerId"]),
+               provider_subscription_id: first_value(source, ["providerSubscriptionId", "id"])
+             })
+             |> Repo.update() do
+        {:ok, subscription}
+      else
+        nil -> {:error, :plan_not_found}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp nested_object(payload, key) do
+    case first_value(payload, [key]) do
+      object when is_map(object) ->
+        object
+
+      _ ->
+        case first_value(payload, ["data"]) do
+          %{} = data ->
+            case first_value(data, ["object"]) do
+              object when is_map(object) -> object
+              _ -> payload
+            end
+
+          _ ->
+            payload
+        end
+    end
+  end
+
+  defp metadata_team_id(source) do
+    case first_value(source, ["metadata"]) do
+      metadata when is_map(metadata) ->
+        integer_value(first_value(metadata, ["teamId", "team_id"]))
+
+      _ ->
+        nil
+    end
+  end
+
+  defp invoice_status("invoice.paid", _source), do: "paid"
+  defp invoice_status("invoice.payment_failed", _source), do: "past_due"
+
+  defp invoice_status(_event_type, source) do
+    case first_value(source, ["status"]) do
+      status when status in ~w(draft open paid void uncollectible past_due payment_failed) ->
+        status
+
+      _ ->
+        "open"
+    end
+  end
+
+  defp subscription_status("customer.subscription.deleted", _status), do: "canceled"
+
+  defp subscription_status(_event_type, status)
+       when status in ~w(active trialing past_due canceled), do: status
+
+  defp subscription_status(_event_type, _status), do: "active"
+
+  defp paid_at("invoice.paid", source) do
+    date_time_value(first_value(source, ["paidAt", "paid_at"])) ||
+      DateTime.utc_now() |> DateTime.truncate(:second)
+  end
+
+  defp paid_at(_event_type, source),
+    do: date_time_value(first_value(source, ["paidAt", "paid_at"]))
+
+  defp first_value(map, keys) when is_map(map) do
+    Enum.find_value(keys, fn key -> Map.get(map, key) || Map.get(map, key_to_atom(key)) end)
+  end
+
+  defp first_value(_map, _keys), do: nil
+
+  defp key_to_atom("teamId"), do: :team_id
+  defp key_to_atom("id"), do: :id
+  defp key_to_atom("type"), do: :type
+  defp key_to_atom("eventId"), do: :event_id
+  defp key_to_atom("externalId"), do: :external_id
+  defp key_to_atom("eventType"), do: :event_type
+  defp key_to_atom("invoice"), do: :invoice
+  defp key_to_atom("data"), do: :data
+  defp key_to_atom("object"), do: :object
+  defp key_to_atom("subscription"), do: :subscription
+  defp key_to_atom("status"), do: :status
+  defp key_to_atom("currency"), do: :currency
+  defp key_to_atom("metadata"), do: :metadata
+  defp key_to_atom("number"), do: :number
+  defp key_to_atom("total"), do: :total
+  defp key_to_atom("subtotal"), do: :subtotal
+  defp key_to_atom("customerId"), do: :customer_id
+  defp key_to_atom("planSlug"), do: :plan_slug
+  defp key_to_atom("plan_slug"), do: :plan_slug
+  defp key_to_atom("invoiceNumber"), do: :invoice_number
+  defp key_to_atom("subtotalCents"), do: :subtotal_cents
+  defp key_to_atom("totalCents"), do: :total_cents
+  defp key_to_atom("amountDue"), do: :amount_due
+  defp key_to_atom("amountDueCents"), do: :amount_due_cents
+  defp key_to_atom("amountPaid"), do: :amount_paid
+  defp key_to_atom("amountPaidCents"), do: :amount_paid_cents
+  defp key_to_atom("hostedUrl"), do: :hosted_url
+  defp key_to_atom("hostedInvoiceUrl"), do: :hosted_invoice_url
+  defp key_to_atom("invoicePdfUrl"), do: :invoice_pdf_url
+  defp key_to_atom("invoicePdf"), do: :invoice_pdf
+  defp key_to_atom("dueDate"), do: :due_date
+  defp key_to_atom("paidAt"), do: :paid_at
+  defp key_to_atom("providerCustomerId"), do: :provider_customer_id
+  defp key_to_atom("providerSubscriptionId"), do: :provider_subscription_id
+  defp key_to_atom(_key), do: nil
+
+  defp integer_value(value) when is_integer(value), do: value
+
+  defp integer_value(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {integer, ""} -> integer
+      _ -> nil
+    end
+  end
+
+  defp integer_value(_value), do: nil
+
+  defp currency_value(value) when is_binary(value) and value != "", do: String.downcase(value)
+  defp currency_value(_value), do: nil
+
+  defp drop_nil_values(attrs),
+    do: Enum.reject(attrs, fn {_key, value} -> is_nil(value) end) |> Map.new()
+
+  defp date_value(%Date{} = date), do: date
+
+  defp date_value(value) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> date
+      _ -> nil
+    end
+  end
+
+  defp date_value(_value), do: nil
+
+  defp date_time_value(%DateTime{} = date_time), do: DateTime.truncate(date_time, :second)
+
+  defp date_time_value(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, date_time, _offset} -> DateTime.truncate(date_time, :second)
+      _ -> nil
+    end
+  end
+
+  defp date_time_value(_value), do: nil
 
   defp ensure_subscription(team_id) do
     case get_subscription(team_id) do

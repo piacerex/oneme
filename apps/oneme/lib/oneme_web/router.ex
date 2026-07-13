@@ -16,6 +16,11 @@ defmodule OnemeWeb.Router do
     plug OnemeWeb.RateLimit
   end
 
+  pipeline :billing_webhook do
+    plug :accepts, ["json"]
+    plug OnemeWeb.RateLimit
+  end
+
   scope "/", OnemeWeb do
     pipe_through :browser
 
@@ -36,6 +41,7 @@ defmodule OnemeWeb.Router do
     delete "/auth/api-keys/:id", AccessController, :revoke_api_key
     get "/usage", UsageController, :index
     get "/billing", BillingController, :show
+    get "/billing/invoices", BillingController, :invoices
     patch "/billing/subscription", BillingController, :update_subscription
     post "/billing/plans", BillingController, :create_plan
     get "/webhooks", WebhookController, :index
@@ -67,6 +73,12 @@ defmodule OnemeWeb.Router do
     get "/avatars/:id/public", AvatarController, :public
     post "/avatars/:id/exports", AvatarController, :export
     get "/avatars/:id/model", AvatarController, :model
+  end
+
+  scope "/api/billing", OnemeWeb do
+    pipe_through :billing_webhook
+
+    post "/webhooks/:provider", BillingController, :provider_webhook
   end
 
   # Other scopes may use custom stacks.
