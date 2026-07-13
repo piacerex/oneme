@@ -38,7 +38,7 @@ defmodule OnemeWeb.WebhookController do
              Map.get(params, "event", "avatar.exported"),
              Map.get(params, "payload", %{})
            ) do
-      delivery = maybe_deliver(delivery, params)
+      delivery = maybe_enqueue(delivery, params)
       conn |> put_status(:accepted) |> json(Webhooks.serialize_delivery(delivery))
     else
       {:error, :forbidden} ->
@@ -60,8 +60,8 @@ defmodule OnemeWeb.WebhookController do
          delivery when not is_nil(delivery) <- Webhooks.get_delivery(id),
          endpoint when not is_nil(endpoint) <- Webhooks.get_endpoint(delivery.webhook_endpoint_id),
          true <- endpoint.team_id == team_id,
-         {:ok, delivered} <- Webhooks.deliver(delivery.id) do
-      conn |> put_status(:accepted) |> json(Webhooks.serialize_delivery(delivered))
+         {:ok, queued} <- Webhooks.enqueue_delivery(delivery.id) do
+      conn |> put_status(:accepted) |> json(Webhooks.serialize_delivery(queued))
     else
       {:error, :forbidden} ->
         forbidden(conn)
@@ -75,11 +75,11 @@ defmodule OnemeWeb.WebhookController do
       {:error, :not_found} ->
         send_resp(conn, :not_found, "webhook delivery not found")
 
-      {:error, :inactive_endpoint} ->
-        conn |> put_status(:unprocessable_entity) |> json(%{error: "inactive_endpoint"})
+      {:error, :already_succeeded} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "already_succeeded"})
 
       {:error, _reason} ->
-        conn |> put_status(:bad_gateway) |> json(%{error: "webhook_delivery_failed"})
+        conn |> put_status(:service_unavailable) |> json(%{error: "webhook_delivery_not_queued"})
     end
   end
 
@@ -93,10 +93,10 @@ defmodule OnemeWeb.WebhookController do
     end
   end
 
-  defp maybe_deliver(delivery, params) do
+  defp maybe_enqueue(delivery, params) do
     if Map.get(params, "deliver") in [true, "true", "1"] do
-      case Webhooks.deliver(delivery.id) do
-        {:ok, delivered} -> delivered
+      case Webhooks.enqueue_delivery(delivery.id) do
+        {:ok, queued} -> queued
         _ -> delivery
       end
     else

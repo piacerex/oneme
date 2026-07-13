@@ -35,6 +35,13 @@ defmodule Oneme.Webhooks do
   def get_endpoint(id), do: Repo.get(WebhookEndpoint, id)
   def get_delivery(id), do: Repo.get(WebhookDelivery, id)
 
+  def queued_delivery_ids do
+    WebhookDelivery
+    |> where([delivery], delivery.status == "queued")
+    |> select([delivery], delivery.id)
+    |> Repo.all()
+  end
+
   def create_test_delivery(%WebhookEndpoint{active: true} = endpoint, event_type, payload)
       when is_binary(event_type) and is_map(payload) do
     event_id = Ecto.UUID.generate()
@@ -58,6 +65,35 @@ defmodule Oneme.Webhooks do
   end
 
   def create_test_delivery(_endpoint, _event_type, _payload), do: {:error, :inactive_endpoint}
+
+  def enqueue_delivery(id) do
+    case Repo.get(WebhookDelivery, id) do
+      nil ->
+        {:error, :not_found}
+
+      %{status: "succeeded"} ->
+        {:error, :already_succeeded}
+
+      delivery ->
+        changes = %{
+          status: "queued",
+          response_status: nil,
+          error_message: nil,
+          delivered_at: nil
+        }
+
+        case delivery |> WebhookDelivery.changeset(changes) |> Repo.update() do
+          {:ok, queued} ->
+            case Oneme.WebhookDeliveryWorker.enqueue(queued.id) do
+              :ok -> {:ok, queued}
+              {:error, reason} -> {:error, reason}
+            end
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+    end
+  end
 
   def deliver(id) do
     case Repo.get(WebhookDelivery, id) do
