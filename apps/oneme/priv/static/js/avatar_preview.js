@@ -378,7 +378,9 @@ if (container) {
         const b = row * columns + nextColumn;
         const c = (row + 1) * columns + nextColumn;
         const d = (row + 1) * columns + column;
-        indices.push(a, b, d, b, c, d);
+        // Keep the visible side facing the camera (+Z), matching Three.js
+        // SphereGeometry's front-face winding.
+        indices.push(a, d, b, b, d, c);
       }
     }
 
