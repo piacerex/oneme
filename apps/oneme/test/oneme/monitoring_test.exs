@@ -9,7 +9,9 @@ defmodule Oneme.MonitoringTest do
 
     on_exit(fn -> restore_env("ONEME_CDN_URLS", previous) end)
 
-    assert %{status: "not_configured", endpoints: []} = Monitoring.check_cdn()
+    assert %{status: "not_configured", endpoints: [], slo: slo} = Monitoring.check_cdn()
+    assert slo.window == "current_probe"
+    assert slo.probeAvailabilityPercent == nil
   end
 
   test "rejects non-HTTPS and disallowed CDN endpoints without making a request" do
@@ -26,6 +28,22 @@ defmodule Oneme.MonitoringTest do
     report = Monitoring.check_cdn()
     assert report.status == "degraded"
     assert Enum.all?(report.endpoints, &(&1.ok == false))
+    assert Enum.all?(report.alerts, &(&1.code == "cdn_endpoint_unhealthy"))
+    assert report.slo.probeAvailabilityPercent == 0.0
+  end
+
+  test "does not send monitoring notifications without explicit configuration" do
+    previous_url = System.get_env("ONEME_MONITORING_ALERT_URL")
+    previous_secret = System.get_env("ONEME_MONITORING_ALERT_SECRET")
+    System.delete_env("ONEME_MONITORING_ALERT_URL")
+    System.delete_env("ONEME_MONITORING_ALERT_SECRET")
+
+    on_exit(fn ->
+      restore_env("ONEME_MONITORING_ALERT_URL", previous_url)
+      restore_env("ONEME_MONITORING_ALERT_SECRET", previous_secret)
+    end)
+
+    assert {:error, :not_configured} = Monitoring.notify(%{status: "ok"})
   end
 
   defp restore_env(key, nil), do: System.delete_env(key)

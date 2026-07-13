@@ -15,7 +15,7 @@ defmodule Oneme.CdnMonitor do
   @impl true
   def init(_opts) do
     schedule_check()
-    {:ok, %{report: Monitoring.check_cdn()}}
+    {:ok, %{report: refresh_report()}}
   end
 
   @impl true
@@ -30,7 +30,13 @@ defmodule Oneme.CdnMonitor do
   @impl true
   def handle_info(:check, state) do
     schedule_check()
-    {:noreply, %{state | report: Monitoring.check_cdn()}}
+    {:noreply, %{state | report: refresh_report()}}
+  end
+
+  defp refresh_report do
+    report = Monitoring.check_cdn()
+    _ = Monitoring.notify(report)
+    report
   end
 
   defp schedule_check do
