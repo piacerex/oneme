@@ -66,6 +66,7 @@ class ObjBuilder:
         material: str,
         segments: int = 20,
         rings: int = 12,
+        theta_offset: float = 0.0,
     ) -> None:
         cx, cy, cz = center
         rx, ry, rz = radius
@@ -76,7 +77,7 @@ class ObjBuilder:
             row = []
             for segment in range(segments):
                 u = segment / segments
-                theta = math.pi * 2 * u
+                theta = math.pi * 2 * u + theta_offset
                 point = (cx + rx * math.sin(phi) * math.cos(theta), cy + ry * math.cos(phi), cz + rz * math.sin(phi) * math.sin(theta))
                 row.append((self.vertex(point), self.uv((u, 1 - v))))
             points.append(row)
@@ -123,15 +124,23 @@ def build(config: dict, output: Path, texture: Path | None) -> None:
     colors = config.get("colors", {})
     builder = ObjBuilder()
     skin = hex_color(colors.get("skin", "#c98f6f"), (0.79, 0.56, 0.44))
-    hair = hex_color(colors.get("hair", "#2f2118"), (0.18, 0.13, 0.09))
     top = PALETTES.get(parts.get("top"), (0.204, 0.498, 0.482))
     bottom = PALETTES.get(parts.get("bottom"), (0.212, 0.239, 0.286))
-    materials = {"skin": skin, "hair": hair, "top": top, "bottom": bottom, "shoes": (0.14, 0.14, 0.14)}
+    materials = {"skin": skin, "top": top, "bottom": bottom, "shoes": (0.14, 0.14, 0.14)}
 
     builder.add_box((0, 0.35, 0), (1.35, 1.35, 0.82), "top")
     builder.add_box((0, 1.23, 0), (0.32, 0.28, 0.32), "skin")
     builder.add_sphere((0, 1.78, 0), (0.5, 0.56, 0.45), "skin")
-    builder.add_sphere((0, 1.92, -0.02), (0.56, 0.5, 0.5), "hair")
+    if texture:
+        # Use the same spherical projection as the browser preview. The
+        # texture's horizontal center is aligned to +Z, so the photo remains
+        # visible around the entire head instead of being a front-only quad.
+        builder.add_sphere(
+            (0, 1.78, 0),
+            (0.505, 0.566, 0.455),
+            "face_texture",
+            theta_offset=-math.pi / 2,
+        )
     builder.add_box((-0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")
     builder.add_box((0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")
     builder.add_sphere((-0.88, -0.3, 0), (0.18, 0.2, 0.18), "skin")
@@ -140,16 +149,6 @@ def build(config: dict, output: Path, texture: Path | None) -> None:
     builder.add_box((0.22, -1.02, 0), (0.28, 1.0, 0.36), "bottom")
     builder.add_box((-0.22, -1.56, 0.08), (0.5, 0.22, 0.72), "shoes")
     builder.add_box((0.22, -1.56, 0.08), (0.5, 0.22, 0.72), "shoes")
-
-    if texture:
-        face_vertices = [
-            builder.vertex((-0.33, 2.16, 0.455)),
-            builder.vertex((0.33, 2.16, 0.455)),
-            builder.vertex((0.33, 1.40, 0.455)),
-            builder.vertex((-0.33, 1.40, 0.455)),
-        ]
-        face_uvs = [builder.uv((0, 1)), builder.uv((1, 1)), builder.uv((1, 0)), builder.uv((0, 0))]
-        builder.face("face_texture", list(zip(face_vertices, face_uvs)))
 
     builder.write(output, materials, texture)
 

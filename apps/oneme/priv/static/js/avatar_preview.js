@@ -32,11 +32,23 @@ if (container) {
 
   const materials = {
     skin: new THREE.MeshStandardMaterial({color: 0xc98f6f, roughness: 0.62}),
-    hair: new THREE.MeshStandardMaterial({color: 0x2f2118, roughness: 0.72}),
     top: new THREE.MeshStandardMaterial({color: 0x347f7b, roughness: 0.68}),
     bottom: new THREE.MeshStandardMaterial({color: 0x363d49, roughness: 0.7}),
     shoes: new THREE.MeshStandardMaterial({color: 0x232323, roughness: 0.6}),
-    face: new THREE.MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false})
+    faceWrap: new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.68,
+      transparent: true,
+      alphaTest: 0.01,
+      depthWrite: false
+    }),
+    profileWrap: new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.74,
+      transparent: true,
+      alphaTest: 0.01,
+      depthWrite: false
+    })
   };
 
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.1, 12, 24), materials.top);
@@ -53,17 +65,24 @@ if (container) {
   head.scale.set(1, 1.06, 0.9);
   avatar.add(head);
 
-  const faceOverlay = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.76), materials.face);
-  faceOverlay.position.set(0, 1.78, 0.435);
-  avatar.add(faceOverlay);
-
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.56, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.72),
-    materials.hair
+  // Map the calibrated photo to the front hemisphere only. The base head stays
+  // visible at the sides and back, so the square source image cannot wrap
+  // eyes, nose, or mouth around the avatar.
+  const faceWrap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.49, 64, 32, 0, Math.PI, 0, Math.PI),
+    materials.faceWrap
   );
-  hair.position.y = 1.91;
-  hair.scale.set(1, 0.92, 0.92);
-  avatar.add(hair);
+  faceWrap.position.y = 1.78;
+  faceWrap.visible = false;
+  avatar.add(faceWrap);
+
+  const profileWrap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.488, 64, 32, Math.PI, Math.PI, 0, Math.PI),
+    materials.profileWrap
+  );
+  profileWrap.position.y = 1.78;
+  profileWrap.visible = false;
+  avatar.add(profileWrap);
 
   avatar.add(createLimb(materials.top, -0.78, 0.35));
   avatar.add(createLimb(materials.top, 0.78, 0.35));
@@ -74,7 +93,7 @@ if (container) {
   avatar.add(createShoe(-0.22), createShoe(0.22));
 
   const eyes = new THREE.Group();
-  eyes.position.set(0, 1.81, 0.43);
+  eyes.position.set(0, 1.81, 0.46);
   eyes.add(createEye(-0.15), createEye(0.15));
   avatar.add(eyes);
 
@@ -82,7 +101,7 @@ if (container) {
     new THREE.TorusGeometry(0.12, 0.012, 8, 28, Math.PI),
     new THREE.MeshBasicMaterial({color: 0x2a211d})
   );
-  mouth.position.set(0, 1.64, 0.44);
+  mouth.position.set(0, 1.64, 0.46);
   mouth.rotation.set(0, 0, Math.PI);
   avatar.add(mouth);
 
@@ -96,6 +115,9 @@ if (container) {
 
   let faceTexture = null;
   let faceDataUrl = null;
+  let faceCalibration = null;
+  let profileTexture = null;
+  let profileDataUrl = null;
   window.onemeThreePreview = {
     mount(nextContainer) {
       if (!(nextContainer instanceof HTMLElement)) return;
@@ -109,30 +131,54 @@ if (container) {
     sync(config) {
       const colors = config?.colors || {};
       materials.skin.color.set(colors.skin || "#c98f6f");
-      materials.hair.color.set(colors.hair || "#2f2118");
       materials.top.color.set(topPalette[config?.parts?.top] || "#347f7b");
       materials.bottom.color.set(bottomPalette[config?.parts?.bottom] || "#363d49");
       materials.shoes.color.set(shoePalette[config?.parts?.shoes] || "#232323");
 
       const morph = config?.faceMorph || {};
       avatar.userData.oneme = {config};
-      head.scale.set(morph.widthScale || 1, morph.heightScale || 1.06, 0.82 + (morph.depth || 0.5) * 0.18);
-      faceOverlay.scale.set(morph.widthScale || 1, morph.heightScale || 1.06, 1);
+      const headScale = {
+        x: morph.widthScale || 1,
+        y: morph.heightScale || 1.06,
+        z: 0.82 + (morph.depth || 0.5) * 0.18
+      };
+      head.scale.set(headScale.x, headScale.y, headScale.z);
+      faceWrap.scale.set(headScale.x * 1.012, headScale.y * 1.012, headScale.z * 1.012);
+      profileWrap.scale.set(headScale.x * 1.008, headScale.y * 1.008, headScale.z * 1.008);
       eyes.position.y = 1.81 + (morph.eyeOffsetY || 0) / 120;
       mouth.position.y = 1.64 + (morph.mouthOffsetY || 0) / 120;
-      materials.face.opacity = faceTexture ? 0.96 : 0;
+      applyFeatureMapping(config?.faceAnalysis?.calibration || faceCalibration);
+      faceWrap.visible = Boolean(faceTexture);
     },
-    setFaceImage(dataUrl) {
+    setFaceImage(dataUrl, calibration) {
       faceDataUrl = dataUrl;
+      faceCalibration = calibration || null;
+      applyFeatureMapping(faceCalibration);
       const image = new Image();
       image.onload = () => {
         faceTexture?.dispose();
         faceTexture = new THREE.Texture(image);
         faceTexture.colorSpace = THREE.SRGBColorSpace;
         faceTexture.needsUpdate = true;
-        materials.face.map = faceTexture;
-        materials.face.opacity = 0.96;
-        materials.face.needsUpdate = true;
+        materials.faceWrap.map = faceTexture;
+        materials.faceWrap.opacity = 1;
+        materials.faceWrap.needsUpdate = true;
+        faceWrap.visible = true;
+      };
+      image.src = dataUrl;
+    },
+    setFaceCompletion(dataUrl) {
+      profileDataUrl = dataUrl;
+      const image = new Image();
+      image.onload = () => {
+        profileTexture?.dispose();
+        profileTexture = new THREE.Texture(image);
+        profileTexture.colorSpace = THREE.SRGBColorSpace;
+        profileTexture.needsUpdate = true;
+        materials.profileWrap.map = profileTexture;
+        materials.profileWrap.opacity = 1;
+        materials.profileWrap.needsUpdate = true;
+        profileWrap.visible = true;
       };
       image.src = dataUrl;
     },
@@ -140,29 +186,42 @@ if (container) {
       faceTexture?.dispose();
       faceTexture = null;
       faceDataUrl = null;
-      materials.face.map = null;
-      materials.face.opacity = 0;
-      materials.face.needsUpdate = true;
+      faceCalibration = null;
+      profileTexture?.dispose();
+      profileTexture = null;
+      profileDataUrl = null;
+      materials.faceWrap.map = null;
+      materials.faceWrap.opacity = 1;
+      materials.faceWrap.needsUpdate = true;
+      materials.profileWrap.map = null;
+      materials.profileWrap.opacity = 1;
+      materials.profileWrap.needsUpdate = true;
+      faceWrap.visible = false;
+      profileWrap.visible = false;
     },
     getFaceTextureDataUrl() {
       return faceDataUrl;
     },
+    getFaceCalibration() {
+      return faceCalibration;
+    },
+    getFaceCompletionDataUrl() {
+      return profileDataUrl;
+    },
     exportGlb(config, filename) {
       return new Promise((resolve, reject) => {
         const includeFaceTexture = config?.faceTexture?.exportConsent === true;
-        const previousMap = materials.face.map;
-        const previousOpacity = materials.face.opacity;
+        const previousVisible = faceWrap.visible;
+        const previousProfileVisible = profileWrap.visible;
 
         const restoreFaceMaterial = () => {
-          materials.face.map = previousMap;
-          materials.face.opacity = previousOpacity;
-          materials.face.needsUpdate = true;
+          faceWrap.visible = previousVisible;
+          profileWrap.visible = previousProfileVisible;
         };
 
         if (!includeFaceTexture) {
-          materials.face.map = null;
-          materials.face.opacity = 0;
-          materials.face.needsUpdate = true;
+          faceWrap.visible = false;
+          profileWrap.visible = false;
         }
 
         new GLTFExporter().parse(
@@ -200,6 +259,37 @@ if (container) {
     limb.position.set(x, y, 0);
     limb.rotation.z = x < 0 ? -0.04 : 0.04;
     return limb;
+  }
+
+  function applyFeatureMapping(calibration) {
+    const mapped = calibration?.mappedLandmarks;
+    const leftEye = mapped?.leftEye;
+    const rightEye = mapped?.rightEye;
+    const mouthPoint = mapped?.mouth;
+
+    if (leftEye && rightEye) {
+      const eyeCenterX = (leftEye.x + rightEye.x) / 2;
+      const eyeCenterY = (leftEye.y + rightEye.y) / 2;
+      eyes.position.x = ((eyeCenterX - 256) / 512) * 0.98;
+      eyes.position.y = 1.78 + (0.5 - eyeCenterY / 512) * (0.49 * 1.06);
+      eyes.scale.x = clamp(
+        Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y) / 154,
+        0.82,
+        1.2
+      );
+    } else {
+      eyes.position.x = 0;
+      eyes.position.y = 1.81;
+      eyes.scale.x = 1;
+    }
+
+    if (mouthPoint) {
+      mouth.position.x = ((mouthPoint.x - 256) / 512) * 0.98;
+      mouth.position.y = 1.78 + (0.5 - mouthPoint.y / 512) * (0.49 * 1.06);
+    } else {
+      mouth.position.x = 0;
+      mouth.position.y = 1.64;
+    }
   }
 
   function createShoe(x) {

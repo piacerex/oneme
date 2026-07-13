@@ -3,6 +3,7 @@ defmodule Oneme.Generations do
 
   alias Oneme.Generations.GenerationJob
   alias Oneme.Generations.ExternalProvider
+  alias Oneme.Generations.OpenAIProvider
   alias Oneme.Operations
   alias Oneme.Repo
 
@@ -205,6 +206,18 @@ defmodule Oneme.Generations do
             raise "external provider failed: #{inspect(reason)}"
         end
 
+      "openai" ->
+        case OpenAIProvider.generate(input_config, request_id) do
+          {:ok, %{provider: provider, candidates: candidates, metadata: metadata}} ->
+            {provider, normalize_external_candidates(candidates, input_config), metadata}
+
+          {:error, code, message} ->
+            raise "#{code}: #{message}"
+
+          {:error, reason} ->
+            raise "OpenAI provider failed: #{inspect(reason)}"
+        end
+
       provider ->
         raise "unsupported generation provider: #{provider}"
     end
@@ -254,8 +267,16 @@ defmodule Oneme.Generations do
 
   defp valid_image_url(value) when is_binary(value) do
     case URI.parse(value) do
-      %URI{scheme: "https", host: host} when is_binary(host) -> String.slice(value, 0, 2_000)
-      _ -> nil
+      %URI{scheme: "https", host: host} when is_binary(host) ->
+        String.slice(value, 0, 2_000)
+
+      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1"] ->
+        if System.get_env("ONEME_GENERATION_ALLOW_INSECURE_HTTP", "false") in ["1", "true"] do
+          String.slice(value, 0, 2_000)
+        end
+
+      _ ->
+        nil
     end
   end
 
@@ -289,7 +310,7 @@ defmodule Oneme.Generations do
     parts = map_value(config, "parts")
     colors = map_value(config, "colors")
     face_morph = map_value(config, "faceMorph")
-    face_analysis = config |> map_value("faceAnalysis") |> Map.take(["detected"])
+    face_analysis = config |> map_value("faceAnalysis") |> Map.take(["detected", "calibration"])
 
     face_texture =
       config |> map_value("faceTexture") |> Map.take(["enabled", "source", "exportConsent"])

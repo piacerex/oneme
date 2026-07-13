@@ -103,7 +103,8 @@ defmodule OnemeWeb.BuilderLive do
       |> Map.put("colors", colors)
       |> Map.put("faceAnalysis", %{
         "detected" => face_detected,
-        "colorsEstimated" => map_size(estimated_colors) > 0
+        "colorsEstimated" => map_size(estimated_colors) > 0,
+        "calibration" => normalize_face_calibration(Map.get(params, "face_calibration", %{}))
       })
       |> Map.put(
         "faceTexture",
@@ -333,6 +334,51 @@ defmodule OnemeWeb.BuilderLive do
   end
 
   defp normalize_face_colors(_params), do: %{}
+
+  defp normalize_face_calibration(params) when is_map(params) do
+    params
+    |> Map.take([
+      "version",
+      "orientation",
+      "mappedLandmarks",
+      "sourceBounds"
+    ])
+    |> Map.new(fn {key, value} -> {key, normalize_face_calibration_value(value)} end)
+  end
+
+  defp normalize_face_calibration(_params), do: %{}
+
+  defp normalize_face_calibration_value(value) when is_map(value) do
+    if Map.has_key?(value, "x") or Map.has_key?(value, "y") do
+      value
+      |> Map.take(["x", "y", "width", "height"])
+      |> Map.new(fn {key, number} -> {key, normalize_calibration_number(number)} end)
+    else
+      value
+      |> Map.take([
+        "leftEye",
+        "rightEye",
+        "nose",
+        "mouth",
+        "chin",
+        "forehead",
+        "leftCheek",
+        "rightCheek"
+      ])
+      |> Map.new(fn {key, point} -> {key, normalize_face_calibration_value(point)} end)
+    end
+  end
+
+  defp normalize_face_calibration_value(value) when is_binary(value),
+    do: String.slice(value, 0, 40)
+
+  defp normalize_face_calibration_value(value) when is_integer(value), do: value
+  defp normalize_face_calibration_value(value) when is_float(value), do: Float.round(value, 4)
+  defp normalize_face_calibration_value(_value), do: nil
+
+  defp normalize_calibration_number(value) when is_integer(value), do: value
+  defp normalize_calibration_number(value) when is_float(value), do: Float.round(value, 4)
+  defp normalize_calibration_number(_value), do: 0.0
 
   defp valid_hex?(value) when is_binary(value), do: Regex.match?(~r/^#[0-9a-fA-F]{6}$/, value)
   defp valid_hex?(_value), do: false

@@ -70,6 +70,15 @@ const hooks = {
       this.el.removeEventListener("change", this.handleChange)
     }
   },
+  FaceCompletion: {
+    mounted() {
+      this.handleClick = () => completeFaceProfile(this)
+      this.el.addEventListener("click", this.handleClick)
+    },
+    destroyed() {
+      this.el.removeEventListener("click", this.handleClick)
+    }
+  },
   ExportGlb: {
     mounted() {
       this.handleClick = async () => {
@@ -141,6 +150,39 @@ async function runServerExport(format, label, filename) {
   }
 }
 
+async function completeFaceProfile(hook) {
+  const status = document.querySelector("#face-status")
+  const faceTextureDataUrl = window.onemeThreePreview?.getFaceTextureDataUrl()
+  const config = window.onemeAvatarConfig || {}
+  const calibration = config.faceAnalysis?.calibration || window.onemeThreePreview?.getFaceCalibration?.() || {}
+
+  if (!faceTextureDataUrl) {
+    if (status) status.textContent = "先に正面の顔写真をマッピングしてください。"
+    return
+  }
+
+  hook.el.disabled = true
+  if (status) status.textContent = "正面画像から側面・背面を補完しています..."
+
+  try {
+    const response = await fetch("/api/face-completion", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({faceTextureDataUrl, calibration})
+    })
+    const payload = await response.json()
+    if (!response.ok) throw new Error(payload.message || payload.error || "face completion failed")
+
+    window.onemeThreePreview?.setFaceCompletion(payload.imageDataUrl)
+    if (status) status.textContent = "側面・背面の補完をプレビューへ反映しました。"
+  } catch (error) {
+    console.error(error)
+    if (status) status.textContent = "側面・背面の補完に失敗しました。設定を確認してください。"
+  } finally {
+    hook.el.disabled = false
+  }
+}
+
 function handleFacePhoto(input, hook) {
   const status = document.querySelector("#face-status")
   const consent = document.querySelector("#face-consent")
@@ -156,36 +198,30 @@ function handleFacePhoto(input, hook) {
   const objectUrl = URL.createObjectURL(file)
   const image = new Image()
   image.onload = async () => {
-    const bounds = await detectFaceBounds(image)
-    const crop = faceCrop(image, bounds)
-    const canvas = document.createElement("canvas")
-    canvas.width = 512
-    canvas.height = 512
-    const context = canvas.getContext("2d")
-    context.clearRect(0, 0, 512, 512)
-    context.save()
-    context.beginPath()
-    context.ellipse(256, 256, crop.maskWidth, crop.maskHeight, 0, 0, Math.PI * 2)
-    context.clip()
-    context.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, 512, 512)
-    context.restore()
+    const geometry = await detectFaceGeometry(image)
+    const bounds = geometry?.bounds || null
+    const calibration = calibrateFaceTexture(image, bounds, geometry?.landmarks || null)
     URL.revokeObjectURL(objectUrl)
-    window.onemeThreePreview?.setFaceImage(canvas.toDataURL("image/png"))
-    const ratio = image.width / image.height
-    const faceColors = estimateFaceColors(context)
+
+    window.onemeThreePreview?.setFaceImage(calibration.dataUrl, calibration.metadata)
+    const faceColors = estimateFaceColors(calibration.canvas.getContext("2d"))
+    const ratio = bounds ? bounds.width / Math.max(bounds.height, 1) : image.width / image.height
     hook.pushEvent("face_analyzed", {
       face_detected: Boolean(bounds),
       face_colors: faceColors,
       face_morph: {
-        widthScale: clamp(0.96 + (ratio - 0.75) * 0.16, 0.88, 1.14),
-        heightScale: clamp(1.08 + (0.9 - ratio) * 0.12, 0.94, 1.2),
-        depth: clamp(0.42 + ratio * 0.08, 0.42, 0.62)
-      }
+        widthScale: calibration.morph.widthScale,
+        heightScale: calibration.morph.heightScale,
+        depth: clamp(0.46 + ratio * 0.12, 0.42, 0.66)
+      },
+      face_calibration: calibration.metadata
     })
     if (status) {
       status.textContent = bounds
-        ? "顔を検出し、輪郭に沿って切り出してプレビューへマッピングしました。"
-        : "顔検出を利用できないため、中央を基準に切り出してプレビューへマッピングしました。"
+        ? geometry?.landmarks
+          ? "目の傾きを補正し、目・鼻・口を基準に正面へマッピングしました。"
+          : "顔を検出し、正面向けに補正してプレビューへマッピングしました。"
+        : "顔検出を利用できないため、中央を基準に正面へ補正しました。"
     }
   }
   image.onerror = () => {
@@ -233,6 +269,56 @@ function rgbToHex(rgb) {
   return `#${rgb.map(value => clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0")).join("")}`
 }
 
+async function detectFaceGeometry(image) {
+  const bounds = await detectFaceBounds(image)
+  const landmarks = await detectFaceLandmarks(image)
+  return {bounds: bounds || landmarks?.bounds || null, landmarks: landmarks?.points || null}
+}
+
+async function detectFaceLandmarks(image) {
+  try {
+    const landmarker = await window.onemeFaceLandmarkerReady
+    const result = landmarker?.detect(image)
+    const points = result?.faceLandmarks?.[0]
+    if (!points || points.length < 468) return null
+
+    const mapped = landmarkPoints(points, image)
+    return {points: mapped, bounds: landmarkBounds(mapped)}
+  } catch (error) {
+    console.debug("oneme: face landmark detection unavailable", error)
+    return null
+  }
+}
+
+function landmarkPoints(points, image) {
+  const point = index => ({x: points[index].x * image.width, y: points[index].y * image.height})
+  const average = indexes => ({
+    x: indexes.reduce((total, index) => total + point(index).x, 0) / indexes.length,
+    y: indexes.reduce((total, index) => total + point(index).y, 0) / indexes.length
+  })
+  const eyes = [average([33, 133]), average([263, 362])].sort((left, right) => left.x - right.x)
+
+  return {
+    leftEye: eyes[0],
+    rightEye: eyes[1],
+    nose: point(1),
+    mouth: average([13, 14, 61, 291]),
+    chin: point(152),
+    forehead: point(10),
+    leftCheek: point(234),
+    rightCheek: point(454)
+  }
+}
+
+function landmarkBounds(points) {
+  const values = Object.values(points)
+  const xs = values.map(point => point.x)
+  const ys = values.map(point => point.y)
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return {x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y}
+}
+
 async function detectFaceBounds(image) {
   if (!("FaceDetector" in window)) return null
 
@@ -246,6 +332,116 @@ async function detectFaceBounds(image) {
   } catch (error) {
     console.debug("oneme: face detection unavailable", error)
     return null
+  }
+}
+
+function calibrateFaceTexture(image, bounds, landmarks) {
+  const canvas = document.createElement("canvas")
+  canvas.width = 512
+  canvas.height = 512
+  const context = canvas.getContext("2d")
+  context.clearRect(0, 0, 512, 512)
+
+  const fallback = faceCrop(image, bounds)
+  const leftEye = landmarks?.leftEye
+  const rightEye = landmarks?.rightEye
+  const hasEyes = leftEye && rightEye && Math.abs(rightEye.x - leftEye.x) > 1
+  let eyeCenter = null
+  let transformScale = 1
+  let eyeAngle = 0
+  const targetEyeCenter = {x: 256, y: 226}
+
+  if (hasEyes) {
+    eyeCenter = {x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2}
+    const eyeDistance = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y)
+    eyeAngle = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
+    const targetEyeDistance = 154
+    transformScale = targetEyeDistance / eyeDistance
+
+    context.save()
+    context.translate(targetEyeCenter.x, targetEyeCenter.y)
+    context.rotate(-eyeAngle)
+    context.scale(transformScale, transformScale)
+    context.translate(-eyeCenter.x, -eyeCenter.y)
+    context.drawImage(image, 0, 0)
+    context.restore()
+  } else {
+    context.drawImage(image, fallback.x, fallback.y, fallback.size, fallback.size, 0, 0, 512, 512)
+  }
+
+  // Keep only the calibrated face oval. The front hemisphere uses this alpha
+  // edge to fade into the procedural head at the cheeks and jaw.
+  const faceCenter = landmarks?.nose || {x: 256, y: 270}
+  const maskCenterX = 256
+  const maskCenterY = hasEyes ? 278 : 256
+  const maskWidth = hasEyes ? 218 : fallback.maskWidth
+  const maskHeight = hasEyes ? 246 : fallback.maskHeight
+  context.save()
+  context.globalCompositeOperation = "destination-in"
+  context.beginPath()
+  context.ellipse(maskCenterX, maskCenterY, maskWidth, maskHeight, 0, 0, Math.PI * 2)
+  context.fill()
+  context.restore()
+
+  const sourceBounds = bounds || {
+    x: image.width / 2 - fallback.size / 2,
+    y: image.height / 2 - fallback.size / 2,
+    width: fallback.size,
+    height: fallback.size
+  }
+  const sourceWidth = Math.max(sourceBounds.width, 1)
+  const sourceHeight = Math.max(sourceBounds.height, 1)
+  const morph = {
+    widthScale: clamp(sourceWidth / Math.max(sourceHeight * 0.82, 1), 0.88, 1.14),
+    heightScale: clamp(sourceHeight / Math.max(sourceWidth * 1.08, 1), 0.94, 1.2)
+  }
+
+  const mapPoint = hasEyes
+    ? point => {
+        const dx = point.x - eyeCenter.x
+        const dy = point.y - eyeCenter.y
+        const cosine = Math.cos(-eyeAngle)
+        const sine = Math.sin(-eyeAngle)
+        return {
+          x: targetEyeCenter.x + transformScale * (dx * cosine - dy * sine),
+          y: targetEyeCenter.y + transformScale * (dx * sine + dy * cosine)
+        }
+      }
+    : point => ({
+        x: ((point.x - fallback.x) / Math.max(fallback.size, 1)) * 512,
+        y: ((point.y - fallback.y) / Math.max(fallback.size, 1)) * 512
+      })
+
+  const mappedLandmarks = landmarks
+    ? Object.fromEntries(
+        Object.entries(landmarks).map(([key, point]) => [key, normalizePoint(mapPoint(point))])
+      )
+    : {}
+
+  return {
+    canvas,
+    dataUrl: canvas.toDataURL("image/png"),
+    morph,
+    metadata: {
+      version: 1,
+      orientation: hasEyes ? "eye-line-corrected" : "fallback",
+      mappedLandmarks,
+      sourceBounds: normalizeRect(sourceBounds, image)
+    },
+    faceCenter
+  }
+}
+
+function normalizePoint(point) {
+  return point ? {x: Number(point.x.toFixed(4)), y: Number(point.y.toFixed(4))} : null
+}
+
+function normalizeRect(rect, image) {
+  return {
+    x: Number((rect.x / image.width).toFixed(4)),
+    y: Number((rect.y / image.height).toFixed(4)),
+    width: Number((rect.width / image.width).toFixed(4)),
+    height: Number((rect.height / image.height).toFixed(4))
   }
 }
 

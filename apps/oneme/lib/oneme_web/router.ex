@@ -58,6 +58,7 @@ defmodule OnemeWeb.Router do
     get "/monitoring/cdn", MonitoringController, :cdn
     post "/face-analysis-jobs", FaceAnalysisController, :create
     get "/face-analysis-jobs/:id", FaceAnalysisController, :show
+    post "/face-completion", FaceCompletionController, :create
     post "/avatars/from-face-analysis", FaceAnalysisController, :create_avatar
     post "/avatars", AvatarController, :create
     patch "/avatars/:id", AvatarController, :update

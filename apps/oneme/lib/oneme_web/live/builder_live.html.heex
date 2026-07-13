@@ -52,7 +52,7 @@
           <fieldset>
             <legend>パーツ</legend>
             <div class="field-grid">
-              <%= for {key, label} <- [{:face, "顔"}, {:hair, "髪型"}, {:top, "トップス"}, {:bottom, "ボトムス"}, {:shoes, "シューズ"}, {:accessory, "アクセサリー"}] do %>
+              <%= for {key, label} <- [{:face, "顔"}, {:top, "トップス"}, {:bottom, "ボトムス"}, {:shoes, "シューズ"}, {:accessory, "アクセサリー"}] do %>
                 <label class="field-label">
                   <span>{label}</span>
                   <select name={"parts[#{key}]"} class="select-input">
@@ -76,10 +76,6 @@
               <label class="color-field">
                 <span>肌色</span>
                 <input name="colors[skin]" type="color" value={@config["colors"]["skin"]} />
-              </label>
-              <label class="color-field">
-                <span>髪色</span>
-                <input name="colors[hair]" type="color" value={@config["colors"]["hair"]} />
               </label>
             </div>
           </fieldset>
@@ -148,6 +144,14 @@
             </label>
             <button id="clear-face" type="button" class="clear-face-button" phx-click="clear_face">
               顔写真マッピングをクリア
+            </button>
+            <button
+              id="complete-face-profile"
+              type="button"
+              class="clear-face-button"
+              phx-hook="FaceCompletion"
+            >
+              側面・背面をAI補完
             </button>
           </fieldset>
         </form>
