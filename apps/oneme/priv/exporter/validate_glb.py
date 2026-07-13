@@ -13,6 +13,24 @@ GLB_MAGIC = 0x46546C67
 GLB_JSON = 0x4E4F534A
 GLB_BIN = 0x004E4942
 
+REQUIRED_HUMANOID_BONES = (
+    "hips",
+    "spine",
+    "head",
+    "leftUpperArm",
+    "leftLowerArm",
+    "leftHand",
+    "rightUpperArm",
+    "rightLowerArm",
+    "rightHand",
+    "leftUpperLeg",
+    "leftLowerLeg",
+    "leftFoot",
+    "rightUpperLeg",
+    "rightLowerLeg",
+    "rightFoot",
+)
+
 
 def read_gltf(path: Path) -> tuple[dict, list[int]]:
     data = path.read_bytes()
@@ -53,6 +71,86 @@ def read_gltf(path: Path) -> tuple[dict, list[int]]:
     return gltf, chunk_types
 
 
+def validate_vrm(gltf: dict) -> None:
+    extensions = gltf.get("extensions", {})
+    vrm = extensions.get("VRMC_vrm")
+    spring_bone = extensions.get("VRMC_springBone")
+    if not isinstance(vrm, dict) or vrm.get("specVersion") != "1.0":
+        raise ValueError("VRMC_vrm 1.0 extension is missing")
+    if not isinstance(spring_bone, dict) or spring_bone.get("specVersion") != "1.0":
+        raise ValueError("VRMC_springBone 1.0 extension is missing")
+
+    meta = vrm.get("meta")
+    if not isinstance(meta, dict) or not meta.get("name") or not meta.get("authors") or not meta.get("licenseUrl"):
+        raise ValueError("VRM meta requires name, authors, and licenseUrl")
+
+    nodes = gltf.get("nodes", [])
+    meshes = gltf.get("meshes", [])
+    skins = gltf.get("skins", [])
+    humanoid = vrm.get("humanoid", {}).get("humanBones")
+    if not isinstance(humanoid, dict):
+        raise ValueError("VRM humanoid.humanBones is missing")
+    if any(bone not in humanoid for bone in REQUIRED_HUMANOID_BONES):
+        raise ValueError("VRM humanoid is missing a required bone")
+
+    human_node_indexes = []
+    for bone, entry in humanoid.items():
+        if not isinstance(entry, dict) or not isinstance(entry.get("node"), int):
+            raise ValueError(f"VRM humanoid bone {bone} has no node reference")
+        node_index = entry["node"]
+        if node_index < 0 or node_index >= len(nodes):
+            raise ValueError(f"VRM humanoid bone {bone} references an invalid node")
+        human_node_indexes.append(node_index)
+    if len(human_node_indexes) != len(set(human_node_indexes)):
+        raise ValueError("VRM humanoid bone nodes must be unique")
+
+    mesh_node_indexes = [index for index, node in enumerate(nodes) if isinstance(node.get("mesh"), int)]
+    if not mesh_node_indexes or not skins:
+        raise ValueError("VRM requires a skinned mesh and skin")
+    for node_index in mesh_node_indexes:
+        node = nodes[node_index]
+        if not isinstance(node.get("skin"), int) or node["skin"] >= len(skins):
+            raise ValueError("every mesh node must reference a valid skin")
+    skin_index = nodes[mesh_node_indexes[0]]["skin"]
+    if skin_index < 0:
+        raise ValueError("VRM mesh node has an invalid skin index")
+    skin = skins[skin_index]
+    if not isinstance(skin.get("joints"), list) or len(skin["joints"]) < len(REQUIRED_HUMANOID_BONES):
+        raise ValueError("VRM skin has too few joints")
+    if any(not isinstance(node, int) or node < 0 or node >= len(nodes) for node in skin["joints"]):
+        raise ValueError("VRM skin contains an invalid joint node")
+
+    expressions = vrm.get("expressions", {}).get("preset")
+    if not isinstance(expressions, dict) or not {"neutral", "happy", "blink", "surprised"}.issubset(expressions):
+        raise ValueError("VRM expressions preset is incomplete")
+    for expression_name, expression in expressions.items():
+        if not isinstance(expression, dict):
+            raise ValueError(f"VRM expression {expression_name} is invalid")
+        for bind in expression.get("morphTargetBinds", []):
+            node_index = bind.get("node")
+            target_index = bind.get("index")
+            if not isinstance(node_index, int) or not isinstance(target_index, int):
+                raise ValueError(f"VRM expression {expression_name} has an invalid morph bind")
+            if node_index < 0 or node_index >= len(nodes) or not isinstance(nodes[node_index].get("mesh"), int):
+                raise ValueError(f"VRM expression {expression_name} targets a non-mesh node")
+            mesh = meshes[nodes[node_index]["mesh"]]
+            target_names = mesh.get("extras", {}).get("targetNames", [])
+            if target_index < 0 or target_index >= len(target_names):
+                raise ValueError(f"VRM expression {expression_name} targets an invalid morph")
+
+    if not isinstance(spring_bone.get("springs"), list) or not spring_bone["springs"]:
+        raise ValueError("VRM spring bone chain is missing")
+    for spring in spring_bone["springs"]:
+        joints = spring.get("joints", [])
+        if not isinstance(joints, list) or len(joints) < 2:
+            raise ValueError("VRM spring bone chain needs two joints")
+        for joint in joints:
+            if not isinstance(joint, dict) or not isinstance(joint.get("node"), int):
+                raise ValueError("VRM spring bone joint has no node reference")
+            if joint["node"] < 0 or joint["node"] >= len(nodes):
+                raise ValueError("VRM spring bone references an invalid node")
+
+
 def validate(path: Path, require_vrm: bool) -> dict:
     gltf, chunk_types = read_gltf(path)
     asset = gltf.get("asset", {})
@@ -69,6 +167,7 @@ def validate(path: Path, require_vrm: bool) -> dict:
             raise ValueError("VRMC_vrm is not listed in extensionsUsed")
         if not isinstance(vrm, dict) or not isinstance(extras_vrm, dict):
             raise ValueError("VRM metadata is missing")
+        validate_vrm(gltf)
 
     return {
         "file": str(path),
