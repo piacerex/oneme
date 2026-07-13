@@ -203,6 +203,10 @@ oneme/
 7. [x] エクスポートGLBをThree.jsで読み込み検証する
 8. [ ] エクスポートGLBをUnityで読み込み検証する
 
+外部ランタイムの検出とGLB／VRM／FBX契約検査は`tools/runtime/verify_external_runtimes.py`で
+レポートできる。実際のUnity／Blenderプロジェクトインポートが成功するまで、実機検証の
+チェックは未完了として扱う。
+
 ### Phase 4B: FBX
 
 1. [x] GLBの実メッシュ合成結果を入力にする

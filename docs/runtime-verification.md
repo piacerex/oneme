@@ -33,6 +33,21 @@ python3 apps/oneme/priv/exporter/validate_glb.py \
 
 ## 外部ランタイム
 
+対象環境の検出と成果物の契約検査を一つのJSONレポートへまとめるには、リポジトリルートで
+次を実行する。
+
+```bash
+python3 tools/runtime/verify_external_runtimes.py \
+  --glb /path/to/avatar.glb \
+  --vrm /path/to/avatar.vrm \
+  --fbx /path/to/avatar.fbx
+```
+
+`--require-runtime blender`または`--require-runtime unity`を付けた場合、実行ファイルが
+見つからなければ終了コード2になる。ランタイムを検出しても、Unity／Blenderのプロジェクト
+固有インポートまでは自動実行せず、レポートの`nextActions`に実機検証を残す。これにより、
+ランタイム未導入のCIで互換性完了と誤判定しない。
+
 Unity、VRMビューア、Blender、主要DCCの実機検証は、対象ランタイムを導入した環境で行う。
 このワークスペースではUnity／Blender実行ファイルを確認できないため、Webビューアの成功を
 外部ランタイムの互換性完了とは扱わない。
