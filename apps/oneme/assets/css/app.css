@@ -51,6 +51,10 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .upload-box input { display: none; }
 .upload-icon { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #dceee9; font-size: 16px; }
 .face-status { min-height: 17px; margin: 9px 0 0; color: #7d8b87; font-size: 11px; line-height: 1.45; }
+.face-morph-controls { display: grid; gap: 8px; margin-top: 12px; }
+.range-field { display: grid; grid-template-columns: 70px minmax(0, 1fr) 35px; align-items: center; gap: 8px; color: #74817e; font-size: 10px; font-weight: 700; }
+.range-field input { width: 100%; accent-color: #4f8c88; }
+.range-field output { color: #4f8c88; font-variant-numeric: tabular-nums; text-align: right; }
 .export-consent-label { margin-top: 10px; }
 .clear-face-button { align-self: flex-start; margin-top: 7px; padding: 0; border: 0; color: #7f625d; font-size: 10px; font-weight: 700; }
 .clear-face-button:hover { color: #ba5d4f; }

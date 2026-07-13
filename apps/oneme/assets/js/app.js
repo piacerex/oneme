@@ -144,10 +144,9 @@ function handleFacePhoto(input, hook) {
 
   const objectUrl = URL.createObjectURL(file)
   const image = new Image()
-  image.onload = () => {
-    const size = Math.min(image.width, image.height)
-    const x = (image.width - size) / 2
-    const y = (image.height - size) / 2
+  image.onload = async () => {
+    const bounds = await detectFaceBounds(image)
+    const crop = faceCrop(image, bounds)
     const canvas = document.createElement("canvas")
     canvas.width = 512
     canvas.height = 512
@@ -155,27 +154,63 @@ function handleFacePhoto(input, hook) {
     context.clearRect(0, 0, 512, 512)
     context.save()
     context.beginPath()
-    context.ellipse(256, 256, 218, 246, 0, 0, Math.PI * 2)
+    context.ellipse(256, 256, crop.maskWidth, crop.maskHeight, 0, 0, Math.PI * 2)
     context.clip()
-    context.drawImage(image, x, y, size, size, 0, 0, 512, 512)
+    context.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, 512, 512)
     context.restore()
     URL.revokeObjectURL(objectUrl)
     window.onemeThreePreview?.setFaceImage(canvas.toDataURL("image/png"))
     const ratio = image.width / image.height
     hook.pushEvent("face_analyzed", {
+      face_detected: Boolean(bounds),
       face_morph: {
         widthScale: clamp(0.96 + (ratio - 0.75) * 0.16, 0.88, 1.14),
         heightScale: clamp(1.08 + (0.9 - ratio) * 0.12, 0.94, 1.2),
         depth: clamp(0.42 + ratio * 0.08, 0.42, 0.62)
       }
     })
-    if (status) status.textContent = "顔の輪郭に沿って切り出し、プレビューへマッピングしました。"
+    if (status) {
+      status.textContent = bounds
+        ? "顔を検出し、輪郭に沿って切り出してプレビューへマッピングしました。"
+        : "顔検出を利用できないため、中央を基準に切り出してプレビューへマッピングしました。"
+    }
   }
   image.onerror = () => {
     URL.revokeObjectURL(objectUrl)
     if (status) status.textContent = "写真を読み込めませんでした。別の画像を試してください。"
   }
   image.src = objectUrl
+}
+
+async function detectFaceBounds(image) {
+  if (!("FaceDetector" in window)) return null
+
+  try {
+    const detector = new window.FaceDetector({fastMode: true, maxDetectedFaces: 1})
+    const detections = await detector.detect(image)
+    const bounds = detections[0]?.boundingBox
+
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return null
+    return {x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height}
+  } catch (error) {
+    console.debug("oneme: face detection unavailable", error)
+    return null
+  }
+}
+
+function faceCrop(image, bounds) {
+  const fallbackSize = Math.min(image.width, image.height)
+  const size = bounds
+    ? Math.min(Math.min(image.width, image.height), Math.max(bounds.width * 1.7, bounds.height * 1.5))
+    : fallbackSize
+  const centerX = bounds ? bounds.x + bounds.width / 2 : image.width / 2
+  const centerY = bounds ? bounds.y + bounds.height / 2 : image.height / 2
+  const x = clamp(centerX - size / 2, 0, image.width - size)
+  const y = clamp(centerY - size / 2, 0, image.height - size)
+  const maskWidth = bounds ? clamp((bounds.width / size) * 512 * 0.82, 160, 230) : 218
+  const maskHeight = bounds ? clamp((bounds.height / size) * 512 * 0.86, 190, 248) : 246
+
+  return {x, y, size, maskWidth, maskHeight}
 }
 
 function clamp(value, min, max) {

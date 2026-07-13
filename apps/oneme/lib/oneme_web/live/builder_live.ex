@@ -18,6 +18,7 @@ defmodule OnemeWeb.BuilderLive do
     },
     "colors" => %{"skin" => "#c98f6f", "hair" => "#2f2118"},
     "faceMorph" => %{"widthScale" => 1.0, "heightScale" => 1.06, "depth" => 0.5},
+    "faceAnalysis" => %{"detected" => false},
     "faceTexture" => %{"enabled" => false, "source" => "session", "exportConsent" => false}
   }
 
@@ -47,6 +48,13 @@ defmodule OnemeWeb.BuilderLive do
       config
       |> Map.put("parts", Map.merge(config["parts"], Map.get(params, "parts", %{})))
       |> Map.put("colors", Map.merge(config["colors"], Map.get(params, "colors", %{})))
+      |> Map.put(
+        "faceMorph",
+        Map.merge(
+          Map.get(config, "faceMorph", %{}),
+          normalize_face_morph(Map.get(params, "faceMorph", %{}))
+        )
+      )
       |> put_face_texture(Map.get(params, "faceTexture", %{}))
 
     {:noreply,
@@ -55,13 +63,14 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:face_export_consent, face_export_consent?(next_config))}
   end
 
-  def handle_event("face_analyzed", %{"face_morph" => face_morph}, socket) do
+  def handle_event("face_analyzed", %{"face_morph" => face_morph} = params, socket) do
     config = socket.assigns.config
     face_texture = Map.get(config, "faceTexture", %{})
 
     next_config =
       config
       |> Map.put("faceMorph", Map.merge(Map.get(config, "faceMorph", %{}), face_morph))
+      |> Map.put("faceAnalysis", %{"detected" => Map.get(params, "face_detected", false)})
       |> Map.put(
         "faceTexture",
         Map.merge(face_texture, %{"enabled" => true, "source" => "session"})
@@ -76,7 +85,11 @@ defmodule OnemeWeb.BuilderLive do
   def handle_event("clear_face", _params, socket) do
     config = socket.assigns.config
     face_texture = Map.get(config, "faceTexture", %{})
-    next_config = Map.put(config, "faceTexture", Map.merge(face_texture, %{"enabled" => false}))
+
+    next_config =
+      config
+      |> Map.put("faceTexture", Map.merge(face_texture, %{"enabled" => false}))
+      |> Map.put("faceAnalysis", %{"detected" => false})
 
     {:noreply,
      socket
@@ -247,6 +260,25 @@ defmodule OnemeWeb.BuilderLive do
         else: candidate
     end)
   end
+
+  defp normalize_face_morph(params) when is_map(params) do
+    params
+    |> Map.take(["widthScale", "heightScale", "depth"])
+    |> Map.new(fn {key, value} -> {key, parse_number(value)} end)
+  end
+
+  defp normalize_face_morph(_params), do: %{}
+
+  defp parse_number(value) when is_number(value), do: value
+
+  defp parse_number(value) when is_binary(value) do
+    case Float.parse(value) do
+      {number, ""} -> number
+      _ -> 0.0
+    end
+  end
+
+  defp parse_number(_value), do: 0.0
 
   defp valid_parent_origin(nil), do: nil
 

@@ -11,6 +11,7 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert has_element?(view, "#export-glb")
     assert has_element?(view, "#export-vrm")
     assert has_element?(view, "#generate-candidates")
+    assert has_element?(view, "input[name='faceMorph[widthScale]']")
     assert has_element?(view, "button", "公開URLを発行")
 
     html =
@@ -53,6 +54,7 @@ defmodule OnemeWeb.BuilderLiveTest do
 
     html =
       render_hook(view, "face_analyzed", %{
+        "face_detected" => true,
         "face_morph" => %{"widthScale" => 1.08, "heightScale" => 1.12, "depth" => 0.55}
       })
 
@@ -61,6 +63,9 @@ defmodule OnemeWeb.BuilderLiveTest do
 
     html = render_click(view, "clear_face")
     assert html =~ "顔写真のマッピングをクリアしました。"
+
+    html = render_change(view, "update_config", %{"faceMorph" => %{"widthScale" => "1.12"}})
+    assert html =~ "value=\"1.12\""
   end
 
   test "generates and applies a recommendation candidate", %{conn: conn} do

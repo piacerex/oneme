@@ -188,6 +188,7 @@ defmodule Oneme.Generations do
     parts = map_value(config, "parts")
     colors = map_value(config, "colors")
     face_morph = map_value(config, "faceMorph")
+    face_analysis = config |> map_value("faceAnalysis") |> Map.take(["detected"])
 
     face_texture =
       config |> map_value("faceTexture") |> Map.take(["enabled", "source", "exportConsent"])
@@ -196,6 +197,7 @@ defmodule Oneme.Generations do
       "parts" => parts,
       "colors" => colors,
       "faceMorph" => face_morph,
+      "faceAnalysis" => face_analysis,
       "faceTexture" => face_texture
     }
   end

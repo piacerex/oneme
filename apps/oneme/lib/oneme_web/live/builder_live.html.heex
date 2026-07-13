@@ -95,6 +95,44 @@
             <input id="face-photo" type="file" accept="image/*" phx-hook="FacePhoto" />
           </label>
           <p id="face-status" class="face-status" role="status">写真なしでも作成できます。</p>
+          <div class="face-morph-controls">
+            <label class="range-field">
+              <span>顔幅</span>
+              <input
+                name="faceMorph[widthScale]"
+                type="range"
+                min="0.88"
+                max="1.14"
+                step="0.01"
+                value={@config["faceMorph"]["widthScale"]}
+              />
+              <output>{@config["faceMorph"]["widthScale"]}</output>
+            </label>
+            <label class="range-field">
+              <span>顔の高さ</span>
+              <input
+                name="faceMorph[heightScale]"
+                type="range"
+                min="0.94"
+                max="1.2"
+                step="0.01"
+                value={@config["faceMorph"]["heightScale"]}
+              />
+              <output>{@config["faceMorph"]["heightScale"]}</output>
+            </label>
+            <label class="range-field">
+              <span>顔の奥行き</span>
+              <input
+                name="faceMorph[depth]"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={@config["faceMorph"]["depth"]}
+              />
+              <output>{@config["faceMorph"]["depth"]}</output>
+            </label>
+          </div>
           <label class="consent-label export-consent-label">
             <input type="hidden" name="faceTexture[exportConsent]" value="false" />
             <input
