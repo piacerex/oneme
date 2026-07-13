@@ -1,0 +1,28 @@
+<main class="public-avatar-shell">
+  <%= if @unavailable do %>
+    <section class="public-message">
+      <p class="eyebrow">ONEME / PUBLIC AVATAR</p>
+      <h1>このアバターは公開されていません</h1>
+    </section>
+  <% else %>
+    <header class="public-avatar-header">
+      <div>
+        <p class="eyebrow">ONEME / PUBLIC AVATAR</p>
+        <h1>{@avatar.name}</h1>
+      </div>
+      <a class="public-back-link" href={~p"/"}>アバターを作る</a>
+    </header>
+    <section class="public-avatar-preview">
+      <div
+        id="avatar-preview"
+        class="avatar-preview"
+        phx-hook="AvatarPreview"
+        data-config={Jason.encode!(@avatar.config)}
+        aria-label="公開3Dアバタープレビュー"
+      >
+        <div class="preview-loading">3D preview loading...</div>
+      </div>
+      <div class="preview-caption"><span class="live-dot"></span><span>PUBLIC AVATAR</span></div>
+    </section>
+  <% end %>
+</main>

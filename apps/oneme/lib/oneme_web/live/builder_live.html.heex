@@ -117,6 +117,12 @@
           アバターを保存
         </button>
       </div>
+      <div class="publish-row">
+        <button type="button" class="button button-quiet" phx-click="publish_avatar">
+          公開URLを発行
+        </button>
+        <a :if={@public_url} class="public-url" href={@public_url} target="_blank">公開ページを開く</a>
+      </div>
 
       <div class="privacy-note">
         <span class="privacy-icon" aria-hidden="true">◌</span>

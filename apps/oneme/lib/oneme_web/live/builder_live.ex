@@ -45,6 +45,7 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:avatar_name, "My oneme avatar")
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
      |> assign(:face_export_consent, false)
+     |> assign(:public_url, nil)
      |> assign(:saved_avatar, nil)}
   end
 
@@ -110,6 +111,7 @@ defmodule OnemeWeb.BuilderLive do
         {:noreply,
          socket
          |> assign(:saved_avatar, avatar)
+         |> assign(:public_url, nil)
          |> assign(:status, "保存しました。アバターID: #{avatar.id}")}
 
       {:error, changeset} ->
@@ -130,6 +132,24 @@ defmodule OnemeWeb.BuilderLive do
          |> assign(:face_export_consent, face_export_consent?(avatar.config))
          |> assign(:saved_avatar, avatar)
          |> assign(:status, "保存済みアバターを読み込みました。")}
+    end
+  end
+
+  def handle_event("publish_avatar", _params, %{assigns: %{saved_avatar: nil}} = socket) do
+    {:noreply, assign(socket, :status, "公開する前にアバターを保存してください。")}
+  end
+
+  def handle_event("publish_avatar", _params, socket) do
+    case Avatars.update_avatar(socket.assigns.saved_avatar, %{visibility: "public"}) do
+      {:ok, avatar} ->
+        {:noreply,
+         socket
+         |> assign(:saved_avatar, avatar)
+         |> assign(:public_url, "/avatars/#{avatar.id}")
+         |> assign(:status, "公開URLを発行しました。")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :status, "公開できませんでした: #{inspect(changeset.errors)}")}
     end
   end
 

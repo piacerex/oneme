@@ -19,6 +19,7 @@ defmodule OnemeWeb.Router do
 
     live "/", BuilderLive
     live "/builder", BuilderLive
+    live "/avatars/:id", PublicAvatarLive
   end
 
   scope "/api", OnemeWeb do
@@ -26,6 +27,9 @@ defmodule OnemeWeb.Router do
 
     post "/export-jobs", ExportJobController, :create
     get "/export-jobs/:id", ExportJobController, :show
+    get "/avatars/:id", AvatarController, :show
+    get "/avatars/:id/config", AvatarController, :config
+    get "/avatars/:id/public", AvatarController, :public
   end
 
   # Other scopes may use custom stacks.

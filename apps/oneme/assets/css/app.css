@@ -51,6 +51,8 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .clear-face-button { align-self: flex-start; margin-top: 7px; padding: 0; border: 0; color: #7f625d; font-size: 10px; font-weight: 700; }
 .clear-face-button:hover { color: #ba5d4f; }
 .action-row { display: flex; gap: 10px; margin-top: auto; }
+.publish-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.public-url { color: #347f7b; font-size: 11px; font-weight: 800; }
 .button { flex: 1; padding: 12px 14px; border: 1px solid #c9d9d4; border-radius: 5px; font-size: 12px; font-weight: 800; }
 .button-primary { border-color: #2f7973; background: #347f7b; color: #fff; }
 .button-primary:hover { background: #286e68; }
@@ -58,6 +60,13 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .button-quiet:hover { background: #f4f8f6; }
 .privacy-note { display: flex; gap: 9px; padding-top: 4px; color: #87938f; font-size: 10px; line-height: 1.5; }
 .privacy-icon { color: #4f8c88; font-size: 16px; line-height: 1; }
+.public-avatar-shell { min-height: 100vh; padding: 28px 32px 40px; }
+.public-avatar-header { display: flex; align-items: flex-end; justify-content: space-between; max-width: 980px; margin: 0 auto 24px; }
+.public-avatar-header h1, .public-message h1 { margin: 0; color: #172321; font-size: clamp(24px, 3vw, 42px); font-weight: 700; }
+.public-back-link { color: #347f7b; font-size: 12px; font-weight: 800; }
+.public-avatar-preview { max-width: 980px; min-height: 700px; margin: 0 auto; overflow: hidden; border: 1px solid #dfe6e1; border-radius: 8px; background: #e9eeea; }
+.public-avatar-preview .avatar-preview { min-height: 650px; }
+.public-message { max-width: 700px; margin: 18vh auto; padding: 44px; border: 1px solid #dfe6e1; border-radius: 8px; background: #fff; }
 .export-section { display: flex; flex-direction: column; gap: 9px; padding-top: 4px; border-top: 1px solid #e5ece8; }
 .export-section h3 { margin: 0; color: #243330; font-size: 15px; }
 .export-section .button { width: 100%; }
@@ -77,4 +86,5 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
   .upload-box { align-items: flex-start; flex-wrap: wrap; }
   .upload-box small { width: 100%; margin-left: 34px; }
   .action-row { flex-direction: column-reverse; }
+  .publish-row { align-items: flex-start; flex-direction: column; }
 }

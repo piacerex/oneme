@@ -9,6 +9,7 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert html =~ "顔写真からつくる、あなたの3Dアバター"
     assert has_element?(view, "#avatar-preview[data-config]")
     assert has_element?(view, "#export-glb")
+    assert has_element?(view, "button", "公開URLを発行")
 
     html =
       render_change(view, "update_config", %{

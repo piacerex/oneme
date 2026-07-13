@@ -1,80 +1,36 @@
 # oneme
 
-oneme is a local MVP for a Ready Player Me-style avatar creation service.
+Phoenix/LiveViewで作る3Dアバタービルダーです。
 
-The repository currently focuses on proving the product path phase by phase:
-
-- browser avatar builder with Canvas and Three.js previews
-- face-photo based local recommendations and temporary face texture mapping
-- deterministic AI-style avatar candidates
-- local GLB and VRM-shaped export jobs
-- iframe widget contract
-- Web and Unity SDK skeletons
-- commercial operation contracts for teams, usage, billing, webhooks, audit logs, asset review, monitoring, incidents, and legal records
-
-See `ROADMAP.md` for the full phased plan and `docs/roadmap-progress.md` for
-the current implementation evidence.
-
-## Open the MVP
-
-The browser MVP is static HTML.
-
-Open:
-
-```text
-apps/web/index.html
-```
-
-Useful companion pages:
-
-- `apps/web/widget.html`
-- `apps/web/embed-example.html`
-- `apps/web/sdk-example.html`
-
-To point the SDK example at the local API mock, run `python3 apps/api/mock_server.py`
-and open `apps/web/sdk-example.html?api=http://127.0.0.1:8765`.
-The widget supports the same API parameter:
-`apps/web/widget.html?app_id=demo-app&api_key=demo-key&api=http://127.0.0.1:8765`.
-
-## Local Verification
-
-Run the repository gate before committing:
+## 起動
 
 ```bash
-python3 tools/check_all.py
+cd apps/oneme
+eval "$(mise activate bash)"
+mix setup
+mix phx.server
 ```
 
-This verifies:
+`http://localhost:4000/` を開くと、Three.jsの回転プレビュー、パーツ編集、顔写真の輪郭マスク、顔面テクスチャマッピングを確認できます。
 
-- JSON syntax for every schema and example in `schemas/`
-- Python syntax for local tools
-- roadmap phase evidence with `tools/roadmap/check_progress.py`
+顔写真の元画像はブラウザ内だけで扱います。顔写真由来の派生テクスチャをGLB/FBXへ含める場合は、画面上で明示的な同意が必要です。
 
-`docs/github-actions.md` includes a workflow template for running the same gate
-in GitHub Actions when repository credentials allow workflow updates.
+## FBXエクスポート
 
-## Key Documents
+サーバー側FBX変換にはAssimpが必要です。実行ファイルがPATHにない場合は、`ONEME_ASSIMP_BIN`で指定します。
 
-- `docs/avatar-direction.md`: avatar style and MVP structure
-- `docs/three-preview.md`: Phase 1 Three.js preview
-- `docs/ai-generation-mvp.md`: Phase 3 local AI generation contract
-- `docs/api-mock.md`: dependency-free local API mock
-- `docs/export-api.md`: GLB/VRM model response contract
-- `docs/export-pipeline.md`: GLB export pipeline
-- `docs/widget-contract.md`: iframe widget integration
-- `docs/web-sdk.md`: Web SDK contract
-- `docs/unity-sdk.md`: Unity SDK contract
-- `docs/vrm.md`: VRM export contract
-- `docs/vrm-validation.md`: VRM validation and animation compatibility checks
-- `docs/commercial-operations.md`: Phase 8 commercial operation contracts
+```bash
+ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
+```
 
-## Current Limits
+`POST /api/export-jobs` に `format: "fbx"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
 
-The MVP is intentionally local and contract-first. Production work still needs:
+## 検証
 
-- hosted API and database persistence
-- production 3D assets
-- real merged GLB output
-- true VRM 1.0 humanoid exports
-- server-side auth, billing, rate limits, webhooks, monitoring, and admin UI
-- browser, Unity, GLB, and VRM viewer validation with production artifacts
+```bash
+cd apps/oneme
+mix test
+mix assets.build
+```
+
+詳細な実装順と本番移行項目は、ルートの `ROADMAP.md` を参照してください。

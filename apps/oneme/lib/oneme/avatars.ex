@@ -49,6 +49,8 @@ defmodule Oneme.Avatars do
   """
   def get_avatar!(id), do: Repo.get!(Avatar, id)
 
+  def get_avatar(id), do: Repo.get(Avatar, id)
+
   @doc """
   Creates a avatar.
 
