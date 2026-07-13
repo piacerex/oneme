@@ -2,6 +2,7 @@ defmodule Oneme.Generations do
   @moduledoc "Provider-neutral candidate generation jobs for avatar recommendations."
 
   alias Oneme.Generations.GenerationJob
+  alias Oneme.Generations.ExternalProvider
   alias Oneme.Operations
   alias Oneme.Repo
 
@@ -131,14 +132,14 @@ defmodule Oneme.Generations do
       |> GenerationJob.changeset(%{status: "running", attempts: job.attempts + 1})
       |> Repo.update()
 
-    candidates = Enum.map(@presets, &build_candidate(&1, running_job.input_config))
+    {provider, candidates} = generate_candidates(running_job.input_config)
     finished_at = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, finished_job} =
       running_job
       |> GenerationJob.changeset(%{
         status: "succeeded",
-        candidates: %{"items" => candidates, "provider" => "local_recommendation"},
+        candidates: %{"items" => candidates, "provider" => provider},
         finished_at: finished_at
       })
       |> Repo.update()
@@ -146,7 +147,7 @@ defmodule Oneme.Generations do
     Operations.track_audit("generation_succeeded", %{
       resource_type: "generation_job",
       resource_id: finished_job.id,
-      metadata: %{"candidateCount" => length(candidates), "provider" => "local_recommendation"}
+      metadata: %{"candidateCount" => length(candidates), "provider" => provider}
     })
 
     finished_job
@@ -178,6 +179,79 @@ defmodule Oneme.Generations do
 
     Map.merge(preset, %{"status" => "available", "config" => config})
   end
+
+  defp generate_candidates(input_config) do
+    case System.get_env("ONEME_GENERATION_PROVIDER", "local_recommendation") do
+      "local_recommendation" ->
+        {"local_recommendation", Enum.map(@presets, &build_candidate(&1, input_config))}
+
+      "http_json" ->
+        case ExternalProvider.generate(input_config) do
+          {:ok, %{provider: provider, candidates: candidates}} ->
+            {provider, normalize_external_candidates(candidates, input_config)}
+
+          {:error, code, message} ->
+            raise "#{code}: #{message}"
+
+          {:error, reason} ->
+            raise "external provider failed: #{inspect(reason)}"
+        end
+
+      provider ->
+        raise "unsupported generation provider: #{provider}"
+    end
+  end
+
+  defp normalize_external_candidates(candidates, input_config) do
+    candidates
+    |> Enum.with_index(1)
+    |> Enum.map(fn {candidate, index} ->
+      normalize_external_candidate(candidate, input_config, index)
+    end)
+  end
+
+  defp normalize_external_candidate(candidate, input_config, index) when is_map(candidate) do
+    parts =
+      candidate
+      |> map_value("parts")
+      |> Map.take(~w(face hair top bottom accessory))
+
+    config = Map.put(input_config, "parts", Map.merge(Map.get(input_config, "parts", %{}), parts))
+
+    normalized = %{
+      "id" => safe_text(candidate, "id", "external-#{index}"),
+      "label" => safe_text(candidate, "label", "External candidate #{index}"),
+      "style" => safe_text(candidate, "style", "external"),
+      "reason" => safe_text(candidate, "reason", "外部プロバイダーが生成した候補です。"),
+      "parts" => parts,
+      "status" => "available",
+      "config" => config
+    }
+
+    case candidate |> Map.get("imageUrl") |> valid_image_url() do
+      nil -> normalized
+      image_url -> Map.put(normalized, "imageUrl", image_url)
+    end
+  end
+
+  defp normalize_external_candidate(_candidate, input_config, index),
+    do: normalize_external_candidate(%{}, input_config, index)
+
+  defp safe_text(candidate, key, fallback) do
+    case Map.get(candidate, key) do
+      value when is_binary(value) and value != "" -> String.slice(value, 0, 240)
+      _ -> fallback
+    end
+  end
+
+  defp valid_image_url(value) when is_binary(value) do
+    case URI.parse(value) do
+      %URI{scheme: "https", host: host} when is_binary(host) -> String.slice(value, 0, 2_000)
+      _ -> nil
+    end
+  end
+
+  defp valid_image_url(_value), do: nil
 
   defp update_candidate(candidates, candidate_id, decision) do
     items = Map.get(candidates || %{}, "items", [])
