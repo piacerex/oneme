@@ -1,0 +1,28 @@
+defmodule OnemeWeb.Router do
+  use OnemeWeb, :router
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {OnemeWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
+
+  scope "/", OnemeWeb do
+    pipe_through :browser
+
+    live "/", BuilderLive
+    live "/builder", BuilderLive
+  end
+
+  # Other scopes may use custom stacks.
+  # scope "/api", OnemeWeb do
+  #   pipe_through :api
+  # end
+end

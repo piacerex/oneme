@@ -1,0 +1,113 @@
+<main class="builder-shell">
+  <header class="builder-topbar">
+    <div>
+      <p class="eyebrow">ONEME / AVATAR STUDIO</p>
+      <h1>顔写真からつくる、あなたの3Dアバター</h1>
+    </div>
+    <div class="topbar-status" role="status">{@status}</div>
+  </header>
+
+  <section class="builder-grid" aria-label="アバタービルダー">
+    <div class="preview-panel">
+      <div
+        id="avatar-preview"
+        class="avatar-preview"
+        phx-hook="AvatarPreview"
+        data-config={Jason.encode!(@config)}
+        aria-label="3Dアバタープレビュー"
+      >
+        <div class="preview-loading">3D preview loading...</div>
+      </div>
+      <div class="preview-caption">
+        <span class="live-dot"></span>
+        <span>LIVE PREVIEW</span>
+        <span class="caption-note">自動回転中</span>
+      </div>
+    </div>
+
+    <aside class="editor-panel" aria-label="アバター編集">
+      <section class="editor-section intro-section">
+        <div>
+          <p class="section-kicker">BUILD YOUR IDENTITY</p>
+          <h2>アバターを整える</h2>
+        </div>
+        <span class="step-chip">01 / 04</span>
+      </section>
+
+      <form id="avatar-editor" phx-change="update_config" class="editor-form">
+        <label class="field-label" for="avatar-name">アバター名</label>
+        <input
+          id="avatar-name"
+          name="avatar_name"
+          value={@avatar_name}
+          phx-change="update_name"
+          phx-debounce="150"
+          class="text-input"
+          autocomplete="off"
+        />
+
+        <fieldset>
+          <legend>パーツ</legend>
+          <div class="field-grid">
+            <%= for {key, label} <- [{:face, "顔"}, {:hair, "髪型"}, {:top, "トップス"}, {:bottom, "ボトムス"}, {:shoes, "シューズ"}, {:accessory, "アクセサリー"}] do %>
+              <label class="field-label">
+                <span>{label}</span>
+                <select name={"parts[#{key}]"} class="select-input">
+                  <%= for {option_label, option_value} <- Map.fetch!(@parts, key) do %>
+                    <option
+                      value={option_value}
+                      selected={@config["parts"][Atom.to_string(key)] == option_value}
+                    >
+                      {option_label}
+                    </option>
+                  <% end %>
+                </select>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>カラー</legend>
+          <div class="color-grid">
+            <label class="color-field">
+              <span>肌色</span>
+              <input name="colors[skin]" type="color" value={@config["colors"]["skin"]} />
+            </label>
+            <label class="color-field">
+              <span>髪色</span>
+              <input name="colors[hair]" type="color" value={@config["colors"]["hair"]} />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="face-photo-section">
+          <legend>顔写真マッピング</legend>
+          <label class="consent-label">
+            <input id="face-consent" type="checkbox" />
+            <span>この写真をプレビュー用にだけ使うことに同意します</span>
+          </label>
+          <label class="upload-box" for="face-photo">
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <span>顔写真をアップロード</span>
+            <small>元写真はサーバーへ送信しません</small>
+            <input id="face-photo" type="file" accept="image/*" phx-hook="FacePhoto" />
+          </label>
+          <p id="face-status" class="face-status" role="status">写真なしでも作成できます。</p>
+        </fieldset>
+      </form>
+
+      <div class="action-row">
+        <button type="button" class="button button-quiet" phx-click="load_latest">最新を読み込む</button>
+        <button type="button" class="button button-primary" phx-click="save_avatar">
+          アバターを保存
+        </button>
+      </div>
+
+      <div class="privacy-note">
+        <span class="privacy-icon" aria-hidden="true">◌</span>
+        <span>写真は一時的な顔テクスチャに変換され、保存データには元画像を含めません。</span>
+      </div>
+    </aside>
+  </section>
+</main>
