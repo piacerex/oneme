@@ -10,6 +10,7 @@ defmodule Oneme.Application do
     children = [
       OnemeWeb.Telemetry,
       Oneme.Repo,
+      Oneme.RateLimiter,
       {DNSCluster, query: Application.get_env(:oneme, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Oneme.PubSub},
       # Start a worker by calling: Oneme.Worker.start_link(arg)
