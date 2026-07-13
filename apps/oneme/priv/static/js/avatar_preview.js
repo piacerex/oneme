@@ -84,6 +84,7 @@ if (container) {
   scene.add(floor);
 
   let faceTexture = null;
+  let faceDataUrl = null;
   window.onemeThreePreview = {
     sync(config) {
       const colors = config?.colors || {};
@@ -102,6 +103,7 @@ if (container) {
       materials.face.opacity = faceTexture ? 0.96 : 0;
     },
     setFaceImage(dataUrl) {
+      faceDataUrl = dataUrl;
       const image = new Image();
       image.onload = () => {
         faceTexture?.dispose();
@@ -117,9 +119,13 @@ if (container) {
     clearFaceImage() {
       faceTexture?.dispose();
       faceTexture = null;
+      faceDataUrl = null;
       materials.face.map = null;
       materials.face.opacity = 0;
       materials.face.needsUpdate = true;
+    },
+    getFaceTextureDataUrl() {
+      return faceDataUrl;
     },
     exportGlb(config, filename) {
       return new Promise((resolve, reject) => {

@@ -74,6 +74,43 @@ const hooks = {
     destroyed() {
       this.el.removeEventListener("click", this.handleClick)
     }
+  },
+  ExportFbx: {
+    mounted() {
+      this.handleClick = async () => {
+        const status = document.querySelector("#export-status")
+        const config = window.onemeAvatarConfig || {}
+        if (status) status.textContent = "FBX変換ジョブを実行しています..."
+
+        try {
+          const includeFaceTexture = config.faceTexture?.exportConsent === true
+          const response = await fetch("/api/export-jobs", {
+            method: "POST",
+            headers: {"content-type": "application/json"},
+            body: JSON.stringify({
+              avatarConfig: config,
+              format: "fbx",
+              faceTextureDataUrl: includeFaceTexture ? window.onemeThreePreview?.getFaceTextureDataUrl() : null
+            })
+          })
+          const payload = await response.json()
+          if (!response.ok || payload.status !== "succeeded") throw new Error(payload.errorMessage || payload.error || "FBX export failed")
+
+          const link = document.createElement("a")
+          link.href = payload.modelUrl
+          link.download = "oneme-avatar.fbx"
+          link.click()
+          if (status) status.textContent = "FBXを保存しました。"
+        } catch (error) {
+          console.error(error)
+          if (status) status.textContent = "FBXの生成に失敗しました。Blender/Assimpの設定を確認してください。"
+        }
+      }
+      this.el.addEventListener("click", this.handleClick)
+    },
+    destroyed() {
+      this.el.removeEventListener("click", this.handleClick)
+    }
   }
 }
 

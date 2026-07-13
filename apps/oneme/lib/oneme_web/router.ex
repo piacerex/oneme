@@ -21,6 +21,13 @@ defmodule OnemeWeb.Router do
     live "/builder", BuilderLive
   end
 
+  scope "/api", OnemeWeb do
+    pipe_through :api
+
+    post "/export-jobs", ExportJobController, :create
+    get "/export-jobs/:id", ExportJobController, :show
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", OnemeWeb do
   #   pipe_through :api
