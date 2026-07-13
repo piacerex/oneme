@@ -23,7 +23,7 @@ defmodule Oneme.CdnMonitor do
 
   @impl true
   def handle_call(:check_now, _from, state) do
-    report = Monitoring.check_cdn()
+    report = refresh_report()
     {:reply, report, %{state | report: report}}
   end
 
@@ -35,6 +35,8 @@ defmodule Oneme.CdnMonitor do
 
   defp refresh_report do
     report = Monitoring.check_cdn()
+    _ = Monitoring.record_probe(report)
+    report = Map.put(report, :historicalSlo, Monitoring.recent_slo())
     _ = Monitoring.notify(report)
     report
   end

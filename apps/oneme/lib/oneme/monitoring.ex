@@ -1,6 +1,11 @@
 defmodule Oneme.Monitoring do
   @moduledoc "Configured CDN health checks, SLO probe evaluation, and alert delivery."
 
+  import Ecto.Query
+
+  alias Oneme.Monitoring.ProbeRun
+  alias Oneme.Repo
+
   def check_cdn do
     urls = configured_urls()
 
@@ -13,6 +18,69 @@ defmodule Oneme.Monitoring do
         status = if Enum.all?(endpoints, & &1.ok), do: "ok", else: "degraded"
         enrich_report(%{status: status, checkedAt: DateTime.utc_now(), endpoints: endpoints})
     end
+  end
+
+  def record_probe(%{status: status, endpoints: endpoints} = report)
+      when is_binary(status) and is_list(endpoints) do
+    if endpoints == [] do
+      {:ok, nil}
+    else
+      endpoint_count = length(endpoints)
+      available_count = Enum.count(endpoints, &endpoint_ok?/1)
+
+      %ProbeRun{}
+      |> ProbeRun.changeset(%{
+        status: status,
+        endpoint_count: endpoint_count,
+        available_count: available_count,
+        availability_percent: Float.round(available_count / endpoint_count * 100, 2),
+        report: report_snapshot(report)
+      })
+      |> Repo.insert()
+    end
+  rescue
+    error -> {:error, {:probe_record_failed, Exception.message(error)}}
+  end
+
+  def record_probe(_report), do: {:error, :invalid_probe_report}
+
+  def recent_slo(limit \\ 100) do
+    runs =
+      ProbeRun
+      |> order_by(desc: :inserted_at)
+      |> limit(^min(max(limit, 1), 1_000))
+      |> Repo.all()
+
+    endpoint_count = Enum.reduce(runs, 0, &(&2 + &1.endpoint_count))
+    available_count = Enum.reduce(runs, 0, &(&2 + &1.available_count))
+    last_status = if runs == [], do: nil, else: hd(runs).status
+
+    %{
+      window: "last_#{length(runs)}_probes",
+      probeCount: length(runs),
+      endpointCount: endpoint_count,
+      availableEndpointCount: available_count,
+      probeAvailabilityPercent:
+        if(endpoint_count == 0,
+          do: nil,
+          else: Float.round(available_count / endpoint_count * 100, 2)
+        ),
+      lastStatus: last_status,
+      availabilityTargetPercent: availability_target_percent(),
+      maxResponseMs: max_response_ms()
+    }
+  rescue
+    _error ->
+      %{
+        window: "last_0_probes",
+        probeCount: 0,
+        endpointCount: 0,
+        availableEndpointCount: 0,
+        probeAvailabilityPercent: nil,
+        lastStatus: nil,
+        availabilityTargetPercent: availability_target_percent(),
+        maxResponseMs: max_response_ms()
+      }
   end
 
   def notify(report) when is_map(report) do
@@ -67,6 +135,29 @@ defmodule Oneme.Monitoring do
     else
       []
     end
+  end
+
+  defp endpoint_ok?(endpoint), do: Map.get(endpoint, :ok, Map.get(endpoint, "ok", false))
+
+  defp report_snapshot(report) do
+    alerts =
+      report
+      |> Map.get(:alerts, [])
+      |> Enum.map(fn alert ->
+        %{
+          "code" => Map.get(alert, :code, Map.get(alert, "code")),
+          "severity" => Map.get(alert, :severity, Map.get(alert, "severity")),
+          "responseMs" => Map.get(alert, :responseMs, Map.get(alert, "responseMs")),
+          "thresholdMs" => Map.get(alert, :thresholdMs, Map.get(alert, "thresholdMs"))
+        }
+        |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+        |> Map.new()
+      end)
+
+    %{
+      "status" => Map.get(report, :status),
+      "alerts" => alerts
+    }
   end
 
   defp slo_summary([]) do
