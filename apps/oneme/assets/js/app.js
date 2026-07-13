@@ -240,10 +240,16 @@ function handleFacePhoto(input, hook) {
       },
       face_calibration: calibration.metadata
     })
+    const calibrationMode = calibration.metadata.orientation
+    const affineApplied = calibrationMode === "landmark-affine-corrected"
+    window.onemeFaceCalibration = calibration.metadata
     if (status) {
+      status.dataset.calibration = calibrationMode
       status.textContent = bounds
-        ? geometry?.landmarks
-          ? "顔の傾き・向き・縦ずれを補正し、目・鼻・口を正面基準へマッピングしました。"
+        ? affineApplied
+          ? "アフィン補正を適用し、目・鼻・口を正面基準へマッピングしました。"
+          : geometry?.landmarks
+          ? "顔のランドマークを検出し、正面向けに補正してプレビューへマッピングしました。"
           : "顔を検出し、正面向けに補正してプレビューへマッピングしました。"
         : "顔検出を利用できないため、中央を基準に正面へ補正しました。"
     }
