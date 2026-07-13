@@ -33,6 +33,8 @@ APIは開発時には匿名互換で動作します。本番では`ONEME_AUTH_RE
 
 `GET /api/usage`はadmin以上のチーム利用量を日次カウンタから返します。APIはAPIキーまたはIP単位で固定窓レート制限を行い、`ONEME_RATE_LIMIT_PER_MINUTE`で上限を変更できます。`x-ratelimit-*`と超過時の`retry-after`を返します。
 
+admin以上は`/api/webhooks`でWebhookを登録できます。秘密値は暗号化保存され、作成時のレスポンスで一度だけ返されます。`/api/webhooks/:id/test`は外部HTTP送信前の署名済みqueued deliveryを作成し、`/api/audit-logs`と`/api/audit-logs/retention`で監査記録の参照・保持期限削除を行います。
+
 `POST /api/generation-jobs` は現在のアバター設定から3つの候補を作り、`POST /api/generation-jobs/:id/feedback` で採用・却下を記録します。現段階のプロバイダーは既存パーツを推薦するローカル実装で、画像生成サービスへ差し替えられるジョブ境界を使います。
 
 `GET /api/parts` はDB上のパーツ台帳と、原点・スケール・ライセンス情報を返します。アバターは`POST /api/avatars`と`PATCH /api/avatars/:id`で保存・更新できます。

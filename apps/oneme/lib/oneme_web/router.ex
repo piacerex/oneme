@@ -34,6 +34,11 @@ defmodule OnemeWeb.Router do
     post "/auth/api-keys", AccessController, :create_api_key
     delete "/auth/api-keys/:id", AccessController, :revoke_api_key
     get "/usage", UsageController, :index
+    get "/webhooks", WebhookController, :index
+    post "/webhooks", WebhookController, :create
+    post "/webhooks/:id/test", WebhookController, :test_delivery
+    get "/audit-logs", AuditController, :index
+    post "/audit-logs/retention", AuditController, :prune
     get "/parts", AssetsController, :index
     post "/avatars", AvatarController, :create
     patch "/avatars/:id", AvatarController, :update

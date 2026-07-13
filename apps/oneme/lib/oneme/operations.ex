@@ -1,6 +1,8 @@
 defmodule Oneme.Operations do
   @moduledoc "Operational health, usage, and audit records."
 
+  import Ecto.Query
+
   alias Oneme.Operations.{AuditLog, UsageEvent}
   alias Oneme.Repo
 
@@ -45,6 +47,18 @@ defmodule Oneme.Operations do
     :ok
   rescue
     _error -> :error
+  end
+
+  def list_audits(limit \\ 100) do
+    AuditLog
+    |> order_by(desc: :inserted_at)
+    |> limit(^min(max(limit, 1), 500))
+    |> Repo.all()
+  end
+
+  def prune_audits_before(%DateTime{} = before) do
+    {count, _} = Repo.delete_all(from(log in AuditLog, where: log.inserted_at < ^before))
+    count
   end
 
   defp normalize_id(nil), do: nil
