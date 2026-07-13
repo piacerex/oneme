@@ -17,6 +17,8 @@ mix phx.server
 
 顔写真の輪郭マスク済みCanvasから肌色・髪色をブラウザ内で推定し、LiveViewの色設定へ反映します。推定値も元写真や画像URLとして保存しません。
 
+サーバー側の一時解析契約として`POST /api/face-analysis-jobs`、`GET /api/face-analysis-jobs/:id`、`POST /api/avatars/from-face-analysis`を提供します。入力は派生メタデータだけに限定し、ジョブは15分で期限切れになります。
+
 ## サーバー側エクスポート
 
 サーバー側FBX変換にはAssimpが必要です。実行ファイルがPATHにない場合は、`ONEME_ASSIMP_BIN`で指定します。

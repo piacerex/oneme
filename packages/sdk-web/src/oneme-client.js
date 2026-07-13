@@ -21,6 +21,26 @@ export class OnemeClient {
     return this.request("/api/parts")
   }
 
+  createFaceAnalysisJob({analysis = {}} = {}) {
+    return this.request("/api/face-analysis-jobs", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({analysis})
+    })
+  }
+
+  fetchFaceAnalysisJob(jobId) {
+    return this.request(`/api/face-analysis-jobs/${encodeURIComponent(jobId)}`)
+  }
+
+  createAvatarFromFaceAnalysis({faceAnalysisJobId, name, config = {}, visibility = "private"} = {}) {
+    return this.request("/api/avatars/from-face-analysis", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({faceAnalysisJobId, name, avatarConfig: config, visibility})
+    })
+  }
+
   createAvatar({name = "My oneme avatar", config = {}, visibility = "private"} = {}) {
     return this.request("/api/avatars", {
       method: "POST",

@@ -11,7 +11,8 @@ const config = await client.fetchAvatarConfig(publicAvatar.avatarId)
 ```
 
 `fetchParts`、`fetchAvatar`、`fetchAvatarConfig`、`fetchPublicAvatar`、
-`createAvatar`、`updateAvatar`、`createExportJob`、`fetchExportJob`を提供します。
+`createAvatar`、`updateAvatar`、`createFaceAnalysisJob`、`fetchFaceAnalysisJob`、
+`createAvatarFromFaceAnalysis`、`createExportJob`、`fetchExportJob`を提供します。
 
 `createExportJob`の`format`には`glb`、`fbx`、`vrm`を指定できます。FBXとVRMは
 サーバー側のAssimp変換が必要です。

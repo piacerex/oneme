@@ -57,14 +57,18 @@ export class OnemeClient {
   }
 
   async createFaceAnalysisJob(payload) {
-    return this.#requestJson("/api/face_analysis_jobs", {
+    return this.#requestJson("/api/face-analysis-jobs", {
       method: "POST",
       body: payload
     });
   }
 
+  async fetchFaceAnalysisJob(jobId) {
+    return this.#requestJson(`/api/face-analysis-jobs/${encodeURIComponent(jobId)}`);
+  }
+
   async createAvatarFromFaceAnalysis(payload) {
-    return this.#requestJson("/api/avatars/from_face_analysis", {
+    return this.#requestJson("/api/avatars/from-face-analysis", {
       method: "POST",
       body: payload
     });

@@ -134,9 +134,9 @@ oneme/
 
 ### API / LiveViewイベント
 
-- `POST /api/face-analysis-jobs`
-- `GET /api/face-analysis-jobs/:id`
-- `POST /api/avatars/from-face-analysis`
+- [x] `POST /api/face-analysis-jobs`
+- [x] `GET /api/face-analysis-jobs/:id`
+- [x] `POST /api/avatars/from-face-analysis`
 - `face_photo_selected`
 - `face_texture_mapped`
 - `face_mapping_cleared`
