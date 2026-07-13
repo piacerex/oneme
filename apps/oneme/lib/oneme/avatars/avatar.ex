@@ -6,6 +6,7 @@ defmodule Oneme.Avatars.Avatar do
     field :name, :string
     field :config, :map
     field :visibility, :string
+    field :team_id, :id
 
     timestamps(type: :utc_datetime)
   end
@@ -13,7 +14,7 @@ defmodule Oneme.Avatars.Avatar do
   @doc false
   def changeset(avatar, attrs) do
     avatar
-    |> cast(attrs, [:name, :config, :visibility])
+    |> cast(attrs, [:name, :config, :visibility, :team_id])
     |> validate_required([:name, :config, :visibility])
     |> validate_inclusion(:visibility, ~w(private public))
     |> validate_config()

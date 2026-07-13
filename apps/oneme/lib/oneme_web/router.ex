@@ -12,6 +12,7 @@ defmodule OnemeWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug OnemeWeb.APIAuth
   end
 
   scope "/", OnemeWeb do
@@ -27,6 +28,10 @@ defmodule OnemeWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+    get "/auth/me", AccessController, :me
+    post "/auth/bootstrap", AccessController, :bootstrap
+    post "/auth/api-keys", AccessController, :create_api_key
+    delete "/auth/api-keys/:id", AccessController, :revoke_api_key
     get "/parts", AssetsController, :index
     post "/avatars", AvatarController, :create
     patch "/avatars/:id", AvatarController, :update

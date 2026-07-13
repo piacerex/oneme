@@ -2,6 +2,7 @@ defmodule OnemeWeb.ExportJobController do
   use OnemeWeb, :controller
 
   alias Oneme.Exports
+  alias OnemeWeb.Authorization
 
   def create(conn, params) do
     attrs = %{
@@ -10,6 +11,13 @@ defmodule OnemeWeb.ExportJobController do
       face_texture_data_url: Map.get(params, "faceTextureDataUrl")
     }
 
+    case authorize(conn, "editor") do
+      :ok -> create_job(conn, attrs)
+      {:error, :forbidden} -> forbidden(conn)
+    end
+  end
+
+  defp create_job(conn, attrs) do
     case Exports.create_export_job(attrs) do
       {:ok, job} ->
         conn |> put_status(:created) |> json(serialize(job))
@@ -23,11 +31,21 @@ defmodule OnemeWeb.ExportJobController do
   end
 
   def show(conn, %{"id" => id}) do
-    conn |> json(serialize(Exports.get_export_job!(id)))
+    case authorize(conn, "viewer") do
+      :ok -> json(conn, serialize(Exports.get_export_job!(id)))
+      {:error, :forbidden} -> forbidden(conn)
+    end
   end
 
   def retry(conn, %{"id" => id}) do
-    case Exports.retry_export_job(Exports.get_export_job!(id)) do
+    case authorize(conn, "editor") do
+      :ok -> retry_job(conn, Exports.get_export_job!(id))
+      {:error, :forbidden} -> forbidden(conn)
+    end
+  end
+
+  defp retry_job(conn, job) do
+    case Exports.retry_export_job(job) do
       {:ok, job} ->
         conn |> put_status(:accepted) |> json(serialize(job))
 
@@ -43,6 +61,12 @@ defmodule OnemeWeb.ExportJobController do
         conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
     end
   end
+
+  defp authorize(conn, role) do
+    if Authorization.allowed?(conn, role), do: :ok, else: {:error, :forbidden}
+  end
+
+  defp forbidden(conn), do: conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
   defp serialize(job) do
     %{
