@@ -2,6 +2,7 @@ defmodule Oneme.ExportsTest do
   use Oneme.DataCase
 
   alias Oneme.Exports
+  alias Oneme.Exports.ExportJob
 
   test "records a structured failure when the converter is unavailable" do
     System.put_env("ONEME_ASSIMP_BIN", "/definitely/missing/assimp")
@@ -33,5 +34,10 @@ defmodule Oneme.ExportsTest do
       })
 
     assert changeset.valid?
+  end
+
+  test "requires the original face texture source when retrying a textured job" do
+    assert {:error, :face_texture_retry_requires_source} =
+             Exports.retry_export_job(%ExportJob{includes_face_texture: true})
   end
 end

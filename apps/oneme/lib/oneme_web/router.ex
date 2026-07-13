@@ -35,9 +35,12 @@ defmodule OnemeWeb.Router do
     post "/generation-jobs/:id/feedback", GenerationJobController, :feedback
     post "/export-jobs", ExportJobController, :create
     get "/export-jobs/:id", ExportJobController, :show
+    post "/export-jobs/:id/retry", ExportJobController, :retry
     get "/avatars/:id", AvatarController, :show
     get "/avatars/:id/config", AvatarController, :config
     get "/avatars/:id/public", AvatarController, :public
+    post "/avatars/:id/exports", AvatarController, :export
+    get "/avatars/:id/model", AvatarController, :model
   end
 
   # Other scopes may use custom stacks.

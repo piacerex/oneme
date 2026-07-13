@@ -12,6 +12,7 @@ defmodule Oneme.Exports.ExportJob do
     field :error_code, :string
     field :error_message, :string
     field :finished_at, :utc_datetime
+    field :cache_hit, :boolean, virtual: true, default: false
 
     timestamps(type: :utc_datetime)
   end

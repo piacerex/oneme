@@ -33,6 +33,8 @@ VRMは実メッシュGLBへonemeのメタデータ契約を付与した`.vrm`と
 
 `GET /api/parts` はDB上のパーツ台帳と、原点・スケール・ライセンス情報を返します。アバターは`POST /api/avatars`と`PATCH /api/avatars/:id`で保存・更新できます。
 
+公開アバターのモデルは`GET /api/avatars/:id/model?format=glb`、明示的な生成は`POST /api/avatars/:id/exports`で取得できます。エクスポートジョブは同じ設定と派生テクスチャの入力をキャッシュし、失敗ジョブは`POST /api/export-jobs/:id/retry`で再実行できます。
+
 ## Widget
 
 `http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。

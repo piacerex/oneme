@@ -26,12 +26,31 @@ defmodule OnemeWeb.ExportJobController do
     conn |> json(serialize(Exports.get_export_job!(id)))
   end
 
+  def retry(conn, %{"id" => id}) do
+    case Exports.retry_export_job(Exports.get_export_job!(id)) do
+      {:ok, job} ->
+        conn |> put_status(:accepted) |> json(serialize(job))
+
+      {:error, :face_texture_retry_requires_source} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "face_texture_retry_requires_source"})
+
+      {:error, :unsupported_format} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "unsupported_format"})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
+    end
+  end
+
   defp serialize(job) do
     %{
       id: job.id,
       format: job.format,
       status: job.status,
       cacheKey: job.cache_key,
+      cacheHit: job.cache_hit,
       modelUrl: job.model_path,
       includesFaceTexture: job.includes_face_texture,
       errorCode: job.error_code,

@@ -68,4 +68,16 @@ defmodule OnemeWeb.AvatarControllerTest do
 
     assert conn |> get("/api/avatars/#{avatar.id}/public") |> response(404) == "avatar is private"
   end
+
+  test "does not export a private avatar model", %{conn: conn} do
+    {:ok, avatar} =
+      Avatars.create_avatar(%{
+        name: "Private model avatar",
+        config: %{},
+        visibility: "private"
+      })
+
+    assert conn |> get("/api/avatars/#{avatar.id}/model?format=glb") |> response(404) ==
+             "avatar is private"
+  end
 end

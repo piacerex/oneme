@@ -1,6 +1,8 @@
 defmodule Oneme.Exports do
   @moduledoc "Export jobs for generated avatar models."
 
+  import Ecto.Query
+
   alias Oneme.Exports.ExportJob
   alias Oneme.Operations
   alias Oneme.Repo
@@ -16,33 +18,49 @@ defmodule Oneme.Exports do
     include_face_texture =
       face_export_allowed?(config) and is_binary(Map.get(attrs, :face_texture_data_url))
 
+    cache_key =
+      cache_key(config, format, include_face_texture, Map.get(attrs, :face_texture_data_url))
+
     export_attrs = %{
       avatar_config: config,
       format: format,
       status: "queued",
-      cache_key: cache_key(config, format, include_face_texture),
+      cache_key: cache_key,
       includes_face_texture: include_face_texture
     }
 
-    with true <- format in @formats,
-         {:ok, job} <- %ExportJob{} |> ExportJob.changeset(export_attrs) |> Repo.insert() do
-      Operations.track_usage("export_requested", %{
-        subject_type: "export_job",
-        subject_id: job.id,
-        metadata: %{"format" => format, "includesFaceTexture" => include_face_texture}
-      })
-
-      Operations.track_audit("export_requested", %{
-        resource_type: "export_job",
-        resource_id: job.id,
-        metadata: %{"format" => format}
-      })
-
-      {:ok, execute(job, Map.get(attrs, :face_texture_data_url), include_face_texture)}
+    if format not in @formats do
+      {:error, :unsupported_format}
     else
-      false -> {:error, :unsupported_format}
-      {:error, changeset} -> {:error, changeset}
+      case cached_job(cache_key) do
+        %ExportJob{} = job ->
+          {:ok, %{job | cache_hit: true}}
+
+        nil ->
+          with {:ok, job} <- %ExportJob{} |> ExportJob.changeset(export_attrs) |> Repo.insert() do
+            Operations.track_usage("export_requested", %{
+              subject_type: "export_job",
+              subject_id: job.id,
+              metadata: %{"format" => format, "includesFaceTexture" => include_face_texture}
+            })
+
+            Operations.track_audit("export_requested", %{
+              resource_type: "export_job",
+              resource_id: job.id,
+              metadata: %{"format" => format}
+            })
+
+            {:ok, execute(job, Map.get(attrs, :face_texture_data_url), include_face_texture)}
+          end
+      end
     end
+  end
+
+  def retry_export_job(%ExportJob{includes_face_texture: true}),
+    do: {:error, :face_texture_retry_requires_source}
+
+  def retry_export_job(%ExportJob{} = job) do
+    create_export_job(%{avatar_config: job.avatar_config, format: job.format})
   end
 
   defp execute(job, face_texture_data_url, include_face_texture) do
@@ -167,24 +185,39 @@ defmodule Oneme.Exports do
     vrm_path = Path.join(workspace, "avatar.vrm")
 
     with :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
+         :ok <- validate_glb(glb_path),
          :ok <- inject_vrm_metadata(workspace, glb_path, vrm_path) do
-      {:ok, vrm_path}
+      with :ok <- validate_glb(vrm_path, true), do: {:ok, vrm_path}
     end
   end
 
-  defp convert(workspace, format) do
-    extension = if format == "fbx", do: "fbx", else: "glb"
-    output_path = Path.join(workspace, "avatar.#{extension}")
-    assimp_format = if format == "fbx", do: "fbx", else: "glb2"
+  defp convert(workspace, "fbx") do
+    glb_path = Path.join(workspace, "avatar-source.glb")
+    fbx_path = Path.join(workspace, "avatar.fbx")
 
-    convert_with_assimp(workspace, output_path, assimp_format)
+    with :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
+         :ok <- validate_glb(glb_path),
+         :ok <- convert_with_assimp(workspace, fbx_path, "fbx", glb_path) do
+      {:ok, fbx_path}
+    end
   end
 
-  defp convert_with_assimp(workspace, output_path, assimp_format) do
+  defp convert(workspace, _format) do
+    output_path = Path.join(workspace, "avatar.glb")
+
+    with :ok <- convert_with_assimp(workspace, output_path, "glb2"),
+         :ok <- validate_glb(output_path) do
+      {:ok, output_path}
+    end
+  end
+
+  defp convert_with_assimp(workspace, output_path, assimp_format, source_path \\ nil) do
     with assimp when is_binary(assimp) <- assimp_path() do
+      source_path = source_path || Path.join(workspace, "avatar.obj")
+
       case System.cmd(
              assimp,
-             ["export", Path.join(workspace, "avatar.obj"), output_path, "-f", assimp_format],
+             ["export", source_path, output_path, "-f", assimp_format],
              stderr_to_stdout: true
            ) do
         {_, 0} ->
@@ -201,6 +234,24 @@ defmodule Oneme.Exports do
     end
   rescue
     error in ErlangError -> {:error, "assimp_unavailable", Exception.message(error)}
+  end
+
+  defp validate_glb(path, require_vrm \\ false) do
+    python = System.find_executable("python3") || "python3"
+    script = Path.join(:code.priv_dir(:oneme), "exporter/validate_glb.py")
+    args = [script, "--input", path]
+    args = if require_vrm, do: args ++ ["--require-vrm"], else: args
+
+    case System.cmd(python, args, stderr_to_stdout: true) do
+      {_, 0} ->
+        :ok
+
+      {output, status} ->
+        {:error, "glb_validation_failed",
+         "GLB validation failed (#{status}): #{String.slice(output, 0, 500)}"}
+    end
+  rescue
+    error in ErlangError -> {:error, "python_unavailable", Exception.message(error)}
   end
 
   defp inject_vrm_metadata(workspace, glb_path, vrm_path) do
@@ -257,8 +308,30 @@ defmodule Oneme.Exports do
   defp face_export_allowed?(config),
     do: get_in(config, ["faceTexture", "exportConsent"]) in [true, "true", "on"]
 
-  defp cache_key(config, format, include_face_texture),
+  defp cached_job(cache_key) do
+    ExportJob
+    |> where([job], job.cache_key == ^cache_key and job.status == "succeeded")
+    |> order_by(desc: :finished_at)
+    |> limit(1)
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      job -> if model_exists?(job.model_path), do: job, else: nil
+    end
+  end
+
+  defp model_exists?(nil), do: false
+
+  defp model_exists?(model_path) do
+    static_dir = Path.join(:code.priv_dir(:oneme), "static")
+    File.exists?(Path.join(static_dir, String.trim_leading(model_path, "/")))
+  end
+
+  defp cache_key(config, format, include_face_texture, face_texture_data_url),
     do:
-      :crypto.hash(:sha256, :erlang.term_to_binary({format, config, include_face_texture}))
+      :crypto.hash(
+        :sha256,
+        :erlang.term_to_binary({format, config, include_face_texture, face_texture_data_url})
+      )
       |> Base.encode16(case: :lower)
 end

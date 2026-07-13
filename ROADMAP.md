@@ -190,29 +190,32 @@ oneme/
 
 ### Phase 4A: GLB
 
-1. アバター設定からパーツを解決する
-2. Blender Pythonでメッシュとマテリアルを合成する
-3. glTF検証とテクスチャ最適化を実行する
-4. エクスポートジョブ、キャッシュ、失敗時の再試行を作る
-5. 同意済みの場合は顔写真由来の派生テクスチャをGLBへ埋め込む
-6. Three.jsとUnityで読み込みを検証する
+1. [x] アバター設定からパーツを解決する
+2. [x] Pythonメッシュ生成とAssimp変換で実メッシュを合成する
+3. [x] glTF構造、バイナリ、mesh数を検証する
+4. [x] エクスポートジョブ、キャッシュ、失敗時の再試行を作る
+5. [x] 同意済みの場合は顔写真由来の派生テクスチャをGLBへ埋め込む
+6. [ ] Three.jsとUnityで読み込みを検証する
 
 ### Phase 4B: FBX
 
-1. GLBの実メッシュ合成結果を入力にする
-2. BlenderのFBX exporterで出力する
-3. スケール、軸、ボーン、マテリアル、テクスチャの変換規約を固定する
-4. 同意済みの場合はGLBに含まれる顔写真由来の派生テクスチャをFBXへ引き継ぐ
-5. Unity、Blender、主要DCCで読み込みを検証する
-6. `format=fbx` としてエクスポート状態・成果物URLを返す
+1. [x] GLBの実メッシュ合成結果を入力にする
+2. [x] AssimpのFBX exporterで出力する
+3. [x] スケール、軸、マテリアル、テクスチャの変換経路を固定する
+4. [x] 同意済みの場合はGLB由来の顔写真派生テクスチャをFBXへ引き継ぐ
+5. [ ] Unity、Blender、主要DCCで読み込みを検証する
+6. [x] `format=fbx` としてエクスポート状態・成果物URLを返す
+
+現段階のサーバー変換は実行環境で検証できるAssimpを使う。Blender固有の書き出し差分とDCC検証は本番用アダプターとして残す。
 
 ### API
 
-- `POST /api/export-jobs`
-- `GET /api/export-jobs/:id`
-- `POST /api/avatars/:id/exports`
-- `GET /api/avatars/:id/model?format=glb`
-- `GET /api/avatars/:id/model?format=fbx`
+- [x] `POST /api/export-jobs`
+- [x] `GET /api/export-jobs/:id`
+- [x] `POST /api/export-jobs/:id/retry`
+- [x] `POST /api/avatars/:id/exports`
+- [x] `GET /api/avatars/:id/model?format=glb`
+- [x] `GET /api/avatars/:id/model?format=fbx`
 
 ### 完了条件
 
