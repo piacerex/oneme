@@ -1,0 +1,63 @@
+<main class="admin-shell">
+  <div class="admin-content">
+    <%= if @authenticated do %>
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">ONEME / OPERATIONS</p>
+          <h1>監査ログ</h1>
+        </div>
+        <button type="button" class="button button-quiet" phx-click="refresh">更新</button>
+      </header>
+
+      <p :if={@status} class="admin-status" role="status">{@status}</p>
+
+      <section class="admin-toolbar" aria-label="監査ログの保持設定">
+        <form phx-submit="prune" class="admin-prune-form">
+          <label class="field-label" for="audit-before">
+            <span>この日時より前を削除</span>
+            <input id="audit-before" name="before" type="datetime-local" class="text-input" required />
+          </label>
+          <button type="submit" class="button button-danger">削除</button>
+        </form>
+      </section>
+
+      <div class="audit-table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>アクション</th>
+              <th>リソース</th>
+              <th>メタデータ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :if={@audits == []}>
+              <td colspan="4" class="audit-empty">監査ログはありません。</td>
+            </tr>
+            <tr :for={audit <- @audits}>
+              <td class="audit-time">{format_datetime(audit.inserted_at)}</td>
+              <td><code>{audit.action}</code></td>
+              <td>{audit.resource_type || "-"} {audit.resource_id || ""}</td>
+              <td><code class="audit-metadata">{metadata_json(audit.metadata)}</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <section class="admin-auth-panel">
+        <p class="eyebrow">ONEME / OPERATIONS</p>
+        <h1>監査ログ</h1>
+        <p>管理者APIキーで認証してください。</p>
+        <form id="admin-auth-form" phx-submit="authenticate">
+          <label class="field-label" for="admin-api-key">
+            <span>管理者APIキー</span>
+            <input id="admin-api-key" name="api_key" type="password" class="text-input" autocomplete="off" required />
+          </label>
+          <button type="submit" class="button button-primary">認証</button>
+        </form>
+        <p :if={@status} class="admin-status" role="alert">{@status}</p>
+      </section>
+    <% end %>
+  </div>
+</main>

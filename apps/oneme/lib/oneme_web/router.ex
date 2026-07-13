@@ -23,6 +23,7 @@ defmodule OnemeWeb.Router do
     live "/builder", BuilderLive
     live "/widget", BuilderLive
     live "/avatars/:id", PublicAvatarLive
+    live "/admin/audit-logs", AdminAuditLive
   end
 
   scope "/api", OnemeWeb do
