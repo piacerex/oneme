@@ -5,10 +5,11 @@ import {GLTFExporter} from "https://unpkg.com/three@0.160.0/examples/jsm/exporte
 const container = document.querySelector("#avatar-preview");
 
 if (container) {
+  let previewContainer = container;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f1ed);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-  camera.position.set(0, 1.25, 5.4);
+  camera.position.set(0, 0.28, 7.2);
   const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.replaceChildren(renderer.domElement);
@@ -16,7 +17,7 @@ if (container) {
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.minDistance = 3.6;
-  controls.maxDistance = 7.5;
+  controls.maxDistance = 10;
   controls.minPolarAngle = Math.PI * 0.28;
   controls.maxPolarAngle = Math.PI * 0.7;
   controls.target.set(0, 0.25, 0);
@@ -96,6 +97,15 @@ if (container) {
   let faceTexture = null;
   let faceDataUrl = null;
   window.onemeThreePreview = {
+    mount(nextContainer) {
+      if (!(nextContainer instanceof HTMLElement)) return;
+
+      previewContainer = nextContainer;
+      if (renderer.domElement.parentElement !== previewContainer) {
+        previewContainer.replaceChildren(renderer.domElement);
+      }
+      resize();
+    },
     sync(config) {
       const colors = config?.colors || {};
       materials.skin.color.set(colors.skin || "#c98f6f");
@@ -180,6 +190,7 @@ if (container) {
 
   window.addEventListener("oneme:avatar-config", event => window.onemeThreePreview.sync(event.detail));
   if (window.onemeAvatarConfig) window.onemeThreePreview.sync(window.onemeAvatarConfig);
+  window.dispatchEvent(new CustomEvent("oneme:preview-ready"));
   window.addEventListener("resize", resize);
   renderer.setAnimationLoop(render);
   resize();
@@ -206,7 +217,7 @@ if (container) {
   }
 
   function resize() {
-    const rect = container.getBoundingClientRect();
+    const rect = previewContainer.getBoundingClientRect();
     const width = Math.max(1, rect.width);
     const height = Math.max(1, rect.height);
     camera.aspect = width / height;

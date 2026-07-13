@@ -29,6 +29,7 @@ const hooks = {
   ...colocatedHooks,
   AvatarPreview: {
     mounted() {
+      this.mountPreview()
       this.handleEvent("face_mapping_cleared", () => window.onemeThreePreview?.clearFaceImage())
       this.handleEvent("avatar_saved", payload => {
         if (window.parent === window) return
@@ -38,7 +39,17 @@ const hooks = {
       this.syncPreview()
     },
     updated() {
+      this.mountPreview()
       this.syncPreview()
+    },
+    mountPreview() {
+      const mount = () => window.onemeThreePreview?.mount(this.el)
+
+      if (window.onemeThreePreview) {
+        mount()
+      } else {
+        window.addEventListener("oneme:preview-ready", mount, {once: true})
+      }
     },
     syncPreview() {
       try {
