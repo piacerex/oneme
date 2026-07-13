@@ -1,8 +1,0 @@
-{
-  "id": "rate-limit-pro-api-key",
-  "planId": "plan-pro",
-  "scope": "api_key",
-  "windowSeconds": 60,
-  "limit": 600,
-  "burstLimit": 900
-}

@@ -1,9 +1,0 @@
-{
-  "id": "legal-asset-license-demo",
-  "kind": "asset_license",
-  "version": "2026-07-09",
-  "status": "active",
-  "sourceUrl": "https://example.com/licenses/oneme-placeholder-assets",
-  "usageRights": ["commercial", "redistribution", "modification"],
-  "effectiveAt": "2026-07-09T00:00:00.000Z"
-}

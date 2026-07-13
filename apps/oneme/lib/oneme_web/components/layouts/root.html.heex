@@ -11,7 +11,11 @@
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
     <script type="importmap">
-      {raw(~s({"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}))}
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+      }
     </script>
     <script defer type="text/javascript" src={~p"/js/avatar_preview_loader.js"}>
     </script>

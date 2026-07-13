@@ -1,8 +1,0 @@
-{
-  "id": "status-update-demo",
-  "incidentId": "incident-demo",
-  "status": "monitoring",
-  "message": "Model exports are recovering and queued jobs are being retried.",
-  "customerImpact": "Some exports may complete more slowly than usual.",
-  "publishedAt": "2026-07-09T00:00:00.000Z"
-}

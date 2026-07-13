@@ -1,8 +1,0 @@
-{
-  "avatarId": "demo-avatar",
-  "publicUrl": "https://oneme.local/avatars/demo-avatar",
-  "embedUrl": "https://oneme.local/embed/avatar.html?avatar_id=demo-avatar",
-  "configUrl": "https://oneme.local/api/avatars/demo-avatar/config",
-  "visibility": "public",
-  "updatedAt": "2026-07-09T00:00:00.000Z"
-}
