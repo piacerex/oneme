@@ -28,4 +28,27 @@ defmodule OnemeWeb.BuilderLiveTest do
     html = render_click(view, "load_latest")
     assert html =~ "保存済みアバターを読み込みました。"
   end
+
+  test "stores face morph parameters and export consent without the photo", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    html =
+      render_change(view, "update_config", %{
+        "faceTexture" => %{"exportConsent" => "true"}
+      })
+
+    assert html =~ "同意した顔テクスチャをGLB/FBXへ含める"
+    assert html =~ "id=\"face-export-consent\""
+
+    html =
+      render_hook(view, "face_analyzed", %{
+        "face_morph" => %{"widthScale" => 1.08, "heightScale" => 1.12, "depth" => 0.55}
+      })
+
+    assert html =~ "顔の比率を疑似3Dパラメータへ反映しました。"
+    refute html =~ "data:image"
+
+    html = render_click(view, "clear_face")
+    assert html =~ "顔写真のマッピングをクリアしました。"
+  end
 end

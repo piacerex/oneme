@@ -94,6 +94,20 @@
             <input id="face-photo" type="file" accept="image/*" phx-hook="FacePhoto" />
           </label>
           <p id="face-status" class="face-status" role="status">写真なしでも作成できます。</p>
+          <label class="consent-label export-consent-label">
+            <input type="hidden" name="faceTexture[exportConsent]" value="false" />
+            <input
+              id="face-export-consent"
+              name="faceTexture[exportConsent]"
+              type="checkbox"
+              value="true"
+              checked={@face_export_consent}
+            />
+            <span>同意した顔テクスチャをGLB/FBXへ含める</span>
+          </label>
+          <button id="clear-face" type="button" class="clear-face-button" phx-click="clear_face">
+            顔写真マッピングをクリア
+          </button>
         </fieldset>
       </form>
 

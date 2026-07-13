@@ -29,6 +29,7 @@ const hooks = {
   ...colocatedHooks,
   AvatarPreview: {
     mounted() {
+      this.handleEvent("face_mapping_cleared", () => window.onemeThreePreview?.clearFaceImage())
       this.syncPreview()
     },
     updated() {
@@ -46,7 +47,7 @@ const hooks = {
   },
   FacePhoto: {
     mounted() {
-      this.handleChange = event => handleFacePhoto(event.target)
+      this.handleChange = event => handleFacePhoto(event.target, this)
       this.el.addEventListener("change", this.handleChange)
     },
     destroyed() {
@@ -55,7 +56,7 @@ const hooks = {
   }
 }
 
-function handleFacePhoto(input) {
+function handleFacePhoto(input, hook) {
   const status = document.querySelector("#face-status")
   const consent = document.querySelector("#face-consent")
   const file = input.files?.[0]
@@ -86,6 +87,14 @@ function handleFacePhoto(input) {
     context.restore()
     URL.revokeObjectURL(objectUrl)
     window.onemeThreePreview?.setFaceImage(canvas.toDataURL("image/png"))
+    const ratio = image.width / image.height
+    hook.pushEvent("face_analyzed", {
+      face_morph: {
+        widthScale: clamp(0.96 + (ratio - 0.75) * 0.16, 0.88, 1.14),
+        heightScale: clamp(1.08 + (0.9 - ratio) * 0.12, 0.94, 1.2),
+        depth: clamp(0.42 + ratio * 0.08, 0.42, 0.62)
+      }
+    })
     if (status) status.textContent = "顔の輪郭に沿って切り出し、プレビューへマッピングしました。"
   }
   image.onerror = () => {
@@ -93,6 +102,10 @@ function handleFacePhoto(input) {
     if (status) status.textContent = "写真を読み込めませんでした。別の画像を試してください。"
   }
   image.src = objectUrl
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

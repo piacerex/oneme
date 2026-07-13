@@ -47,6 +47,9 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .upload-box input { display: none; }
 .upload-icon { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #dceee9; font-size: 16px; }
 .face-status { min-height: 17px; margin: 9px 0 0; color: #7d8b87; font-size: 11px; line-height: 1.45; }
+.export-consent-label { margin-top: 10px; }
+.clear-face-button { align-self: flex-start; margin-top: 7px; padding: 0; border: 0; color: #7f625d; font-size: 10px; font-weight: 700; }
+.clear-face-button:hover { color: #ba5d4f; }
 .action-row { display: flex; gap: 10px; margin-top: auto; }
 .button { flex: 1; padding: 12px 14px; border: 1px solid #c9d9d4; border-radius: 5px; font-size: 12px; font-weight: 800; }
 .button-primary { border-color: #2f7973; background: #347f7b; color: #fff; }

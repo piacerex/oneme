@@ -14,7 +14,7 @@ defmodule OnemeWeb.BuilderLive do
     },
     "colors" => %{"skin" => "#c98f6f", "hair" => "#2f2118"},
     "faceMorph" => %{"widthScale" => 1.0, "heightScale" => 1.06, "depth" => 0.5},
-    "faceTexture" => %{"enabled" => false, "source" => "session"}
+    "faceTexture" => %{"enabled" => false, "source" => "session", "exportConsent" => false}
   }
 
   @parts %{
@@ -43,6 +43,7 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:parts, @parts)
      |> assign(:avatar_name, "My oneme avatar")
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
+     |> assign(:face_export_consent, false)
      |> assign(:saved_avatar, nil)}
   end
 
@@ -54,8 +55,42 @@ defmodule OnemeWeb.BuilderLive do
       config
       |> Map.put("parts", Map.merge(config["parts"], Map.get(params, "parts", %{})))
       |> Map.put("colors", Map.merge(config["colors"], Map.get(params, "colors", %{})))
+      |> put_face_texture(Map.get(params, "faceTexture", %{}))
 
-    {:noreply, assign(socket, :config, next_config)}
+    {:noreply,
+     socket
+     |> assign(:config, next_config)
+     |> assign(:face_export_consent, face_export_consent?(next_config))}
+  end
+
+  def handle_event("face_analyzed", %{"face_morph" => face_morph}, socket) do
+    config = socket.assigns.config
+    face_texture = Map.get(config, "faceTexture", %{})
+
+    next_config =
+      config
+      |> Map.put("faceMorph", Map.merge(Map.get(config, "faceMorph", %{}), face_morph))
+      |> Map.put(
+        "faceTexture",
+        Map.merge(face_texture, %{"enabled" => true, "source" => "session"})
+      )
+
+    {:noreply,
+     socket
+     |> assign(:config, next_config)
+     |> assign(:status, "顔の比率を疑似3Dパラメータへ反映しました。")}
+  end
+
+  def handle_event("clear_face", _params, socket) do
+    config = socket.assigns.config
+    face_texture = Map.get(config, "faceTexture", %{})
+    next_config = Map.put(config, "faceTexture", Map.merge(face_texture, %{"enabled" => false}))
+
+    {:noreply,
+     socket
+     |> assign(:config, next_config)
+     |> assign(:status, "顔写真のマッピングをクリアしました。")
+     |> push_event("face_mapping_cleared", %{})}
   end
 
   def handle_event("update_name", %{"avatar_name" => name}, socket) do
@@ -91,8 +126,24 @@ defmodule OnemeWeb.BuilderLive do
          socket
          |> assign(:avatar_name, avatar.name)
          |> assign(:config, avatar.config)
+         |> assign(:face_export_consent, face_export_consent?(avatar.config))
          |> assign(:saved_avatar, avatar)
          |> assign(:status, "保存済みアバターを読み込みました。")}
     end
+  end
+
+  defp put_face_texture(config, params) do
+    current = Map.get(config, "faceTexture", %{})
+    export_consent = Map.get(params, "exportConsent", "false") in [true, "true", "on"]
+    Map.put(config, "faceTexture", Map.merge(current, %{"exportConsent" => export_consent}))
+  end
+
+  defp face_export_consent?(config) do
+    value =
+      config
+      |> Map.get("faceTexture", %{})
+      |> Map.get("exportConsent", false)
+
+    value in [true, "true", "on"]
   end
 end
