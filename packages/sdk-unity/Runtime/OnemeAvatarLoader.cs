@@ -8,22 +8,13 @@ namespace Oneme
     [Serializable]
     public sealed class OnemeModelResponse
     {
-        public string avatarId;
+        public int avatarId;
+        public int exportJobId;
         public string format;
         public string modelUrl;
-        public string exportJobId;
-        public bool cacheHit;
-    }
-
-    [Serializable]
-    public sealed class OnemeAnimationCompatibilityResponse
-    {
-        public string format;
         public string status;
-        public string[] requiredHumanoidBones;
-        public string[] missingHumanoidBones;
-        public string[] expressions;
-        public string[] notes;
+        public bool cacheHit;
+        public bool includesFaceTexture;
     }
 
     public sealed class OnemeAvatarLoader : MonoBehaviour
@@ -33,97 +24,74 @@ namespace Oneme
         [SerializeField] private string format = "glb";
 
         public OnemeModelResponse LastModelResponse { get; private set; }
-        public OnemeAnimationCompatibilityResponse LastAnimationCompatibility { get; private set; }
+        public byte[] LastModelBytes { get; private set; }
+        public event Action<byte[]> ModelDownloaded;
+        public event Action<string> LoadFailed;
 
-        public string AvatarId
-        {
-            get => avatarId;
-            set => avatarId = value;
-        }
-
-        public string ApiBaseUrl
-        {
-            get => apiBaseUrl;
-            set => apiBaseUrl = value;
-        }
-
-        public string Format
-        {
-            get => format;
-            set => format = value;
-        }
+        public string AvatarId { get => avatarId; set => avatarId = value; }
+        public string ApiBaseUrl { get => apiBaseUrl; set => apiBaseUrl = value; }
+        public string Format { get => format; set => format = value; }
 
         public IEnumerator Load()
         {
             if (string.IsNullOrWhiteSpace(avatarId))
             {
-                Debug.LogWarning("oneme avatar id is empty.", this);
+                yield return Fail("oneme avatar id is empty.");
                 yield break;
             }
 
-            var url = BuildModelUrl();
-            using var request = UnityWebRequest.Get(url);
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
+            using (var metadataRequest = UnityWebRequest.Get(BuildModelApiUrl()))
             {
-                Debug.LogWarning($"oneme model request failed: {request.error}", this);
-                yield break;
+                yield return metadataRequest.SendWebRequest();
+                if (metadataRequest.result != UnityWebRequest.Result.Success)
+                {
+                    yield return Fail(metadataRequest.error);
+                    yield break;
+                }
+
+                LastModelResponse = JsonUtility.FromJson<OnemeModelResponse>(metadataRequest.downloadHandler.text);
             }
 
-            LastModelResponse = JsonUtility.FromJson<OnemeModelResponse>(request.downloadHandler.text);
             if (LastModelResponse == null || string.IsNullOrWhiteSpace(LastModelResponse.modelUrl))
             {
-                Debug.LogWarning($"oneme model response was invalid for {avatarId}.", this);
+                yield return Fail("oneme model response did not include modelUrl.");
                 yield break;
             }
 
-            Debug.Log($"oneme {LastModelResponse.format} model URL for {avatarId}: {LastModelResponse.modelUrl}", this);
+            using (var modelRequest = UnityWebRequest.Get(ResolveUrl(LastModelResponse.modelUrl)))
+            {
+                yield return modelRequest.SendWebRequest();
+                if (modelRequest.result != UnityWebRequest.Result.Success)
+                {
+                    yield return Fail(modelRequest.error);
+                    yield break;
+                }
+
+                LastModelBytes = modelRequest.downloadHandler.data;
+            }
+
+            ModelDownloaded?.Invoke(LastModelBytes);
         }
 
-        public IEnumerator LoadAnimationCompatibility()
-        {
-            if (string.IsNullOrWhiteSpace(avatarId))
-            {
-                Debug.LogWarning("oneme avatar id is empty.", this);
-                yield break;
-            }
-
-            using var request = UnityWebRequest.Get(BuildAnimationCompatibilityUrl());
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogWarning($"oneme animation compatibility request failed: {request.error}", this);
-                yield break;
-            }
-
-            LastAnimationCompatibility = JsonUtility.FromJson<OnemeAnimationCompatibilityResponse>(
-                request.downloadHandler.text
-            );
-            if (LastAnimationCompatibility == null || string.IsNullOrWhiteSpace(LastAnimationCompatibility.status))
-            {
-                Debug.LogWarning($"oneme animation compatibility response was invalid for {avatarId}.", this);
-                yield break;
-            }
-
-            Debug.Log($"oneme {LastAnimationCompatibility.format} animation status: {LastAnimationCompatibility.status}", this);
-        }
-
-        public string BuildModelUrl()
+        public string BuildModelApiUrl()
         {
             var baseUrl = string.IsNullOrWhiteSpace(apiBaseUrl) ? "" : apiBaseUrl.TrimEnd('/');
-            var escapedAvatarId = Uri.EscapeDataString(avatarId);
+            var escapedId = Uri.EscapeDataString(avatarId ?? "");
             var escapedFormat = Uri.EscapeDataString(string.IsNullOrWhiteSpace(format) ? "glb" : format);
-            return $"{baseUrl}/api/avatars/{escapedAvatarId}/model?format={escapedFormat}";
+            return $"{baseUrl}/api/avatars/{escapedId}/model?format={escapedFormat}";
         }
 
-        public string BuildAnimationCompatibilityUrl()
+        private string ResolveUrl(string path)
         {
-            var baseUrl = string.IsNullOrWhiteSpace(apiBaseUrl) ? "" : apiBaseUrl.TrimEnd('/');
-            var escapedAvatarId = Uri.EscapeDataString(avatarId);
-            var escapedFormat = Uri.EscapeDataString(string.IsNullOrWhiteSpace(format) ? "vrm" : format);
-            return $"{baseUrl}/api/avatars/{escapedAvatarId}/animation_compat?format={escapedFormat}";
+            if (Uri.TryCreate(path, UriKind.Absolute, out var absolute)) return absolute.ToString();
+            return $"{apiBaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
+        }
+
+        private IEnumerator Fail(string message)
+        {
+            Debug.LogWarning(message, this);
+            LoadFailed?.Invoke(message);
+            yield break;
         }
     }
 }

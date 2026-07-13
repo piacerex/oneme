@@ -75,6 +75,9 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .public-avatar-preview { max-width: 980px; min-height: 700px; margin: 0 auto; overflow: hidden; border: 1px solid #dfe6e1; border-radius: 8px; background: #e9eeea; }
 .public-avatar-preview .avatar-preview { min-height: 650px; }
 .public-message { max-width: 700px; margin: 18vh auto; padding: 44px; border: 1px solid #dfe6e1; border-radius: 8px; background: #fff; }
+.widget-auth-message { max-width: 560px; margin: 18vh auto; padding: 36px; border: 1px solid #e1d9d5; border-radius: 8px; background: #fff; }
+.widget-auth-message h2 { margin: 0 0 12px; color: #342a28; font-size: 24px; }
+.widget-auth-message p:last-child { margin: 0; color: #7d716e; font-size: 13px; line-height: 1.6; }
 .export-section { display: flex; flex-direction: column; gap: 9px; padding-top: 4px; border-top: 1px solid #e5ece8; }
 .export-section h3 { margin: 0; color: #243330; font-size: 15px; }
 .export-section .button { width: 100%; }

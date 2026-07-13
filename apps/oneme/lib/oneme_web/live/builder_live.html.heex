@@ -7,231 +7,242 @@
     <div class="topbar-status" role="status">{@status}</div>
   </header>
 
-  <section class="builder-grid" aria-label="アバタービルダー">
-    <div class="preview-panel">
-      <div
-        id="avatar-preview"
-        class="avatar-preview"
-        phx-hook="AvatarPreview"
-        data-config={Jason.encode!(@config)}
-        data-parent-origin={@parent_origin}
-        aria-label="3Dアバタープレビュー"
-      >
-        <div class="preview-loading">3D preview loading...</div>
-      </div>
-      <div class="preview-caption">
-        <span class="live-dot"></span>
-        <span>LIVE PREVIEW</span>
-        <span class="caption-note">自動回転中</span>
-      </div>
-    </div>
-
-    <aside class="editor-panel" aria-label="アバター編集">
-      <section class="editor-section intro-section">
-        <div>
-          <p class="section-kicker">BUILD YOUR IDENTITY</p>
-          <h2>アバターを整える</h2>
+  <%= if @widget_authorized do %>
+    <section class="builder-grid" aria-label="アバタービルダー">
+      <div class="preview-panel">
+        <div
+          id="avatar-preview"
+          class="avatar-preview"
+          phx-hook="AvatarPreview"
+          data-config={Jason.encode!(@config)}
+          data-parent-origin={@parent_origin}
+          data-app-id={@app_id}
+          aria-label="3Dアバタープレビュー"
+        >
+          <div class="preview-loading">3D preview loading...</div>
         </div>
-        <span class="step-chip">01 / 04</span>
-      </section>
+        <div class="preview-caption">
+          <span class="live-dot"></span>
+          <span>LIVE PREVIEW</span>
+          <span class="caption-note">自動回転中</span>
+        </div>
+      </div>
 
-      <form id="avatar-editor" phx-change="update_config" class="editor-form">
-        <label class="field-label" for="avatar-name">アバター名</label>
-        <input
-          id="avatar-name"
-          name="avatar_name"
-          value={@avatar_name}
-          phx-change="update_name"
-          phx-debounce="150"
-          class="text-input"
-          autocomplete="off"
-        />
-
-        <fieldset>
-          <legend>パーツ</legend>
-          <div class="field-grid">
-            <%= for {key, label} <- [{:face, "顔"}, {:hair, "髪型"}, {:top, "トップス"}, {:bottom, "ボトムス"}, {:shoes, "シューズ"}, {:accessory, "アクセサリー"}] do %>
-              <label class="field-label">
-                <span>{label}</span>
-                <select name={"parts[#{key}]"} class="select-input">
-                  <%= for {option_label, option_value} <- Map.fetch!(@parts, key) do %>
-                    <option
-                      value={option_value}
-                      selected={@config["parts"][Atom.to_string(key)] == option_value}
-                    >
-                      {option_label}
-                    </option>
-                  <% end %>
-                </select>
-              </label>
-            <% end %>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>カラー</legend>
-          <div class="color-grid">
-            <label class="color-field">
-              <span>肌色</span>
-              <input name="colors[skin]" type="color" value={@config["colors"]["skin"]} />
-            </label>
-            <label class="color-field">
-              <span>髪色</span>
-              <input name="colors[hair]" type="color" value={@config["colors"]["hair"]} />
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="face-photo-section">
-          <legend>顔写真マッピング</legend>
-          <label class="consent-label">
-            <input id="face-consent" type="checkbox" />
-            <span>この写真をプレビュー用にだけ使うことに同意します</span>
-          </label>
-          <label class="upload-box" for="face-photo">
-            <span class="upload-icon" aria-hidden="true">↑</span>
-            <span>顔写真をアップロード</span>
-            <small>元写真はサーバーへ送信しません</small>
-            <input id="face-photo" type="file" accept="image/*" phx-hook="FacePhoto" />
-          </label>
-          <p id="face-status" class="face-status" role="status">写真なしでも作成できます。</p>
-          <div class="face-morph-controls">
-            <label class="range-field">
-              <span>顔幅</span>
-              <input
-                name="faceMorph[widthScale]"
-                type="range"
-                min="0.88"
-                max="1.14"
-                step="0.01"
-                value={@config["faceMorph"]["widthScale"]}
-              />
-              <output>{@config["faceMorph"]["widthScale"]}</output>
-            </label>
-            <label class="range-field">
-              <span>顔の高さ</span>
-              <input
-                name="faceMorph[heightScale]"
-                type="range"
-                min="0.94"
-                max="1.2"
-                step="0.01"
-                value={@config["faceMorph"]["heightScale"]}
-              />
-              <output>{@config["faceMorph"]["heightScale"]}</output>
-            </label>
-            <label class="range-field">
-              <span>顔の奥行き</span>
-              <input
-                name="faceMorph[depth]"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={@config["faceMorph"]["depth"]}
-              />
-              <output>{@config["faceMorph"]["depth"]}</output>
-            </label>
-          </div>
-          <label class="consent-label export-consent-label">
-            <input type="hidden" name="faceTexture[exportConsent]" value="false" />
-            <input
-              id="face-export-consent"
-              name="faceTexture[exportConsent]"
-              type="checkbox"
-              value="true"
-              checked={@face_export_consent}
-            />
-            <span>同意した顔テクスチャをGLB/FBX/VRMへ含める</span>
-          </label>
-          <button id="clear-face" type="button" class="clear-face-button" phx-click="clear_face">
-            顔写真マッピングをクリア
-          </button>
-        </fieldset>
-      </form>
-
-      <section class="candidate-section" aria-label="候補生成">
-        <div class="candidate-heading">
+      <aside class="editor-panel" aria-label="アバター編集">
+        <section class="editor-section intro-section">
           <div>
-            <p class="section-kicker">RECOMMENDATIONS</p>
-            <h3>候補を試す</h3>
+            <p class="section-kicker">BUILD YOUR IDENTITY</p>
+            <h2>アバターを整える</h2>
           </div>
-          <button
-            id="generate-candidates"
-            type="button"
-            class="button button-quiet"
-            phx-click="generate_candidates"
-          >
-            3候補を生成
+          <span class="step-chip">01 / 04</span>
+        </section>
+
+        <form id="avatar-editor" phx-change="update_config" class="editor-form">
+          <label class="field-label" for="avatar-name">アバター名</label>
+          <input
+            id="avatar-name"
+            name="avatar_name"
+            value={@avatar_name}
+            phx-change="update_name"
+            phx-debounce="150"
+            class="text-input"
+            autocomplete="off"
+          />
+
+          <fieldset>
+            <legend>パーツ</legend>
+            <div class="field-grid">
+              <%= for {key, label} <- [{:face, "顔"}, {:hair, "髪型"}, {:top, "トップス"}, {:bottom, "ボトムス"}, {:shoes, "シューズ"}, {:accessory, "アクセサリー"}] do %>
+                <label class="field-label">
+                  <span>{label}</span>
+                  <select name={"parts[#{key}]"} class="select-input">
+                    <%= for {option_label, option_value} <- Map.fetch!(@parts, key) do %>
+                      <option
+                        value={option_value}
+                        selected={@config["parts"][Atom.to_string(key)] == option_value}
+                      >
+                        {option_label}
+                      </option>
+                    <% end %>
+                  </select>
+                </label>
+              <% end %>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>カラー</legend>
+            <div class="color-grid">
+              <label class="color-field">
+                <span>肌色</span>
+                <input name="colors[skin]" type="color" value={@config["colors"]["skin"]} />
+              </label>
+              <label class="color-field">
+                <span>髪色</span>
+                <input name="colors[hair]" type="color" value={@config["colors"]["hair"]} />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="face-photo-section">
+            <legend>顔写真マッピング</legend>
+            <label class="consent-label">
+              <input id="face-consent" type="checkbox" />
+              <span>この写真をプレビュー用にだけ使うことに同意します</span>
+            </label>
+            <label class="upload-box" for="face-photo">
+              <span class="upload-icon" aria-hidden="true">↑</span>
+              <span>顔写真をアップロード</span>
+              <small>元写真はサーバーへ送信しません</small>
+              <input id="face-photo" type="file" accept="image/*" phx-hook="FacePhoto" />
+            </label>
+            <p id="face-status" class="face-status" role="status">写真なしでも作成できます。</p>
+            <div class="face-morph-controls">
+              <label class="range-field">
+                <span>顔幅</span>
+                <input
+                  name="faceMorph[widthScale]"
+                  type="range"
+                  min="0.88"
+                  max="1.14"
+                  step="0.01"
+                  value={@config["faceMorph"]["widthScale"]}
+                />
+                <output>{@config["faceMorph"]["widthScale"]}</output>
+              </label>
+              <label class="range-field">
+                <span>顔の高さ</span>
+                <input
+                  name="faceMorph[heightScale]"
+                  type="range"
+                  min="0.94"
+                  max="1.2"
+                  step="0.01"
+                  value={@config["faceMorph"]["heightScale"]}
+                />
+                <output>{@config["faceMorph"]["heightScale"]}</output>
+              </label>
+              <label class="range-field">
+                <span>顔の奥行き</span>
+                <input
+                  name="faceMorph[depth]"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={@config["faceMorph"]["depth"]}
+                />
+                <output>{@config["faceMorph"]["depth"]}</output>
+              </label>
+            </div>
+            <label class="consent-label export-consent-label">
+              <input type="hidden" name="faceTexture[exportConsent]" value="false" />
+              <input
+                id="face-export-consent"
+                name="faceTexture[exportConsent]"
+                type="checkbox"
+                value="true"
+                checked={@face_export_consent}
+              />
+              <span>同意した顔テクスチャをGLB/FBX/VRMへ含める</span>
+            </label>
+            <button id="clear-face" type="button" class="clear-face-button" phx-click="clear_face">
+              顔写真マッピングをクリア
+            </button>
+          </fieldset>
+        </form>
+
+        <section class="candidate-section" aria-label="候補生成">
+          <div class="candidate-heading">
+            <div>
+              <p class="section-kicker">RECOMMENDATIONS</p>
+              <h3>候補を試す</h3>
+            </div>
+            <button
+              id="generate-candidates"
+              type="button"
+              class="button button-quiet"
+              phx-click="generate_candidates"
+            >
+              3候補を生成
+            </button>
+          </div>
+          <div :if={@candidates != []} id="candidate-list" class="candidate-list">
+            <article :for={candidate <- @candidates} class="candidate-item">
+              <div class="candidate-copy">
+                <strong>{candidate["label"]}</strong>
+                <span>{candidate["reason"]}</span>
+              </div>
+              <div class="candidate-actions">
+                <button
+                  type="button"
+                  class="candidate-button candidate-apply"
+                  phx-click="apply_candidate"
+                  phx-value-candidate_id={candidate["id"]}
+                >
+                  適用
+                </button>
+                <button
+                  type="button"
+                  class="candidate-button candidate-reject"
+                  phx-click="reject_candidate"
+                  phx-value-candidate_id={candidate["id"]}
+                >
+                  却下
+                </button>
+              </div>
+            </article>
+          </div>
+          <p id="generation-status" class="generation-status" role="status">
+            顔写真なしでも現在の設定から候補を作成できます。
+          </p>
+        </section>
+
+        <div class="action-row">
+          <button type="button" class="button button-quiet" phx-click="load_latest">
+            最新を読み込む
+          </button>
+          <button type="button" class="button button-primary" phx-click="save_avatar">
+            アバターを保存
           </button>
         </div>
-        <div :if={@candidates != []} id="candidate-list" class="candidate-list">
-          <article :for={candidate <- @candidates} class="candidate-item">
-            <div class="candidate-copy">
-              <strong>{candidate["label"]}</strong>
-              <span>{candidate["reason"]}</span>
-            </div>
-            <div class="candidate-actions">
-              <button
-                type="button"
-                class="candidate-button candidate-apply"
-                phx-click="apply_candidate"
-                phx-value-candidate_id={candidate["id"]}
-              >
-                適用
-              </button>
-              <button
-                type="button"
-                class="candidate-button candidate-reject"
-                phx-click="reject_candidate"
-                phx-value-candidate_id={candidate["id"]}
-              >
-                却下
-              </button>
-            </div>
-          </article>
+        <div class="publish-row">
+          <button type="button" class="button button-quiet" phx-click="publish_avatar">
+            公開URLを発行
+          </button>
+          <a :if={@public_url} class="public-url" href={@public_url} target="_blank">公開ページを開く</a>
         </div>
-        <p id="generation-status" class="generation-status" role="status">
-          顔写真なしでも現在の設定から候補を作成できます。
-        </p>
-      </section>
 
-      <div class="action-row">
-        <button type="button" class="button button-quiet" phx-click="load_latest">最新を読み込む</button>
-        <button type="button" class="button button-primary" phx-click="save_avatar">
-          アバターを保存
-        </button>
-      </div>
-      <div class="publish-row">
-        <button type="button" class="button button-quiet" phx-click="publish_avatar">
-          公開URLを発行
-        </button>
-        <a :if={@public_url} class="public-url" href={@public_url} target="_blank">公開ページを開く</a>
-      </div>
-
-      <div class="privacy-note">
-        <span class="privacy-icon" aria-hidden="true">◌</span>
-        <span>写真は一時的な顔テクスチャに変換され、保存データには元画像を含めません。</span>
-      </div>
-
-      <section class="export-section" aria-label="モデルの保存">
-        <div>
-          <p class="section-kicker">EXPORT</p>
-          <h3>モデルを保存</h3>
+        <div class="privacy-note">
+          <span class="privacy-icon" aria-hidden="true">◌</span>
+          <span>写真は一時的な顔テクスチャに変換され、保存データには元画像を含めません。</span>
         </div>
-        <button id="export-glb" type="button" class="button button-primary" phx-hook="ExportGlb">
-          GLBをダウンロード
-        </button>
-        <button id="export-fbx" type="button" class="button button-quiet" phx-hook="ExportFbx">
-          FBXを生成
-        </button>
-        <button id="export-vrm" type="button" class="button button-quiet" phx-hook="ExportVrm">
-          VRMを生成
-        </button>
-        <p id="export-status" class="export-status" role="status">
-          顔テクスチャは同意した場合だけGLB/FBX/VRMへ含まれます。
-        </p>
-      </section>
-    </aside>
-  </section>
+
+        <section class="export-section" aria-label="モデルの保存">
+          <div>
+            <p class="section-kicker">EXPORT</p>
+            <h3>モデルを保存</h3>
+          </div>
+          <button id="export-glb" type="button" class="button button-primary" phx-hook="ExportGlb">
+            GLBをダウンロード
+          </button>
+          <button id="export-fbx" type="button" class="button button-quiet" phx-hook="ExportFbx">
+            FBXを生成
+          </button>
+          <button id="export-vrm" type="button" class="button button-quiet" phx-hook="ExportVrm">
+            VRMを生成
+          </button>
+          <p id="export-status" class="export-status" role="status">
+            顔テクスチャは同意した場合だけGLB/FBX/VRMへ含まれます。
+          </p>
+        </section>
+      </aside>
+    </section>
+  <% else %>
+    <section class="widget-auth-message" aria-live="polite">
+      <p class="eyebrow">ONEME / WIDGET</p>
+      <h2>Widgetの認証情報を確認できません</h2>
+      <p>親オリジン、アプリID、APIキーを確認してください。</p>
+    </section>
+  <% end %>
 </main>

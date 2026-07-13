@@ -3,6 +3,8 @@ defmodule OnemeWeb.BuilderLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias Oneme.Avatars
+
   test "renders the builder and updates the preview config", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/")
 
@@ -39,6 +41,58 @@ defmodule OnemeWeb.BuilderLiveTest do
 
     assert html =~ "data-parent-origin=\"https://example.com\""
     assert has_element?(view, ".widget-shell")
+  end
+
+  test "widget mode rejects a missing or invalid parent origin", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/widget?widget=1&parent_origin=javascript%3Aalert(1)")
+
+    assert html =~ "Widgetの認証情報を確認できません"
+    refute has_element?(view, ".builder-grid")
+  end
+
+  test "widget mode validates configured app credentials", %{conn: conn} do
+    System.put_env("ONEME_WIDGET_APP_ID", "demo-app")
+    System.put_env("ONEME_WIDGET_API_KEY", "demo-key")
+
+    on_exit(fn ->
+      System.delete_env("ONEME_WIDGET_APP_ID")
+      System.delete_env("ONEME_WIDGET_API_KEY")
+    end)
+
+    {:ok, _view, html} =
+      live(
+        conn,
+        ~p"/widget?widget=1&parent_origin=https%3A%2F%2Fexample.com&app_id=demo-app&api_key=wrong"
+      )
+
+    assert html =~ "Widgetの認証情報を確認できません"
+
+    {:ok, view, _html} =
+      live(
+        conn,
+        ~p"/widget?widget=1&parent_origin=https%3A%2F%2Fexample.com&app_id=demo-app&api_key=demo-key"
+      )
+
+    assert has_element?(view, ".builder-grid")
+  end
+
+  test "widget mode resumes a supplied avatar", %{conn: conn} do
+    {:ok, avatar} =
+      Avatars.create_avatar(%{
+        name: "Resume avatar",
+        config: %{"parts" => %{"top" => "top.jacket_01"}},
+        visibility: "private"
+      })
+
+    {:ok, view, html} =
+      live(
+        conn,
+        ~p"/widget?widget=1&parent_origin=https%3A%2F%2Fexample.com&avatar_id=#{avatar.id}"
+      )
+
+    assert html =~ "Resume avatar"
+    assert html =~ "top.jacket_01"
+    assert has_element?(view, "#avatar-name[value='Resume avatar']")
   end
 
   test "stores face morph parameters and export consent without the photo", %{conn: conn} do

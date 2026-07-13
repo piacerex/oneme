@@ -24,20 +24,39 @@ defmodule OnemeWeb.BuilderLive do
 
   @impl true
   def mount(params, _session, socket) do
+    widget_mode = Map.get(params, "widget") in ["1", "true"]
+    parent_origin = valid_parent_origin(Map.get(params, "parent_origin"))
+    widget_authorized = not widget_mode or OnemeWeb.WidgetAuth.authorized?(params, parent_origin)
+
+    resumed_avatar =
+      if Map.get(params, "avatar_id"), do: Avatars.get_avatar(Map.get(params, "avatar_id"))
+
+    resumed_config = merge_default_config((resumed_avatar && resumed_avatar.config) || %{})
+
     {:ok,
      socket
      |> assign(:page_title, "Avatar Builder")
-     |> assign(:config, @default_config)
+     |> assign(:config, resumed_config)
      |> assign(:parts, Assets.form_parts())
-     |> assign(:avatar_name, "My oneme avatar")
+     |> assign(:avatar_name, (resumed_avatar && resumed_avatar.name) || "My oneme avatar")
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
-     |> assign(:face_export_consent, false)
+     |> assign(
+       :face_export_consent,
+       face_export_consent?(resumed_config)
+     )
      |> assign(:generation_job, nil)
      |> assign(:candidates, [])
-     |> assign(:public_url, nil)
-     |> assign(:widget_mode, Map.get(params, "widget") in ["1", "true"])
-     |> assign(:parent_origin, valid_parent_origin(Map.get(params, "parent_origin")))
-     |> assign(:saved_avatar, nil)}
+     |> assign(
+       :public_url,
+       if(resumed_avatar && resumed_avatar.visibility == "public",
+         do: "/avatars/#{resumed_avatar.id}"
+       )
+     )
+     |> assign(:widget_mode, widget_mode)
+     |> assign(:widget_authorized, widget_authorized)
+     |> assign(:app_id, Map.get(params, "app_id"))
+     |> assign(:parent_origin, parent_origin)
+     |> assign(:saved_avatar, resumed_avatar)}
   end
 
   @impl true
@@ -132,13 +151,16 @@ defmodule OnemeWeb.BuilderLive do
 
         {:noreply,
          socket
-         |> assign(:config, candidate["config"])
+         |> assign(:config, merge_default_config(candidate["config"]))
          |> assign(:generation_job, generation_job)
          |> assign(
            :candidates,
            update_candidate_status(socket.assigns.candidates, candidate_id, "adopted")
          )
-         |> assign(:face_export_consent, face_export_consent?(candidate["config"]))
+         |> assign(
+           :face_export_consent,
+           face_export_consent?(merge_default_config(candidate["config"]))
+         )
          |> assign(:status, "候補を適用しました。")}
     end
   end
@@ -168,34 +190,38 @@ defmodule OnemeWeb.BuilderLive do
   end
 
   def handle_event("save_avatar", _params, socket) do
-    attrs = %{
-      name: socket.assigns.avatar_name,
-      config: socket.assigns.config,
-      visibility: "private"
-    }
+    if socket.assigns.widget_mode and not socket.assigns.widget_authorized do
+      {:noreply, assign(socket, :status, "Widgetの認証に失敗しました。")}
+    else
+      attrs = %{
+        name: socket.assigns.avatar_name,
+        config: socket.assigns.config,
+        visibility: "private"
+      }
 
-    case Avatars.create_avatar(attrs) do
-      {:ok, avatar} ->
-        next_socket =
-          socket
-          |> assign(:saved_avatar, avatar)
-          |> assign(:public_url, nil)
-          |> assign(:status, "保存しました。アバターID: #{avatar.id}")
+      case Avatars.create_avatar(attrs) do
+        {:ok, avatar} ->
+          next_socket =
+            socket
+            |> assign(:saved_avatar, avatar)
+            |> assign(:public_url, nil)
+            |> assign(:status, "保存しました。アバターID: #{avatar.id}")
 
-        next_socket =
-          if socket.assigns.widget_mode do
-            push_event(next_socket, "avatar_saved", %{
-              avatarId: avatar.id,
-              publicUrl: "/avatars/#{avatar.id}"
-            })
-          else
-            next_socket
-          end
+          next_socket =
+            if socket.assigns.widget_mode do
+              push_event(next_socket, "avatar_saved", %{
+                avatarId: avatar.id,
+                publicUrl: "/avatars/#{avatar.id}"
+              })
+            else
+              next_socket
+            end
 
-        {:noreply, next_socket}
+          {:noreply, next_socket}
 
-      {:error, changeset} ->
-        {:noreply, assign(socket, :status, "保存できませんでした: #{inspect(changeset.errors)}")}
+        {:error, changeset} ->
+          {:noreply, assign(socket, :status, "保存できませんでした: #{inspect(changeset.errors)}")}
+      end
     end
   end
 
@@ -205,11 +231,13 @@ defmodule OnemeWeb.BuilderLive do
         {:noreply, assign(socket, :status, "保存済みアバターはまだありません。")}
 
       avatar ->
+        config = merge_default_config(avatar.config)
+
         {:noreply,
          socket
          |> assign(:avatar_name, avatar.name)
-         |> assign(:config, avatar.config)
-         |> assign(:face_export_consent, face_export_consent?(avatar.config))
+         |> assign(:config, config)
+         |> assign(:face_export_consent, face_export_consent?(config))
          |> assign(:saved_avatar, avatar)
          |> assign(:status, "保存済みアバターを読み込みました。")}
     end
@@ -260,6 +288,18 @@ defmodule OnemeWeb.BuilderLive do
         else: candidate
     end)
   end
+
+  defp merge_default_config(config) when is_map(config) do
+    @default_config
+    |> Map.merge(config)
+    |> Map.update!("parts", &Map.merge(@default_config["parts"], &1))
+    |> Map.update!("colors", &Map.merge(@default_config["colors"], &1))
+    |> Map.update!("faceMorph", &Map.merge(@default_config["faceMorph"], &1))
+    |> Map.update!("faceAnalysis", &Map.merge(@default_config["faceAnalysis"], &1))
+    |> Map.update!("faceTexture", &Map.merge(@default_config["faceTexture"], &1))
+  end
+
+  defp merge_default_config(_config), do: @default_config
 
   defp normalize_face_morph(params) when is_map(params) do
     params

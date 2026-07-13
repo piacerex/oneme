@@ -4,6 +4,10 @@
   "description": "Small browser client for the oneme avatar API",
   "type": "module",
   "exports": {
-    ".": "./src/oneme-client.js"
+    ".": "./src/oneme-client.js",
+    "./avatar-preview": "./src/avatar-preview.js"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
   }
 }

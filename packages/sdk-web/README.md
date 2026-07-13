@@ -17,3 +17,7 @@ const config = await client.fetchAvatarConfig(publicAvatar.avatarId)
 サーバー側のAssimp変換が必要です。
 
 パーツ台帳は`fetchParts`、保存は`createAvatar`、更新は`updateAvatar`で実行できます。
+
+候補生成は`createGenerationJob`と`submitGenerationFeedback`、公開モデルは
+`fetchAvatarModel`、エクスポート再試行は`retryExportJob`で扱えます。Three.js表示は
+`@oneme/sdk-web/avatar-preview`の`mountAvatarPreview`へThree.js本体を渡して利用します。

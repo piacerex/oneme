@@ -39,9 +39,11 @@ VRMは実メッシュGLBへonemeのメタデータ契約を付与した`.vrm`と
 
 `http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。
 
+本番でWidget認証を有効にする場合は`ONEME_WIDGET_APP_ID`と`ONEME_WIDGET_API_KEY`を設定し、URLへ`app_id`、`api_key`、`parent_origin`を渡します。`avatar_id`を追加すると保存済みアバターから編集を再開できます。
+
 ## Web SDK
 
-`packages/sdk-web` に公開アバター、設定JSON、エクスポートジョブを取得する小さなクライアントを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。
+`packages/sdk-web` にパーツ、アバター、候補生成、公開モデル、エクスポートジョブを扱うクライアントとThree.js表示ヘルパーを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。`packages/sdk-unity`はモデルAPIからGLB/VRMバイナリを取得するUnity向けローダーです。
 
 ## 検証
 
