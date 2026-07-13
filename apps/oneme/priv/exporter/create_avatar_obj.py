@@ -91,6 +91,65 @@ class ObjBuilder:
                 next_segment = segment + 1 if partial else (segment + 1) % segments
                 self.face(material, [points[ring][segment], points[ring][next_segment], points[ring + 1][next_segment], points[ring + 1][segment]])
 
+    def add_head(
+        self,
+        center: tuple[float, float, float],
+        radius: tuple[float, float, float],
+        material: str,
+        shape: dict[str, float],
+        segments: int = 64,
+        rings: int = 32,
+        theta_start: float = 0.0,
+        theta_length: float = math.pi * 2,
+        inflation: float = 1.0,
+    ) -> None:
+        cx, cy, cz = center
+        rx, ry, rz = radius
+        partial = abs(abs(theta_length) - math.pi * 2) > 0.0001
+        segment_count = segments + 1 if partial else segments
+        points: list[list[tuple[int, int]]] = []
+
+        for ring in range(rings + 1):
+            v = ring / rings
+            vertical = math.cos(v * math.pi)
+            ring_radius = math.sin(v * math.pi)
+            if vertical >= 0:
+                contour = lerp(1.0, shape["forehead_width"], vertical)
+            else:
+                contour = lerp(shape["jaw_width"], 1.0, vertical + 1.0)
+
+            egg_taper = 0.9 + 0.1 * ((vertical + 1.0) / 2.0)
+            x_radius = rx * shape["width_scale"] * ring_radius * contour * egg_taper * inflation
+            y_radius = ry * shape["height_scale"] * inflation
+            z_radius = rz * shape["depth_scale"] * ring_radius * (0.94 + contour * 0.06) * inflation
+            row: list[tuple[int, int]] = []
+
+            for segment in range(segment_count):
+                u = segment / (segment_count - 1) if partial else segment / segments
+                theta = theta_start + theta_length * u
+                point = (
+                    cx + x_radius * math.cos(theta),
+                    cy + y_radius * vertical,
+                    cz + z_radius * math.sin(theta),
+                )
+                row.append((self.vertex(point), self.uv((u, 1 - v))))
+
+            points.append(row)
+
+        for ring in range(rings):
+            segment_limit = segment_count - 1 if partial else segments
+            for segment in range(segment_limit):
+                next_segment = segment + 1 if partial else (segment + 1) % segments
+                self.face(
+                    material,
+                    [
+                        points[ring][segment],
+                        points[ring][next_segment],
+                        points[ring + 1][next_segment],
+                        points[ring + 1][segment],
+                    ],
+                )
+
     def write(self, output: Path, materials: dict[str, tuple[float, float, float]], textures: dict[str, Path]) -> None:
         mtl_path = output.with_suffix(".mtl")
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +182,59 @@ def hex_color(value: str, fallback: tuple[float, float, float]) -> tuple[float, 
         return fallback
 
 
+def lerp(start: float, end: float, amount: float) -> float:
+    return start + (end - start) * amount
+
+
+def clamp(value: float, minimum: float, maximum: float) -> float:
+    return min(maximum, max(minimum, value))
+
+
+def numeric(value: object, fallback: float) -> float:
+    try:
+        parsed = float(value)  # type: ignore[arg-type]
+        return parsed if math.isfinite(parsed) else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+def horizontal_span(mapped: dict, left_key: str, right_key: str) -> float | None:
+    left = mapped.get(left_key)
+    right = mapped.get(right_key)
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return None
+    if not isinstance(left.get("x"), (int, float)) or not isinstance(right.get("x"), (int, float)):
+        return None
+    return abs(float(right["x"]) - float(left["x"]))
+
+
+def head_shape(config: dict) -> dict[str, float]:
+    morph = config.get("faceMorph", {})
+    morph = morph if isinstance(morph, dict) else {}
+    analysis = config.get("faceAnalysis", {})
+    analysis = analysis if isinstance(analysis, dict) else {}
+    calibration = analysis.get("calibration", {})
+    calibration = calibration if isinstance(calibration, dict) else {}
+    mapped = calibration.get("mappedLandmarks", {})
+    mapped = mapped if isinstance(mapped, dict) else {}
+
+    cheek_span = horizontal_span(mapped, "leftCheek", "rightCheek")
+    jaw_span = horizontal_span(mapped, "leftJaw", "rightJaw")
+    temple_span = horizontal_span(mapped, "leftTemple", "rightTemple")
+
+    return {
+        "width_scale": clamp(numeric(morph.get("widthScale"), 1.0), 0.82, 1.2),
+        "height_scale": clamp(numeric(morph.get("heightScale"), 1.06), 0.9, 1.24),
+        "depth_scale": clamp(0.82 + numeric(morph.get("depth"), 0.5) * 0.18, 0.78, 1.04),
+        "forehead_width": clamp(temple_span / cheek_span, 0.78, 1.04)
+        if temple_span and cheek_span
+        else 0.9,
+        "jaw_width": clamp(jaw_span / cheek_span, 0.52, 0.98)
+        if jaw_span and cheek_span
+        else 0.76,
+    }
+
+
 def build(config: dict, output: Path, face_texture: Path | None, profile_texture: Path | None) -> None:
     parts = config.get("parts", {})
     colors = config.get("colors", {})
@@ -132,29 +244,34 @@ def build(config: dict, output: Path, face_texture: Path | None, profile_texture
     bottom = PALETTES.get(parts.get("bottom"), (0.212, 0.239, 0.286))
     materials = {"skin": skin, "top": top, "bottom": bottom, "shoes": (0.14, 0.14, 0.14)}
     textures: dict[str, Path] = {}
+    shape = head_shape(config)
 
     builder.add_box((0, 0.35, 0), (1.35, 1.35, 0.82), "top")
     builder.add_box((0, 1.23, 0), (0.32, 0.28, 0.32), "skin")
-    builder.add_sphere((0, 1.78, 0), (0.5, 0.56, 0.45), "skin")
+    builder.add_head((0, 1.78, 0), (0.48, 0.51, 0.43), "skin", shape)
     if face_texture:
         materials["face_texture"] = (1.0, 1.0, 1.0)
         textures["face_texture"] = face_texture
-        builder.add_sphere(
+        builder.add_head(
             (0, 1.78, 0),
-            (0.505, 0.566, 0.455),
+            (0.48, 0.51, 0.43),
             "face_texture",
+            shape,
             theta_start=math.pi,
             theta_length=-math.pi,
+            inflation=1.018,
         )
     if profile_texture:
         materials["profile_texture"] = (1.0, 1.0, 1.0)
         textures["profile_texture"] = profile_texture
-        builder.add_sphere(
+        builder.add_head(
             (0, 1.78, 0),
-            (0.505, 0.566, 0.455),
+            (0.48, 0.51, 0.43),
             "profile_texture",
+            shape,
             theta_start=0,
             theta_length=-math.pi,
+            inflation=1.016,
         )
     builder.add_box((-0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")
     builder.add_box((0.78, 0.36, 0), (0.28, 0.9, 0.45), "top")

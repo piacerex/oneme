@@ -372,7 +372,11 @@ defmodule OnemeWeb.BuilderLive do
           "chin",
           "forehead",
           "leftCheek",
-          "rightCheek"
+          "rightCheek",
+          "leftJaw",
+          "rightJaw",
+          "leftTemple",
+          "rightTemple"
         ])
         |> Map.new(fn {key, point} -> {key, normalize_face_calibration_value(point)} end)
     end

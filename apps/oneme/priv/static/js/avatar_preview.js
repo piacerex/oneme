@@ -60,16 +60,25 @@ if (container) {
   neck.position.y = 1.28;
   avatar.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 32, 24), materials.skin);
+  const defaultHeadShape = {
+    widthScale: 1,
+    heightScale: 1.06,
+    depthScale: 0.91,
+    foreheadWidth: 0.9,
+    jawWidth: 0.76
+  };
+  const head = new THREE.Mesh(
+    createHeadGeometry(defaultHeadShape, 0, Math.PI * 2, 1),
+    materials.skin
+  );
   head.position.y = 1.78;
-  head.scale.set(1, 1.06, 0.9);
   avatar.add(head);
 
-  // Map the calibrated photo to the front hemisphere only. The base head stays
-  // visible at the sides and back, so the square source image cannot wrap
-  // eyes, nose, or mouth around the avatar.
+  // The photo follows the same egg-shaped head as the skin base. Only the
+  // front hemisphere receives the calibrated photo, so facial features cannot
+  // wrap around the sides or back.
   const faceWrap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.49, 64, 32, 0, Math.PI, 0, Math.PI),
+    createHeadGeometry(defaultHeadShape, 0, Math.PI, 1.018),
     materials.faceWrap
   );
   faceWrap.position.y = 1.78;
@@ -77,7 +86,7 @@ if (container) {
   avatar.add(faceWrap);
 
   const profileWrap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.488, 64, 32, Math.PI, Math.PI, 0, Math.PI),
+    createHeadGeometry(defaultHeadShape, Math.PI, Math.PI, 1.016),
     materials.profileWrap
   );
   profileWrap.position.y = 1.78;
@@ -119,6 +128,7 @@ if (container) {
   let profileTexture = null;
   let profileDataUrl = null;
   let faceImageVersion = 0;
+  let headShapeKey = "";
   window.onemeThreePreview = {
     mount(nextContainer) {
       if (!(nextContainer instanceof HTMLElement)) return;
@@ -137,18 +147,15 @@ if (container) {
       materials.shoes.color.set(shoePalette[config?.parts?.shoes] || "#232323");
 
       const morph = config?.faceMorph || {};
+      const calibration = config?.faceAnalysis?.calibration || faceCalibration;
+      const headShape = deriveHeadShape(config, calibration);
       avatar.userData.oneme = {config};
-      const headScale = {
-        x: morph.widthScale || 1,
-        y: morph.heightScale || 1.06,
-        z: 0.82 + (morph.depth || 0.5) * 0.18
-      };
-      head.scale.set(headScale.x, headScale.y, headScale.z);
-      faceWrap.scale.set(headScale.x * 1.012, headScale.y * 1.012, headScale.z * 1.012);
-      profileWrap.scale.set(headScale.x * 1.008, headScale.y * 1.008, headScale.z * 1.008);
+      updateHeadGeometry(headShape);
       eyes.position.y = 1.81 + (morph.eyeOffsetY || 0) / 120;
       mouth.position.y = 1.64 + (morph.mouthOffsetY || 0) / 120;
-      applyFeatureMapping(config?.faceAnalysis?.calibration || faceCalibration);
+      eyes.position.z = 0.445 * headShape.depthScale;
+      mouth.position.z = 0.445 * headShape.depthScale;
+      applyFeatureMapping(calibration);
       faceWrap.visible = Boolean(faceTexture);
       updateFeatureOverlayVisibility();
     },
@@ -279,6 +286,112 @@ if (container) {
     limb.position.set(x, y, 0);
     limb.rotation.z = x < 0 ? -0.04 : 0.04;
     return limb;
+  }
+
+  function deriveHeadShape(config, calibration) {
+    const morph = config?.faceMorph || {};
+    const widthScale = finiteNumber(morph.widthScale, 1);
+    const heightScale = finiteNumber(morph.heightScale, 1.06);
+    const depth = finiteNumber(morph.depth, 0.5);
+    const mapped = calibration?.mappedLandmarks || {};
+    const cheekSpan = horizontalSpan(mapped.leftCheek, mapped.rightCheek);
+    const jawSpan = horizontalSpan(mapped.leftJaw, mapped.rightJaw);
+    const templeSpan = horizontalSpan(mapped.leftTemple, mapped.rightTemple);
+
+    return {
+      widthScale: clamp(widthScale, 0.82, 1.2),
+      heightScale: clamp(heightScale, 0.9, 1.24),
+      depthScale: clamp(0.82 + depth * 0.18, 0.78, 1.04),
+      foreheadWidth: templeSpan && cheekSpan
+        ? clamp(templeSpan / cheekSpan, 0.78, 1.04)
+        : 0.9,
+      jawWidth: jawSpan && cheekSpan
+        ? clamp(jawSpan / cheekSpan, 0.52, 0.98)
+        : 0.76
+    };
+  }
+
+  function horizontalSpan(left, right) {
+    if (!left || !right) return null;
+    return Math.abs(right.x - left.x);
+  }
+
+  function finiteNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function updateHeadGeometry(shape) {
+    const nextKey = JSON.stringify(shape);
+    if (nextKey === headShapeKey) return;
+    headShapeKey = nextKey;
+
+    head.geometry.dispose();
+    head.geometry = createHeadGeometry(shape, 0, Math.PI * 2, 1);
+    faceWrap.geometry.dispose();
+    faceWrap.geometry = createHeadGeometry(shape, 0, Math.PI, 1.018);
+    profileWrap.geometry.dispose();
+    profileWrap.geometry = createHeadGeometry(shape, Math.PI, Math.PI, 1.016);
+  }
+
+  function createHeadGeometry(shape, phiStart, phiLength, inflation) {
+    const geometry = new THREE.BufferGeometry();
+    const radialSegments = 64;
+    const verticalSegments = 32;
+    const partial = phiLength < Math.PI * 2 - 0.0001;
+    const columns = partial ? radialSegments + 1 : radialSegments;
+    const positions = [];
+    const normals = [];
+    const uvs = [];
+    const indices = [];
+
+    for (let row = 0; row <= verticalSegments; row += 1) {
+      const v = row / verticalSegments;
+      const vertical = Math.cos(v * Math.PI);
+      const ring = Math.sin(v * Math.PI);
+      const contour = vertical >= 0
+        ? lerp(1, shape.foreheadWidth, vertical)
+        : lerp(shape.jawWidth, 1, vertical + 1);
+      const eggTaper = 0.9 + 0.1 * ((vertical + 1) / 2);
+      const xRadius = 0.48 * shape.widthScale * ring * contour * eggTaper * inflation;
+      const yRadius = 0.51 * shape.heightScale * inflation;
+      const zRadius = 0.43 * shape.depthScale * ring * (0.94 + contour * 0.06) * inflation;
+
+      for (let column = 0; column < columns; column += 1) {
+        const u = partial ? column / (columns - 1) : column / radialSegments;
+        const phi = phiStart + phiLength * u;
+        positions.push(
+          -xRadius * Math.cos(phi),
+          yRadius * vertical,
+          zRadius * Math.sin(phi)
+        );
+        normals.push(0, 0, 0);
+        uvs.push(u, 1 - v);
+      }
+    }
+
+    for (let row = 0; row < verticalSegments; row += 1) {
+      const limit = partial ? columns - 1 : columns;
+      for (let column = 0; column < limit; column += 1) {
+        const nextColumn = partial ? column + 1 : (column + 1) % columns;
+        const a = row * columns + column;
+        const b = row * columns + nextColumn;
+        const c = (row + 1) * columns + nextColumn;
+        const d = (row + 1) * columns + column;
+        indices.push(a, b, d, b, c, d);
+      }
+    }
+
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  function lerp(start, end, amount) {
+    return start + (end - start) * amount;
   }
 
   function applyFeatureMapping(calibration) {

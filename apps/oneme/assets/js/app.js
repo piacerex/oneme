@@ -338,7 +338,11 @@ function landmarkPoints(points, image) {
     chin: point(152),
     forehead: point(10),
     leftCheek: point(234),
-    rightCheek: point(454)
+    rightCheek: point(454),
+    leftJaw: point(172),
+    rightJaw: point(397),
+    leftTemple: point(127),
+    rightTemple: point(356)
   }
 }
 
