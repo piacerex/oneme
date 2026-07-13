@@ -4,6 +4,39 @@ defmodule OnemeWeb.AvatarController do
   alias Oneme.Avatars
   alias Oneme.Operations
 
+  def create(conn, params) do
+    attrs = %{
+      name: Map.get(params, "name", Map.get(params, "avatarName", "My oneme avatar")),
+      config: Map.get(params, "config", %{}),
+      visibility: Map.get(params, "visibility", "private")
+    }
+
+    case Avatars.create_avatar(attrs) do
+      {:ok, avatar} ->
+        conn |> put_status(:created) |> json(serialize(avatar))
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
+    end
+  end
+
+  def update(conn, %{"id" => id} = params) do
+    avatar = Avatars.get_avatar!(id)
+
+    attrs =
+      params
+      |> Map.take(["name", "avatarName", "config", "visibility"])
+      |> normalize_update_attrs()
+
+    case Avatars.update_avatar(avatar, attrs) do
+      {:ok, updated_avatar} ->
+        conn |> json(serialize(updated_avatar))
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
+    end
+  end
+
   def show(conn, %{"id" => id}) do
     conn |> json(serialize(Avatars.get_avatar!(id)))
   end
@@ -45,5 +78,12 @@ defmodule OnemeWeb.AvatarController do
       insertedAt: avatar.inserted_at,
       updatedAt: avatar.updated_at
     }
+  end
+
+  defp normalize_update_attrs(attrs) do
+    case Map.pop(attrs, "avatarName") do
+      {nil, attrs} -> attrs
+      {name, attrs} -> Map.put(attrs, "name", name)
+    end
   end
 end

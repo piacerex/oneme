@@ -1,4 +1,5 @@
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+import {OrbitControls} from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import {GLTFExporter} from "https://unpkg.com/three@0.160.0/examples/jsm/exporters/GLTFExporter.js";
 
 const container = document.querySelector("#avatar-preview");
@@ -11,6 +12,15 @@ if (container) {
   const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.replaceChildren(renderer.domElement);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 3.6;
+  controls.maxDistance = 7.5;
+  controls.minPolarAngle = Math.PI * 0.28;
+  controls.maxPolarAngle = Math.PI * 0.7;
+  controls.target.set(0, 0.25, 0);
+  controls.update();
 
   const avatar = new THREE.Group();
   scene.add(avatar);
@@ -206,6 +216,7 @@ if (container) {
 
   function render(time) {
     avatar.rotation.y = time / 3600;
+    controls.update();
     renderer.render(scene, camera);
   }
 

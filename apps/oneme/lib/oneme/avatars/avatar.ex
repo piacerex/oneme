@@ -16,5 +16,13 @@ defmodule Oneme.Avatars.Avatar do
     |> cast(attrs, [:name, :config, :visibility])
     |> validate_required([:name, :config, :visibility])
     |> validate_inclusion(:visibility, ~w(private public))
+    |> validate_config()
+  end
+
+  defp validate_config(changeset) do
+    case Oneme.Avatars.Config.validate(get_field(changeset, :config)) do
+      :ok -> changeset
+      {:error, message} -> add_error(changeset, :config, message)
+    end
   end
 end

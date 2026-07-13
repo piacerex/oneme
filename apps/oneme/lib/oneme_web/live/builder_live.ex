@@ -2,6 +2,7 @@ defmodule OnemeWeb.BuilderLive do
   use OnemeWeb, :live_view
 
   alias Oneme.Avatars
+  alias Oneme.Assets
   alias Oneme.Generations
   alias Oneme.Operations
 
@@ -20,30 +21,13 @@ defmodule OnemeWeb.BuilderLive do
     "faceTexture" => %{"enabled" => false, "source" => "session", "exportConsent" => false}
   }
 
-  @parts %{
-    face: [{"Soft", "face.soft_01"}, {"Sharp", "face.sharp_01"}, {"Round", "face.round_01"}],
-    hair: [{"Short", "hair.short_01"}, {"Bob", "hair.bob_01"}, {"Long", "hair.long_01"}],
-    top: [{"Basic", "top.basic_01"}, {"Hoodie", "top.hoodie_01"}, {"Jacket", "top.jacket_01"}],
-    bottom: [
-      {"Basic", "bottom.basic_01"},
-      {"Tapered", "bottom.tapered_01"},
-      {"Skirt", "bottom.skirt_01"}
-    ],
-    shoes: [
-      {"Basic", "shoes.basic_01"},
-      {"Sneaker", "shoes.sneaker_01"},
-      {"Boot", "shoes.boot_01"}
-    ],
-    accessory: [{"None", "accessory.none"}, {"Glasses", "accessory.glasses_01"}]
-  }
-
   @impl true
   def mount(params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Avatar Builder")
      |> assign(:config, @default_config)
-     |> assign(:parts, @parts)
+     |> assign(:parts, Assets.form_parts())
      |> assign(:avatar_name, "My oneme avatar")
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
      |> assign(:face_export_consent, false)

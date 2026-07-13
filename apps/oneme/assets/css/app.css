@@ -21,7 +21,8 @@ button { cursor: pointer; }
 .builder-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr); gap: 24px; max-width: 1400px; min-height: calc(100vh - 150px); margin: 0 auto; }
 .preview-panel { display: flex; min-height: 650px; flex-direction: column; overflow: hidden; border: 1px solid #dfe6e1; border-radius: 8px; background: #e9eeea; box-shadow: 0 18px 55px rgba(31, 52, 47, .08); }
 .avatar-preview { position: relative; flex: 1; min-height: 610px; overflow: hidden; }
-.avatar-preview canvas { display: block; width: 100%; height: 100%; }
+.avatar-preview canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.avatar-preview canvas:active { cursor: grabbing; }
 .preview-loading { position: absolute; inset: 50% auto auto 50%; color: #71807c; font-size: 12px; transform: translate(-50%, -50%); }
 .preview-caption { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 0 18px; border-top: 1px solid rgba(87, 111, 104, .14); color: #4f6b67; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
 .caption-note { margin-left: auto; color: #85918d; font-weight: 600; letter-spacing: 0; }

@@ -16,6 +16,26 @@ export class OnemeClient {
     return this.request(`/api/avatars/${encodeURIComponent(avatarId)}/public`)
   }
 
+  fetchParts() {
+    return this.request("/api/parts")
+  }
+
+  createAvatar({name = "My oneme avatar", config = {}, visibility = "private"} = {}) {
+    return this.request("/api/avatars", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({name, config, visibility})
+    })
+  }
+
+  updateAvatar(avatarId, attrs) {
+    return this.request(`/api/avatars/${encodeURIComponent(avatarId)}`, {
+      method: "PATCH",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify(attrs)
+    })
+  }
+
   createExportJob({avatarConfig, format = "glb", faceTextureDataUrl = null}) {
     return this.request("/api/export-jobs", {
       method: "POST",

@@ -31,6 +31,8 @@ VRMは実メッシュGLBへonemeのメタデータ契約を付与した`.vrm`と
 
 `POST /api/generation-jobs` は現在のアバター設定から3つの候補を作り、`POST /api/generation-jobs/:id/feedback` で採用・却下を記録します。現段階のプロバイダーは既存パーツを推薦するローカル実装で、画像生成サービスへ差し替えられるジョブ境界を使います。
 
+`GET /api/parts` はDB上のパーツ台帳と、原点・スケール・ライセンス情報を返します。アバターは`POST /api/avatars`と`PATCH /api/avatars/:id`で保存・更新できます。
+
 ## Widget
 
 `http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。

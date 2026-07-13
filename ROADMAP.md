@@ -58,13 +58,13 @@ oneme/
 
 ### 実装
 
-1. `mix phx.new` でPhoenixアプリを作成する
-2. LiveViewのレイアウト、ルーティング、開発用シードを用意する
-3. PostgreSQL接続と最低限の認証境界を作る
-4. アバター設定JSONのスキーマをPhoenixの変更検証で再利用する
-5. パーツID、カテゴリ、原点、スケール、ライセンスを登録する
-6. Three.jsで読み込むアセットの命名と座標系を固定する
-7. GLB、FBX、テクスチャのライセンスと再配布条件を一覧化する
+1. [x] `mix phx.new` でPhoenixアプリを作成する
+2. [x] LiveViewのレイアウト、ルーティング、開発用シードを用意する
+3. [ ] PostgreSQL接続と認証境界を作る
+4. [x] アバター設定JSONの変更検証をPhoenixへ接続する
+5. [x] パーツID、カテゴリ、原点、スケール、ライセンスをDBへ登録する
+6. [x] Three.jsで読み込むアセットの命名と座標系を固定する
+7. [x] GLB、FBX、テクスチャのデモ用ライセンスと再配布条件を一覧化する
 
 ### 完了条件
 
@@ -76,12 +76,12 @@ oneme/
 
 ### 機能
 
-- LiveViewによるアバター作成画面
-- Three.jsによる3Dプレビュー
-- ベースボディ、顔、髪、服、靴、アクセサリの切り替え
-- 肌色、髪色などの変更
-- ゆっくり回転するプレビューと手動カメラ操作
-- 保存済みアバターの再表示
+- [x] LiveViewによるアバター作成画面
+- [x] Three.jsによる3Dプレビュー
+- [x] ベースボディ、顔、髪、服、靴、アクセサリの切り替え
+- [x] 肌色、髪色などの変更
+- [x] ゆっくり回転するプレビューと手動カメラ操作
+- [x] 保存済みアバターの再表示
 
 ### データモデル
 
@@ -93,12 +93,12 @@ oneme/
 
 ### API / LiveViewイベント
 
-- `GET /builder`
-- `POST /api/avatars`
-- `GET /api/avatars/:id`
-- `PATCH /api/avatars/:id`
-- `GET /api/parts`
-- `GET /api/avatars/:id/config`
+- [x] `GET /builder`
+- [x] `POST /api/avatars`
+- [x] `GET /api/avatars/:id`
+- [x] `PATCH /api/avatars/:id`
+- [x] `GET /api/parts`
+- [x] `GET /api/avatars/:id/config`
 
 ### 完了条件
 

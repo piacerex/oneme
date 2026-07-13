@@ -27,6 +27,9 @@ defmodule OnemeWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+    get "/parts", AssetsController, :index
+    post "/avatars", AvatarController, :create
+    patch "/avatars/:id", AvatarController, :update
     post "/generation-jobs", GenerationJobController, :create
     get "/generation-jobs/:id", GenerationJobController, :show
     post "/generation-jobs/:id/feedback", GenerationJobController, :feedback
