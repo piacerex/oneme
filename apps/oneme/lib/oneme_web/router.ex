@@ -42,6 +42,7 @@ defmodule OnemeWeb.Router do
     get "/usage", UsageController, :index
     get "/billing", BillingController, :show
     get "/billing/invoices", BillingController, :invoices
+    post "/billing/checkout", BillingController, :checkout
     patch "/billing/subscription", BillingController, :update_subscription
     post "/billing/plans", BillingController, :create_plan
     get "/webhooks", WebhookController, :index

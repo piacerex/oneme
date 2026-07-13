@@ -7,10 +7,12 @@ defmodule Oneme.Billing do
     BillingEvent,
     BillingInvoice,
     BillingPlan,
+    CheckoutProvider,
     ProviderWebhook,
     TeamSubscription
   }
 
+  alias Oneme.Operations
   alias Oneme.Repo
   alias Oneme.Usage
 
@@ -50,6 +52,47 @@ defmodule Oneme.Billing do
     |> limit(100)
     |> Repo.all()
   end
+
+  def create_checkout_session(team_id, attrs)
+      when is_integer(team_id) and is_map(attrs) do
+    with {:ok, subscription} <- ensure_subscription(team_id),
+         {:ok, plan_slug} <- checkout_plan_slug(attrs, subscription),
+         %BillingPlan{active: true} = plan <- get_plan_by_slug(plan_slug),
+         {:ok, success_url} <- checkout_return_url(attrs, "successUrl", :success_url),
+         {:ok, cancel_url} <- checkout_return_url(attrs, "cancelUrl", :cancel_url),
+         {:ok, idempotency_key} <- checkout_idempotency_key(attrs),
+         {:ok, session} <-
+           CheckoutProvider.create(
+             checkout_payload(team_id, plan, success_url, cancel_url),
+             idempotency_key
+           ) do
+      metadata = %{
+        "planSlug" => plan.slug,
+        "provider" => session.provider,
+        "sessionId" => session.session_id
+      }
+
+      Operations.track_usage("billing_checkout_requested", %{
+        subject_type: "team",
+        subject_id: team_id,
+        metadata: metadata
+      })
+
+      Operations.track_audit("billing_checkout_requested", %{
+        resource_type: "team",
+        resource_id: team_id,
+        metadata: metadata
+      })
+
+      {:ok, session}
+    else
+      nil -> {:error, :plan_not_found}
+      %BillingPlan{} -> {:error, :plan_inactive}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def create_checkout_session(_team_id, _attrs), do: {:error, :invalid_checkout_request}
 
   def verify_provider_webhook(provider, body, signature),
     do: ProviderWebhook.verify(provider, body, signature)
@@ -482,6 +525,57 @@ defmodule Oneme.Billing do
       %BillingPlan{slug: slug} -> slug
       _ -> "free"
     end
+  end
+
+  defp checkout_plan_slug(attrs, subscription) do
+    value =
+      Map.get(attrs, "planSlug", Map.get(attrs, :plan_slug, current_plan_slug(subscription)))
+
+    if is_binary(value) and value != "" do
+      {:ok, value}
+    else
+      {:error, :invalid_plan}
+    end
+  end
+
+  defp checkout_return_url(attrs, string_key, atom_key) do
+    case Map.get(attrs, string_key, Map.get(attrs, atom_key)) do
+      value when is_binary(value) ->
+        case URI.parse(String.trim(value)) do
+          %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+            {:ok, String.slice(String.trim(value), 0, 2_000)}
+
+          _ ->
+            {:error, :invalid_return_url}
+        end
+
+      _ ->
+        {:error, :return_url_required}
+    end
+  end
+
+  defp checkout_idempotency_key(attrs) do
+    value = Map.get(attrs, "idempotencyKey", Map.get(attrs, :idempotency_key))
+
+    if is_binary(value) and String.trim(value) != "" do
+      {:ok, String.trim(value)}
+    else
+      {:error, :idempotency_key_required}
+    end
+  end
+
+  defp checkout_payload(team_id, plan, success_url, cancel_url) do
+    %{
+      "kind" => "subscription_checkout",
+      "teamId" => team_id,
+      "plan" => %{
+        "slug" => plan.slug,
+        "currency" => plan.currency,
+        "monthlyPriceCents" => plan.monthly_price_cents
+      },
+      "successUrl" => success_url,
+      "cancelUrl" => cancel_url
+    }
   end
 
   defp normalize_plan_attrs(attrs) do

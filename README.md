@@ -43,6 +43,12 @@ APIは開発時には匿名互換で動作します。本番では`ONEME_AUTH_RE
 
 `GET /api/billing`はチームのプラン、契約期間、期間内利用量、残り上限を返します。`GET /api/billing/invoices`で請求書台帳を取得できます。`PATCH /api/billing/subscription`で管理者が契約状態を更新でき、ownerは`POST /api/billing/plans`でprovider-neutralなプラン定義を追加できます。
 
+ownerは`POST /api/billing/checkout`へ`planSlug`、HTTPSの`successUrl`／`cancelUrl`、
+`idempotencyKey`を送ると、外部プロバイダーのホスト型チェックアウトURLを取得できます。
+`ONEME_BILLING_CHECKOUT_URL`と必要に応じて`ONEME_BILLING_CHECKOUT_API_KEY`を設定します。
+カード情報はonemeへ送らず、契約状態はWebhookで確定します。詳細は
+`docs/billing-checkout-provider-contract.md`を参照してください。
+
 決済プロバイダーは`POST /api/billing/webhooks/:provider`へ、`x-oneme-billing-signature`（`sha256=` + HMAC-SHA256）を付けてイベントを送ります。`ONEME_BILLING_WEBHOOK_SECRETS=provider=secret`でプロバイダー別秘密値を設定すると、請求書のupsert、`invoice.paid`／`invoice.payment_failed`の状態反映、外部イベントIDによる冪等処理を行います。受信JSONは`id`、`type`、必要に応じて`teamId`、`invoice`または`data.object`を持つprovider-neutral契約です。実プロバイダーのSDK変換、カード情報、請求書発行サービス自体は未接続です。
 
 admin以上は`/api/webhooks`でWebhookを登録できます。秘密値は暗号化保存され、作成時のレスポンスで一度だけ返されます。`/api/webhooks/:id/test`は外部HTTP送信前の署名済みqueued deliveryを作成し、`deliver=true`または再試行APIで非同期workerへ渡します。workerは再起動時にDBのqueued deliveryを回収します。`/api/audit-logs`と`/api/audit-logs/retention`で監査記録の参照・保持期限削除を行います。

@@ -25,6 +25,51 @@ defmodule OnemeWeb.BillingController do
     end
   end
 
+  def checkout(conn, params) do
+    with {:ok, team_id} <- owner_team(conn),
+         {:ok, session} <- Billing.create_checkout_session(team_id, params) do
+      json(conn, %{
+        provider: session.provider,
+        sessionId: session.session_id,
+        checkoutUrl: session.checkout_url,
+        status: session.status
+      })
+    else
+      {:error, :forbidden} ->
+        forbidden(conn)
+
+      {:error, reason}
+      when reason in [
+             :invalid_checkout_request,
+             :invalid_plan,
+             :plan_not_found,
+             :plan_inactive,
+             :return_url_required,
+             :invalid_return_url,
+             :idempotency_key_required
+           ] ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: Atom.to_string(reason)})
+
+      {:error, :not_configured} ->
+        conn |> put_status(:service_unavailable) |> json(%{error: "checkout_not_configured"})
+
+      {:error, :provider_invalid_json, _message} ->
+        conn |> put_status(:bad_gateway) |> json(%{error: "checkout_provider_invalid_response"})
+
+      {:error, :provider_invalid_response, _message} ->
+        conn |> put_status(:bad_gateway) |> json(%{error: "checkout_provider_invalid_response"})
+
+      {:error, :provider_http_error, _message} ->
+        conn |> put_status(:bad_gateway) |> json(%{error: "checkout_provider_http_error"})
+
+      {:error, :provider_request_failed, _message} ->
+        conn |> put_status(:bad_gateway) |> json(%{error: "checkout_provider_unavailable"})
+
+      {:error, _reason} ->
+        conn |> put_status(:bad_gateway) |> json(%{error: "checkout_provider_error"})
+    end
+  end
+
   def provider_webhook(conn, %{"provider" => provider} = params) do
     body = conn.assigns[:raw_body] || Jason.encode!(Map.delete(params, "provider"))
     signature = List.first(get_req_header(conn, "x-oneme-billing-signature"))
