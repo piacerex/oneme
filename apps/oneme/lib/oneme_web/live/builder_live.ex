@@ -2,6 +2,7 @@ defmodule OnemeWeb.BuilderLive do
   use OnemeWeb, :live_view
 
   alias Oneme.Avatars
+  alias Oneme.Operations
 
   @default_config %{
     "parts" => %{
@@ -156,6 +157,11 @@ defmodule OnemeWeb.BuilderLive do
   def handle_event("publish_avatar", _params, socket) do
     case Avatars.update_avatar(socket.assigns.saved_avatar, %{visibility: "public"}) do
       {:ok, avatar} ->
+        Operations.track_audit("avatar_published", %{
+          resource_type: "avatar",
+          resource_id: avatar.id
+        })
+
         {:noreply,
          socket
          |> assign(:saved_avatar, avatar)

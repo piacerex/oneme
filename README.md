@@ -27,6 +27,8 @@ ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 
 VRMは実メッシュGLBへonemeのメタデータ契約を付与した`.vrm`として出力します。現段階では完全なhumanoidボーンリグや表情・揺れ物の実装ではなく、VRMリグ対応は次の拡張工程です。
 
+`GET /api/health` はPhoenixとPostgreSQLの稼働状態を返します。エクスポート要求、公開アバターの読み取り、公開・エクスポート完了は利用イベントまたは監査ログへ記録します。これらの記録には元写真や顔テクスチャ本体を含めません。
+
 ## Widget
 
 `http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。

@@ -2,6 +2,7 @@ defmodule OnemeWeb.AvatarController do
   use OnemeWeb, :controller
 
   alias Oneme.Avatars
+  alias Oneme.Operations
 
   def show(conn, %{"id" => id}) do
     conn |> json(serialize(Avatars.get_avatar!(id)))
@@ -16,6 +17,11 @@ defmodule OnemeWeb.AvatarController do
     avatar = Avatars.get_avatar!(id)
 
     if avatar.visibility == "public" do
+      Operations.track_usage("public_avatar_read", %{
+        subject_type: "avatar",
+        subject_id: avatar.id
+      })
+
       conn
       |> json(%{
         avatarId: avatar.id,

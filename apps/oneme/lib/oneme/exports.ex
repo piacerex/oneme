@@ -2,6 +2,7 @@ defmodule Oneme.Exports do
   @moduledoc "Export jobs for generated avatar models."
 
   alias Oneme.Exports.ExportJob
+  alias Oneme.Operations
   alias Oneme.Repo
 
   @formats ~w(glb fbx vrm)
@@ -25,6 +26,18 @@ defmodule Oneme.Exports do
 
     with true <- format in @formats,
          {:ok, job} <- %ExportJob{} |> ExportJob.changeset(export_attrs) |> Repo.insert() do
+      Operations.track_usage("export_requested", %{
+        subject_type: "export_job",
+        subject_id: job.id,
+        metadata: %{"format" => format, "includesFaceTexture" => include_face_texture}
+      })
+
+      Operations.track_audit("export_requested", %{
+        resource_type: "export_job",
+        resource_id: job.id,
+        metadata: %{"format" => format}
+      })
+
       {:ok, execute(job, Map.get(attrs, :face_texture_data_url), include_face_texture)}
     else
       false -> {:error, :unsupported_format}
@@ -41,6 +54,12 @@ defmodule Oneme.Exports do
         {:ok, finished_job} =
           update_job(running_job, %{status: "succeeded", model_path: model_path, finished_at: now})
 
+        Operations.track_audit("export_succeeded", %{
+          resource_type: "export_job",
+          resource_id: finished_job.id,
+          metadata: %{"format" => finished_job.format}
+        })
+
         finished_job
 
       {:error, code, message} ->
@@ -51,6 +70,12 @@ defmodule Oneme.Exports do
             error_message: message,
             finished_at: now
           })
+
+        Operations.track_audit("export_failed", %{
+          resource_type: "export_job",
+          resource_id: failed_job.id,
+          metadata: %{"format" => failed_job.format, "errorCode" => code}
+        })
 
         failed_job
     end

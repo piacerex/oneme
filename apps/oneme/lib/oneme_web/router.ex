@@ -26,6 +26,7 @@ defmodule OnemeWeb.Router do
   scope "/api", OnemeWeb do
     pipe_through :api
 
+    get "/health", HealthController, :show
     post "/export-jobs", ExportJobController, :create
     get "/export-jobs/:id", ExportJobController, :show
     get "/avatars/:id", AvatarController, :show
