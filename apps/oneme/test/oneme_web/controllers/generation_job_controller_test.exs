@@ -1,6 +1,9 @@
 defmodule OnemeWeb.GenerationJobControllerTest do
   use OnemeWeb.ConnCase
 
+  alias Oneme.Access
+  alias Oneme.Usage
+
   test "creates and updates candidate generation jobs", %{conn: conn} do
     conn =
       post(conn, ~p"/api/generation-jobs", %{
@@ -31,5 +34,23 @@ defmodule OnemeWeb.GenerationJobControllerTest do
 
     assert regenerated["id"] != response["id"]
     assert regenerated["status"] == "succeeded"
+  end
+
+  test "rejects generation after the authenticated team's quota is exhausted", %{conn: conn} do
+    assert {:ok, result, raw_key} =
+             Access.bootstrap(%{
+               team_name: "Generation quota API",
+               team_slug: "generation-quota-api",
+               external_id: "generation-quota-owner"
+             })
+
+    assert :ok = Usage.record(result.team.id, "generation_requested", 30)
+
+    conn =
+      conn
+      |> put_req_header("x-oneme-api-key", raw_key)
+      |> post("/api/generation-jobs", %{"avatarConfig" => %{}})
+
+    assert json_response(conn, 429)["error"] == "generation_quota_exceeded"
   end
 end

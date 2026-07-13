@@ -88,6 +88,23 @@ defmodule Oneme.Billing do
     end
   end
 
+  def authorize_usage(team_id, metric) when is_integer(team_id) and is_binary(metric) do
+    with {:ok, %{subscription: subscription, remaining: remaining}} <- overview(team_id) do
+      cond do
+        subscription.status in ["past_due", "canceled"] ->
+          {:error, :subscription_inactive}
+
+        Map.has_key?(remaining, metric) and Map.get(remaining, metric, 0) <= 0 ->
+          {:error, :quota_exceeded}
+
+        true ->
+          :ok
+      end
+    end
+  end
+
+  def authorize_usage(_team_id, _metric), do: :ok
+
   def change_subscription(team_id, attrs) when is_integer(team_id) and is_map(attrs) do
     with {:ok, current} <- ensure_subscription(team_id),
          plan_slug <-

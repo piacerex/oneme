@@ -90,4 +90,17 @@ defmodule Oneme.BillingTest do
     assert {:error, :invalid_signature} =
              Billing.verify_provider_webhook("mock", body, "sha256=bad")
   end
+
+  test "blocks generation after the plan quota or payment state is exhausted" do
+    assert {:ok, team} = Access.create_team(%{name: "Quota team", slug: "quota-team"})
+    assert :ok = Billing.authorize_usage(team.id, "generation_requested")
+    assert :ok = Usage.record(team.id, "generation_requested", 30)
+    assert {:error, :quota_exceeded} = Billing.authorize_usage(team.id, "generation_requested")
+
+    assert {:ok, subscription} = Billing.change_subscription(team.id, %{"status" => "past_due"})
+    assert subscription.status == "past_due"
+
+    assert {:error, :subscription_inactive} =
+             Billing.authorize_usage(team.id, "generation_requested")
+  end
 end
