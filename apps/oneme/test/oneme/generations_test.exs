@@ -3,6 +3,7 @@ defmodule Oneme.GenerationsTest do
 
   alias Oneme.Generations
   alias Oneme.Generations.GenerationJob
+  alias Oneme.Repo
 
   test "creates three candidates without storing a face image" do
     config = %{
@@ -43,5 +44,30 @@ defmodule Oneme.GenerationsTest do
     assert {:ok, job} = Generations.create_candidate_job(%{})
     assert {:error, :candidate_not_found} = Generations.feedback(job, "unknown", "reject")
     assert %GenerationJob{} = Generations.get_generation_job!(job.id)
+  end
+
+  test "regenerates a completed job with a new job id" do
+    assert {:ok, job} = Generations.create_candidate_job(%{})
+    assert {:ok, regenerated} = Generations.regenerate_candidate_job(job)
+    assert regenerated.id != job.id
+    assert regenerated.status == "succeeded"
+    assert length(Generations.candidate_items(regenerated)) == 3
+  end
+
+  test "retries a failed job" do
+    assert {:ok, job} = Generations.create_candidate_job(%{})
+
+    {:ok, failed_job} =
+      job
+      |> GenerationJob.changeset(%{
+        status: "failed",
+        error_code: "temporary",
+        error_message: "retry me"
+      })
+      |> Repo.update()
+
+    assert {:ok, retried} = Generations.retry_candidate_job(failed_job)
+    assert retried.status == "succeeded"
+    assert retried.attempts == failed_job.attempts + 1
   end
 end

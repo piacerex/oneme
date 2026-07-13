@@ -50,6 +50,8 @@ defmodule OnemeWeb.Router do
     post "/generation-jobs", GenerationJobController, :create
     get "/generation-jobs/:id", GenerationJobController, :show
     post "/generation-jobs/:id/feedback", GenerationJobController, :feedback
+    post "/generation-jobs/:id/retry", GenerationJobController, :retry
+    post "/generation-jobs/:id/regenerate", GenerationJobController, :regenerate
     post "/export-jobs", ExportJobController, :create
     get "/export-jobs/:id", ExportJobController, :show
     post "/export-jobs/:id/retry", ExportJobController, :retry

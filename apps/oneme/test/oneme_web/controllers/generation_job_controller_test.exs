@@ -23,5 +23,13 @@ defmodule OnemeWeb.GenerationJobControllerTest do
 
     first_candidate = hd(response["candidates"])
     assert first_candidate["status"] == "adopted"
+
+    regenerated =
+      build_conn()
+      |> post(~p"/api/generation-jobs/#{response["id"]}/regenerate")
+      |> json_response(202)
+
+    assert regenerated["id"] != response["id"]
+    assert regenerated["status"] == "succeeded"
   end
 end

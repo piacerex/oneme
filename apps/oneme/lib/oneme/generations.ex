@@ -73,6 +73,25 @@ defmodule Oneme.Generations do
 
   def create_candidate_job(_config), do: {:error, :invalid_config}
 
+  def retry_candidate_job(%GenerationJob{status: "failed"} = job) do
+    with {:ok, queued_job} <-
+           job
+           |> GenerationJob.changeset(%{
+             status: "queued",
+             candidates: %{},
+             error_code: nil,
+             error_message: nil,
+             finished_at: nil
+           })
+           |> Repo.update() do
+      {:ok, execute(queued_job)}
+    end
+  end
+
+  def retry_candidate_job(%GenerationJob{}), do: {:error, :job_not_retryable}
+
+  def regenerate_candidate_job(%GenerationJob{} = job), do: create_candidate_job(job.input_config)
+
   def feedback(%GenerationJob{} = job, candidate_id, decision)
       when is_binary(candidate_id) and is_binary(decision) do
     with true <- decision in ["adopt", "reject"],

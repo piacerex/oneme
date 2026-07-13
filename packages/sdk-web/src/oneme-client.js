@@ -77,6 +77,14 @@ export class OnemeClient {
     })
   }
 
+  retryGenerationJob(jobId) {
+    return this.request(`/api/generation-jobs/${encodeURIComponent(jobId)}/retry`, {method: "POST"})
+  }
+
+  regenerateGenerationJob(jobId) {
+    return this.request(`/api/generation-jobs/${encodeURIComponent(jobId)}/regenerate`, {method: "POST"})
+  }
+
   createExportJob({avatarConfig, format = "glb", faceTextureDataUrl = null}) {
     return this.request("/api/export-jobs", {
       method: "POST",

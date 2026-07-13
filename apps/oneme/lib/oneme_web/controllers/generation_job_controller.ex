@@ -43,6 +43,37 @@ defmodule OnemeWeb.GenerationJobController do
     end
   end
 
+  def retry(conn, %{"id" => id}) do
+    with :ok <- authorize(conn, "editor"),
+         job <- Generations.get_generation_job!(id),
+         {:ok, retried_job} <- Generations.retry_candidate_job(job) do
+      conn |> put_status(:accepted) |> json(serialize(retried_job))
+    else
+      {:error, :forbidden} ->
+        forbidden(conn)
+
+      {:error, :job_not_retryable} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "job_not_retryable"})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
+    end
+  end
+
+  def regenerate(conn, %{"id" => id}) do
+    with :ok <- authorize(conn, "editor"),
+         job <- Generations.get_generation_job!(id),
+         {:ok, regenerated_job} <- Generations.regenerate_candidate_job(job) do
+      conn |> put_status(:accepted) |> json(serialize(regenerated_job))
+    else
+      {:error, :forbidden} ->
+        forbidden(conn)
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(changeset.errors)})
+    end
+  end
+
   defp authorize(conn, role) do
     if Authorization.allowed?(conn, role), do: :ok, else: {:error, :forbidden}
   end
