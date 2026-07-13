@@ -48,6 +48,7 @@ defmodule OnemeWeb.Router do
     get "/assets/integrity", AssetsController, :integrity
     post "/assets/inspect", AssetsController, :inspect_all
     post "/assets/:asset_key/inspect", AssetsController, :inspect_asset
+    get "/monitoring/cdn", MonitoringController, :cdn
     post "/face-analysis-jobs", FaceAnalysisController, :create
     get "/face-analysis-jobs/:id", FaceAnalysisController, :show
     post "/avatars/from-face-analysis", FaceAnalysisController, :create_avatar

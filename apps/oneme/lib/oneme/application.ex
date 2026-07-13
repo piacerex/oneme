@@ -13,6 +13,7 @@ defmodule Oneme.Application do
       Oneme.RateLimiter,
       {Task.Supervisor, name: Oneme.WebhookDeliveryTasks},
       Oneme.WebhookDeliveryWorker,
+      Oneme.CdnMonitor,
       {DNSCluster, query: Application.get_env(:oneme, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Oneme.PubSub},
       # Start a worker by calling: Oneme.Worker.start_link(arg)
