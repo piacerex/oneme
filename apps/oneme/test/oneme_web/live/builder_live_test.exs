@@ -132,6 +132,18 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert html =~ "value=\"1.12\""
   end
 
+  test "keeps the photo preview consent checked after form updates", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    assert has_element?(view, "#face-consent:not([checked])")
+
+    render_change(view, "update_config", %{"face_consent" => "true"})
+    assert has_element?(view, "#face-consent[checked]")
+
+    render_change(view, "update_config", %{"colors" => %{"skin" => "#d5a083"}})
+    assert has_element?(view, "#face-consent[checked]")
+  end
+
   test "generates and applies a recommendation candidate", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
 

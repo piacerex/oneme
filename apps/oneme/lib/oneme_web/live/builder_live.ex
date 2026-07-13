@@ -39,6 +39,7 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:config, resumed_config)
      |> assign(:parts, Assets.form_parts())
      |> assign(:avatar_name, (resumed_avatar && resumed_avatar.name) || "My oneme avatar")
+     |> assign(:face_consent, false)
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
      |> assign(
        :face_export_consent,
@@ -76,9 +77,14 @@ defmodule OnemeWeb.BuilderLive do
       )
       |> put_face_texture(Map.get(params, "faceTexture", %{}))
 
+    face_consent =
+      Map.get(params, "face_consent", socket.assigns.face_consent)
+      |> checked_value?()
+
     {:noreply,
      socket
      |> assign(:config, next_config)
+     |> assign(:face_consent, face_consent)
      |> assign(:face_export_consent, face_export_consent?(next_config))}
   end
 
@@ -296,6 +302,8 @@ defmodule OnemeWeb.BuilderLive do
 
     value in [true, "true", "on"]
   end
+
+  defp checked_value?(value), do: value in [true, "true", "on"]
 
   defp update_candidate_status(candidates, candidate_id, status) do
     Enum.map(candidates, fn candidate ->

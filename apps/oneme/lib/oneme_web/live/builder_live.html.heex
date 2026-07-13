@@ -83,7 +83,14 @@
           <fieldset class="face-photo-section">
             <legend>顔写真マッピング</legend>
             <label class="consent-label">
-              <input id="face-consent" type="checkbox" />
+              <input
+                id="face-consent"
+                name="face_consent"
+                type="checkbox"
+                value="true"
+                checked={@face_consent}
+              />
+              <input type="hidden" name="face_consent" value="false" />
               <span>この写真をプレビュー用にだけ使うことに同意します</span>
             </label>
             <label class="upload-box" for="face-photo">

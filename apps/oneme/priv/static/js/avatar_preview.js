@@ -321,6 +321,10 @@ if (container) {
     return Number.isFinite(number) ? number : fallback;
   }
 
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
   function updateHeadGeometry(shape) {
     const nextKey = JSON.stringify(shape);
     if (nextKey === headShapeKey) return;
