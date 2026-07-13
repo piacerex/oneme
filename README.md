@@ -25,6 +25,10 @@ ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 
 `POST /api/export-jobs` に `format: "fbx"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
 
+## Widget
+
+`http://localhost:4000/widget-example.html` でiframe埋め込み例を確認できます。Widgetは保存完了時に親ページへ、指定した親オリジンへ `avatar_saved` メッセージを送ります。
+
 ## 検証
 
 ```bash

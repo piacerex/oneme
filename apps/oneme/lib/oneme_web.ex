@@ -17,7 +17,7 @@ defmodule OnemeWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets exports fonts images js favicon.ico robots.txt)
+  def static_paths, do: ~w(assets exports fonts images js favicon.ico robots.txt widget-example.html)
 
   def router do
     quote do

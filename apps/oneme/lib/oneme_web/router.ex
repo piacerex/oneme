@@ -19,6 +19,7 @@ defmodule OnemeWeb.Router do
 
     live "/", BuilderLive
     live "/builder", BuilderLive
+    live "/widget", BuilderLive
     live "/avatars/:id", PublicAvatarLive
   end
 

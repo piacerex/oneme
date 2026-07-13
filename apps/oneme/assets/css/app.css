@@ -10,6 +10,9 @@ body { margin: 0; min-width: 320px; background: #f4f5f1; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 .builder-shell { min-height: 100vh; padding: 28px 32px 40px; }
+.widget-shell { padding: 18px; }
+.widget-shell .builder-topbar h1 { font-size: 28px; }
+.widget-shell .editor-panel { box-shadow: none; }
 .builder-topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; max-width: 1400px; margin: 0 auto 24px; }
 .eyebrow, .section-kicker { margin: 0 0 8px; color: #4f8c88; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
 .builder-topbar h1, .editor-section h2 { margin: 0; color: #172321; font-weight: 700; letter-spacing: -.02em; }

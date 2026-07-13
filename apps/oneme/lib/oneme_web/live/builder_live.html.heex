@@ -1,4 +1,4 @@
-<main class="builder-shell">
+<main class={["builder-shell", @widget_mode && "widget-shell"]}>
   <header class="builder-topbar">
     <div>
       <p class="eyebrow">ONEME / AVATAR STUDIO</p>
@@ -14,6 +14,7 @@
         class="avatar-preview"
         phx-hook="AvatarPreview"
         data-config={Jason.encode!(@config)}
+        data-parent-origin={@parent_origin}
         aria-label="3Dアバタープレビュー"
       >
         <div class="preview-loading">3D preview loading...</div>

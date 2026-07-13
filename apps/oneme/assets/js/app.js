@@ -30,6 +30,11 @@ const hooks = {
   AvatarPreview: {
     mounted() {
       this.handleEvent("face_mapping_cleared", () => window.onemeThreePreview?.clearFaceImage())
+      this.handleEvent("avatar_saved", payload => {
+        if (window.parent === window) return
+        const targetOrigin = this.el.dataset.parentOrigin || window.location.origin
+        window.parent.postMessage({source: "oneme", type: "avatar_saved", ...payload}, targetOrigin)
+      })
       this.syncPreview()
     },
     updated() {

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>oneme Widget Example</title>
+    <style>body{margin:0;background:#f4f5f1;font-family:system-ui,sans-serif}iframe{display:block;width:min(100%,1200px);height:900px;margin:24px auto;border:1px solid #dfe6e1;border-radius:8px;background:#fff}</style>
+  </head>
+  <body>
+    <iframe title="oneme avatar builder" src="/widget?widget=1&parent_origin=http%3A%2F%2Flocalhost%3A4000"></iframe>
+    <script>
+      window.addEventListener("message", event => {
+        if (event.data?.source !== "oneme" || event.data?.type !== "avatar_saved") return;
+        console.log("oneme avatar saved", event.data.avatarId);
+      });
+    </script>
+  </body>
+</html>

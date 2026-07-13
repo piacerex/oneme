@@ -36,7 +36,7 @@ defmodule OnemeWeb.BuilderLive do
   }
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Avatar Builder")
@@ -46,6 +46,8 @@ defmodule OnemeWeb.BuilderLive do
      |> assign(:status, "編集内容はこのブラウザでプレビューできます。")
      |> assign(:face_export_consent, false)
      |> assign(:public_url, nil)
+     |> assign(:widget_mode, Map.get(params, "widget") in ["1", "true"])
+     |> assign(:parent_origin, valid_parent_origin(Map.get(params, "parent_origin")))
      |> assign(:saved_avatar, nil)}
   end
 
@@ -108,11 +110,23 @@ defmodule OnemeWeb.BuilderLive do
 
     case Avatars.create_avatar(attrs) do
       {:ok, avatar} ->
-        {:noreply,
-         socket
-         |> assign(:saved_avatar, avatar)
-         |> assign(:public_url, nil)
-         |> assign(:status, "保存しました。アバターID: #{avatar.id}")}
+        next_socket =
+          socket
+          |> assign(:saved_avatar, avatar)
+          |> assign(:public_url, nil)
+          |> assign(:status, "保存しました。アバターID: #{avatar.id}")
+
+        next_socket =
+          if socket.assigns.widget_mode do
+            push_event(next_socket, "avatar_saved", %{
+              avatarId: avatar.id,
+              publicUrl: "/avatars/#{avatar.id}"
+            })
+          else
+            next_socket
+          end
+
+        {:noreply, next_socket}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :status, "保存できませんでした: #{inspect(changeset.errors)}")}
@@ -167,4 +181,20 @@ defmodule OnemeWeb.BuilderLive do
 
     value in [true, "true", "on"]
   end
+
+  defp valid_parent_origin(nil), do: nil
+
+  defp valid_parent_origin(value) when is_binary(value) do
+    case URI.parse(value) do
+      %URI{scheme: scheme, host: host} = uri
+      when scheme in ["http", "https"] and is_binary(host) ->
+        port = if uri.port in [nil, URI.default_port(scheme)], do: "", else: ":#{uri.port}"
+        "#{scheme}://#{host}#{port}"
+
+      _ ->
+        nil
+    end
+  end
+
+  defp valid_parent_origin(_value), do: nil
 end

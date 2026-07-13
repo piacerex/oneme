@@ -31,6 +31,13 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert html =~ "保存済みアバターを読み込みました。"
   end
 
+  test "widget mode accepts a valid parent origin", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/widget?widget=1&parent_origin=https%3A%2F%2Fexample.com")
+
+    assert html =~ "data-parent-origin=\"https://example.com\""
+    assert has_element?(view, ".widget-shell")
+  end
+
   test "stores face morph parameters and export consent without the photo", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
 
