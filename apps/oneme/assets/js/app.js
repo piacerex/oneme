@@ -221,7 +221,14 @@ function handleFacePhoto(input, hook) {
     const calibration = calibrateFaceTexture(image, bounds, geometry?.landmarks || null, geometry?.pose || null)
     URL.revokeObjectURL(objectUrl)
 
-    const faceVersion = window.onemeThreePreview?.setFaceImage(calibration.dataUrl, calibration.metadata)
+    let faceVersion = null
+    try {
+      faceVersion = await applyFaceImageToPreview(calibration.dataUrl, calibration.metadata)
+    } catch (error) {
+      console.error("oneme: face preview unavailable", error)
+      if (status) status.textContent = "顔写真を処理しましたが、3Dプレビューへ反映できませんでした。"
+      return
+    }
     createLocalProfileEstimate(calibration.dataUrl)
       .then(profileDataUrl => {
         if (window.onemeThreePreview?.getFaceImageVersion?.() === faceVersion) {
@@ -246,7 +253,9 @@ function handleFacePhoto(input, hook) {
     window.onemeFaceCalibration = calibration.metadata
     if (status) {
       status.dataset.calibration = calibrationMode
-      status.textContent = bounds
+      status.textContent = faceVersion === null
+        ? "顔写真を処理しました。3Dプレビューの準備後に反映します。"
+        : bounds
         ? affineApplied
           ? "アフィン補正を適用し、目・鼻・口を正面基準へマッピングしました。"
           : geometry?.landmarks
@@ -260,6 +269,56 @@ function handleFacePhoto(input, hook) {
     if (status) status.textContent = "写真を読み込めませんでした。別の画像を試してください。"
   }
   image.src = objectUrl
+}
+
+function applyFaceImageToPreview(dataUrl, metadata) {
+  const preview = window.onemeThreePreview
+  if (preview?.setFaceImage) return Promise.resolve(preview.setFaceImage(dataUrl, metadata))
+
+  window.onemePendingFaceImage?.cancel?.()
+
+  return new Promise(resolve => {
+    let applied = false
+    let resolved = false
+    let timeoutId
+
+    const pending = {
+      cancel: () => {
+        if (applied) return
+        window.removeEventListener("oneme:preview-ready", apply)
+        window.clearTimeout(timeoutId)
+        if (!resolved) {
+          resolved = true
+          resolve(null)
+        }
+      }
+    }
+
+    const apply = () => {
+      if (applied || window.onemePendingFaceImage !== pending) return
+      const readyPreview = window.onemeThreePreview
+      if (!readyPreview?.setFaceImage) return
+
+      applied = true
+      window.removeEventListener("oneme:preview-ready", apply)
+      window.clearTimeout(timeoutId)
+      window.onemePendingFaceImage = null
+      const version = readyPreview.setFaceImage(dataUrl, metadata)
+      if (!resolved) {
+        resolved = true
+        resolve(version)
+      }
+    }
+
+    window.onemePendingFaceImage = pending
+    window.addEventListener("oneme:preview-ready", apply)
+    timeoutId = window.setTimeout(() => {
+      if (!resolved && !applied) {
+        resolved = true
+        resolve(null)
+      }
+    }, 5000)
+  })
 }
 
 function estimateFaceColors(context) {
