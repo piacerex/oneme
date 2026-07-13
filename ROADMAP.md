@@ -198,7 +198,8 @@ oneme/
 4. [x] エクスポートジョブ、キャッシュ、失敗時の再試行を作る
 5. [x] 同意済みの場合は顔写真由来の派生テクスチャをGLBへ埋め込む
 6. [x] Three.jsブラウザプレビューの実描画とLiveView再接続を検証する
-7. [ ] エクスポートGLBをThree.js／Unityで読み込み検証する
+7. [x] エクスポートGLBをThree.jsで読み込み検証する
+8. [ ] エクスポートGLBをUnityで読み込み検証する
 
 ### Phase 4B: FBX
 
@@ -206,8 +207,9 @@ oneme/
 2. [x] AssimpのFBX exporterで出力する
 3. [x] スケール、軸、マテリアル、テクスチャの変換経路を固定する
 4. [x] 同意済みの場合はGLB由来の顔写真派生テクスチャをFBXへ引き継ぐ
-5. [ ] Unity、Blender、主要DCCで読み込みを検証する
-6. [x] `format=fbx` としてエクスポート状態・成果物URLを返す
+5. [x] Three.js FBXLoaderでエクスポートFBXを読み込み検証する
+6. [ ] Unity、Blender、主要DCCで読み込みを検証する
+7. [x] `format=fbx` としてエクスポート状態・成果物URLを返す
 
 現段階のサーバー変換は実行環境で検証できるAssimpを使う。Blender固有の書き出し差分とDCC検証は本番用アダプターとして残す。
 
@@ -260,7 +262,8 @@ oneme/
 - [x] メタ情報、ライセンス、商用利用条件を出力へ埋め込む
 - [x] 実際のVRM 1.0 humanoidボーンリグへ変換する
 - [x] 表情モーフターゲットと揺れ物を実ノードへ接続する
-- [ ] VRMビューア、Unity、Webで読み込み検証する
+- [x] Three.js GLTFLoaderでVRMコンテナ、`VRMC_vrm`、`VRMC_springBone`を読み込み検証する
+- [ ] VRMビューア、UnityでVRMの互換性を検証する
 
 Phase 7では、既存の実メッシュGLBへ決定的なhumanoidノード階層、skin、表情モーフターゲット、`VRMC_springBone`を追加する。外部ランタイムの読み込み検証と、アセットごとの細かなウェイト・表情調整は残課題として扱う。
 
