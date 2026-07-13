@@ -88,7 +88,8 @@ defmodule Oneme.Monitoring do
          :ok <- validate_notification_url(url),
          body <- Jason.encode!(%{event: "oneme.monitoring", report: report}),
          signature <- sign(secret, body),
-         {:ok, _status} <- post_notification(url, body, signature) do
+         event_id <- event_id(body),
+         {:ok, _status} <- post_notification(url, body, signature, event_id, 1) do
       :ok
     end
   end
@@ -213,8 +214,16 @@ defmodule Oneme.Monitoring do
 
   defp validate_notification_url(url) do
     case URI.parse(url) do
-      %URI{scheme: "https", host: host} when is_binary(host) -> :ok
-      _ -> {:error, :notification_url_must_use_https}
+      %URI{scheme: "https", host: host} when is_binary(host) ->
+        :ok
+
+      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1"] ->
+        if System.get_env("ONEME_MONITORING_ALLOW_INSECURE_HTTP", "false") in ["1", "true"],
+          do: :ok,
+          else: {:error, :notification_url_must_use_https}
+
+      _ ->
+        {:error, :notification_url_must_use_https}
     end
   end
 
@@ -222,32 +231,80 @@ defmodule Oneme.Monitoring do
     "sha256=" <> (:crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower))
   end
 
-  defp post_notification(url, body, signature) do
+  defp event_id(body),
+    do: "monitoring-" <> (:crypto.hash(:sha256, body) |> Base.encode16(case: :lower))
+
+  defp post_notification(url, body, signature, event_id, attempt) do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
 
     headers = [
       {~c"content-type", ~c"application/json"},
-      {~c"x-oneme-monitoring-signature", String.to_charlist(signature)}
+      {~c"x-oneme-api-version", ~c"v1"},
+      {~c"x-oneme-monitoring-signature", String.to_charlist(signature)},
+      {~c"x-oneme-monitoring-event-id", String.to_charlist(event_id)},
+      {~c"idempotency-key", String.to_charlist(event_id)}
     ]
 
     case :httpc.request(
            :post,
            {String.to_charlist(url), headers, ~c"application/json", body},
-           [timeout: 5_000, connect_timeout: 2_000],
+           [timeout: timeout_ms(), connect_timeout: connect_timeout_ms()],
            body_format: :binary
          ) do
       {:ok, {{_version, status, _reason}, _headers, _response_body}} when status in 200..299 ->
         {:ok, status}
 
       {:ok, {{_version, status, _reason}, _headers, _response_body}} ->
-        {:error, {:notification_failed, status}}
+        if retryable?(status, attempt) do
+          retry_after_delay()
+          post_notification(url, body, signature, event_id, attempt + 1)
+        else
+          {:error, {:notification_failed, status}}
+        end
 
       {:error, reason} ->
-        {:error, {:notification_failed, reason}}
+        if retryable?(reason, attempt) do
+          retry_after_delay()
+          post_notification(url, body, signature, event_id, attempt + 1)
+        else
+          {:error, {:notification_failed, reason}}
+        end
     end
   rescue
     error -> {:error, {:notification_failed, Exception.message(error)}}
+  end
+
+  defp retryable?(status, attempt) when is_integer(status),
+    do: attempt < max_notify_attempts() and (status in [408, 425, 429] or status >= 500)
+
+  defp retryable?(reason, attempt) do
+    attempt < max_notify_attempts() and
+      (reason in [:timeout, :closed, :econnreset, :econnrefused] or
+         match?({:failed_connect, _}, reason) or match?({:shutdown, _}, reason))
+  end
+
+  defp retry_after_delay do
+    case integer_env("ONEME_MONITORING_NOTIFY_RETRY_DELAY_MS", 250, 0, 5_000) do
+      0 -> :ok
+      delay -> Process.sleep(delay)
+    end
+  end
+
+  defp max_notify_attempts,
+    do: integer_env("ONEME_MONITORING_NOTIFY_MAX_ATTEMPTS", 2, 1, 5)
+
+  defp timeout_ms,
+    do: integer_env("ONEME_MONITORING_NOTIFY_TIMEOUT_MS", 5_000, 1_000, 120_000)
+
+  defp connect_timeout_ms,
+    do: integer_env("ONEME_MONITORING_NOTIFY_CONNECT_TIMEOUT_MS", 2_000, 500, 30_000)
+
+  defp integer_env(name, default, min, max) do
+    case Integer.parse(System.get_env(name, Integer.to_string(default))) do
+      {value, ""} when value >= min and value <= max -> value
+      _ -> default
+    end
   end
 
   defp check_url(url) do
