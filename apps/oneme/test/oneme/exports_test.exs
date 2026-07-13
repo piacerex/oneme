@@ -21,4 +21,17 @@ defmodule Oneme.ExportsTest do
     assert job.error_code == "assimp_unavailable"
     assert job.includes_face_texture == false
   end
+
+  test "accepts vrm as an export format" do
+    changeset =
+      %Oneme.Exports.ExportJob{}
+      |> Oneme.Exports.ExportJob.changeset(%{
+        avatar_config: %{},
+        format: "vrm",
+        status: "queued",
+        cache_key: "test"
+      })
+
+    assert changeset.valid?
+  end
 end

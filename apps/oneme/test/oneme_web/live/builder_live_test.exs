@@ -9,6 +9,7 @@ defmodule OnemeWeb.BuilderLiveTest do
     assert html =~ "顔写真からつくる、あなたの3Dアバター"
     assert has_element?(view, "#avatar-preview[data-config]")
     assert has_element?(view, "#export-glb")
+    assert has_element?(view, "#export-vrm")
     assert has_element?(view, "button", "公開URLを発行")
 
     html =
@@ -46,7 +47,7 @@ defmodule OnemeWeb.BuilderLiveTest do
         "faceTexture" => %{"exportConsent" => "true"}
       })
 
-    assert html =~ "同意した顔テクスチャをGLB/FBXへ含める"
+    assert html =~ "同意した顔テクスチャをGLB/FBX/VRMへ含める"
     assert html =~ "id=\"face-export-consent\""
 
     html =

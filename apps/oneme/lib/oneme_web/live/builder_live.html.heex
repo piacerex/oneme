@@ -104,7 +104,7 @@
               value="true"
               checked={@face_export_consent}
             />
-            <span>同意した顔テクスチャをGLB/FBXへ含める</span>
+            <span>同意した顔テクスチャをGLB/FBX/VRMへ含める</span>
           </label>
           <button id="clear-face" type="button" class="clear-face-button" phx-click="clear_face">
             顔写真マッピングをクリア
@@ -141,8 +141,11 @@
         <button id="export-fbx" type="button" class="button button-quiet" phx-hook="ExportFbx">
           FBXを生成
         </button>
+        <button id="export-vrm" type="button" class="button button-quiet" phx-hook="ExportVrm">
+          VRMを生成
+        </button>
         <p id="export-status" class="export-status" role="status">
-          顔テクスチャは同意した場合だけGLB/FBXへ含まれます。
+          顔テクスチャは同意した場合だけGLB/FBX/VRMへ含まれます。
         </p>
       </section>
     </aside>

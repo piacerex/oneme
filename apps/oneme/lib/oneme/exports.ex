@@ -4,7 +4,7 @@ defmodule Oneme.Exports do
   alias Oneme.Exports.ExportJob
   alias Oneme.Repo
 
-  @formats ~w(glb fbx)
+  @formats ~w(glb fbx vrm)
 
   def get_export_job!(id), do: Repo.get!(ExportJob, id)
 
@@ -137,19 +137,33 @@ defmodule Oneme.Exports do
     error in ErlangError -> {:error, "python_unavailable", Exception.message(error)}
   end
 
-  defp convert(workspace, format) do
-    with assimp when is_binary(assimp) <- assimp_path() do
-      extension = if format == "fbx", do: "fbx", else: "glb"
-      output_path = Path.join(workspace, "avatar.#{extension}")
-      assimp_format = if format == "fbx", do: "fbx", else: "glb2"
+  defp convert(workspace, "vrm") do
+    glb_path = Path.join(workspace, "avatar.glb")
+    vrm_path = Path.join(workspace, "avatar.vrm")
 
+    with :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
+         :ok <- inject_vrm_metadata(workspace, glb_path, vrm_path) do
+      {:ok, vrm_path}
+    end
+  end
+
+  defp convert(workspace, format) do
+    extension = if format == "fbx", do: "fbx", else: "glb"
+    output_path = Path.join(workspace, "avatar.#{extension}")
+    assimp_format = if format == "fbx", do: "fbx", else: "glb2"
+
+    convert_with_assimp(workspace, output_path, assimp_format)
+  end
+
+  defp convert_with_assimp(workspace, output_path, assimp_format) do
+    with assimp when is_binary(assimp) <- assimp_path() do
       case System.cmd(
              assimp,
              ["export", Path.join(workspace, "avatar.obj"), output_path, "-f", assimp_format],
              stderr_to_stdout: true
            ) do
         {_, 0} ->
-          {:ok, output_path}
+          :ok
 
         {output, status} ->
           {:error, "assimp_failed",
@@ -162,6 +176,34 @@ defmodule Oneme.Exports do
     end
   rescue
     error in ErlangError -> {:error, "assimp_unavailable", Exception.message(error)}
+  end
+
+  defp inject_vrm_metadata(workspace, glb_path, vrm_path) do
+    python = System.find_executable("python3") || "python3"
+    script = Path.join(:code.priv_dir(:oneme), "exporter/inject_vrm_metadata.py")
+
+    case System.cmd(
+           python,
+           [
+             script,
+             "--input",
+             glb_path,
+             "--output",
+             vrm_path,
+             "--config",
+             Path.join(workspace, "avatar.json")
+           ],
+           stderr_to_stdout: true
+         ) do
+      {_, 0} ->
+        :ok
+
+      {output, status} ->
+        {:error, "vrm_metadata_failed",
+         "VRM metadata injection failed (#{status}): #{String.slice(output, 0, 500)}"}
+    end
+  rescue
+    error in ErlangError -> {:error, "python_unavailable", Exception.message(error)}
   end
 
   defp assimp_path do

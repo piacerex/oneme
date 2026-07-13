@@ -30,7 +30,7 @@ defmodule Oneme.Exports.ExportJob do
       :finished_at
     ])
     |> validate_required([:avatar_config, :format, :status, :cache_key])
-    |> validate_inclusion(:format, ~w(glb fbx))
+    |> validate_inclusion(:format, ~w(glb fbx vrm))
     |> validate_inclusion(:status, ~w(queued running succeeded failed))
   end
 end

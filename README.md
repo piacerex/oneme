@@ -13,9 +13,9 @@ mix phx.server
 
 `http://localhost:4000/` を開くと、Three.jsの回転プレビュー、パーツ編集、顔写真の輪郭マスク、顔面テクスチャマッピングを確認できます。
 
-顔写真の元画像はブラウザ内だけで扱います。顔写真由来の派生テクスチャをGLB/FBXへ含める場合は、画面上で明示的な同意が必要です。
+顔写真の元画像はブラウザ内だけで扱います。顔写真由来の派生テクスチャをGLB/FBX/VRMへ含める場合は、画面上で明示的な同意が必要です。
 
-## FBXエクスポート
+## サーバー側エクスポート
 
 サーバー側FBX変換にはAssimpが必要です。実行ファイルがPATHにない場合は、`ONEME_ASSIMP_BIN`で指定します。
 
@@ -23,7 +23,9 @@ mix phx.server
 ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 ```
 
-`POST /api/export-jobs` に `format: "fbx"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
+`POST /api/export-jobs` に `format: "fbx"` または `format: "vrm"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
+
+VRMは実メッシュGLBへonemeのメタデータ契約を付与した`.vrm`として出力します。現段階では完全なhumanoidボーンリグや表情・揺れ物の実装ではなく、VRMリグ対応は次の拡張工程です。
 
 ## Widget
 
