@@ -37,6 +37,11 @@ namespace Oneme
 
             yield return avatarLoader.Load();
 
+            if (avatarLoader.LastModelBytes == null || avatarLoader.LastModelBytes.Length == 0)
+            {
+                yield break;
+            }
+
             var importTask = LoadLatestAsync();
             yield return new WaitUntil(() => importTask.IsCompleted);
 

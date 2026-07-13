@@ -36,6 +36,28 @@ defmodule Oneme.ExportsTest do
     assert changeset.valid?
   end
 
+  test "reports a missing Blender executable when the Blender backend is selected" do
+    System.put_env("ONEME_FBX_BACKEND", "blender")
+    System.put_env("ONEME_BLENDER_BIN", "/definitely/missing/blender")
+
+    on_exit(fn ->
+      System.delete_env("ONEME_FBX_BACKEND")
+      System.delete_env("ONEME_BLENDER_BIN")
+    end)
+
+    assert {:ok, job} =
+             Exports.create_export_job(%{
+               avatar_config: %{
+                 "parts" => %{"baseBody" => "body.basic_01"},
+                 "faceTexture" => %{"exportConsent" => false}
+               },
+               format: "fbx"
+             })
+
+    assert job.status == "failed"
+    assert job.error_code == "blender_unavailable"
+  end
+
   test "requires the original face texture source when retrying a textured job" do
     assert {:error, :face_texture_retry_requires_source} =
              Exports.retry_export_job(%ExportJob{includes_face_texture: true})

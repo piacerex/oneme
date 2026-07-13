@@ -36,3 +36,16 @@ python3 apps/oneme/priv/exporter/validate_glb.py \
 Unity、VRMビューア、Blender、主要DCCの実機検証は、対象ランタイムを導入した環境で行う。
 このワークスペースではUnity／Blender実行ファイルを確認できないため、Webビューアの成功を
 外部ランタイムの互換性完了とは扱わない。
+
+Blenderを使うFBX変換は、次のようにバックエンドを選択する。
+
+```bash
+ONEME_FBX_BACKEND=blender \
+ONEME_BLENDER_BIN=/path/to/blender \
+mix phx.server
+```
+
+Unity側は`packages/sdk-unity`をPackage Managerへ追加し、`Avatar Viewer`サンプルを
+インポートして検証する。サンプルは公開モデルAPIからバイナリを取得し、glTFastでGLB/VRMの
+メインシーンを展開する。VRMのhumanoid、表情、揺れ物の意味論はglTFast単体の検証範囲外で、
+VRM対応ランタイムを追加した実機検証が必要になる。

@@ -21,11 +21,15 @@ mix phx.server
 
 ## サーバー側エクスポート
 
-サーバー側FBX変換にはAssimpが必要です。実行ファイルがPATHにない場合は、`ONEME_ASSIMP_BIN`で指定します。
+サーバー側FBX変換は既定でAssimpを使います。実行ファイルがPATHにない場合は、`ONEME_ASSIMP_BIN`で指定します。
 
 ```bash
 ONEME_ASSIMP_BIN=/usr/bin/assimp mix phx.server
 ```
+
+BlenderのFBX exporterを使う場合は、`ONEME_FBX_BACKEND=blender`と
+`ONEME_BLENDER_BIN=/path/to/blender`を設定します。BlenderはヘッドレスでGLBを読み込み、
+選択したメッシュ・アーマチュアをFBXへ書き出します。
 
 `POST /api/export-jobs` に `format: "fbx"` または `format: "vrm"` とアバター設定を送ると、生成済みモデルURLを返します。GLBはブラウザのGLTFExporterから直接ダウンロードできます。
 
@@ -71,7 +75,7 @@ WSLやコンテナの外から開発画面を確認する場合は、`ONEME_BIND
 
 ## Web SDK
 
-`packages/sdk-web` にパーツ、アバター、候補生成、公開モデル、エクスポートジョブを扱うクライアントとThree.js表示ヘルパーを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。`packages/sdk-unity`はモデルAPIからGLB/VRMバイナリを取得し、glTFastでSceneへ展開するUnity向けSDKです。
+`packages/sdk-web` にパーツ、アバター、候補生成、公開モデル、エクスポートジョブを扱うクライアントとThree.js表示ヘルパーを用意しています。`http://localhost:4000/sdk-example.html?avatar_id=...` でも公開レスポンスを確認できます。`packages/sdk-unity`はモデルAPIからGLB/VRMバイナリを取得し、glTFastでSceneへ展開するUnity向けSDKです。Package Managerサンプルは`packages/sdk-unity/Samples~/Avatar Viewer`にあります。
 
 `http://localhost:4000/model-viewer.html?model_url=/exports/avatar-oneme-export-19/avatar.vrm`で、URLまたはローカルファイルのGLB／VRM／FBXを確認できます。VRMは`@pixiv/three-vrm`、GLBとFBXはThree.jsのローダーを使います。
 

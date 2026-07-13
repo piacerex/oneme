@@ -195,9 +195,10 @@ defmodule Oneme.Exports do
     glb_path = Path.join(workspace, "avatar-source.glb")
     fbx_path = Path.join(workspace, "avatar.fbx")
 
-    with :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
+    with :ok <- ensure_fbx_backend_available(),
+         :ok <- convert_with_assimp(workspace, glb_path, "glb2"),
          :ok <- validate_glb(glb_path),
-         :ok <- convert_with_assimp(workspace, fbx_path, "fbx", glb_path) do
+         :ok <- convert_to_fbx(workspace, fbx_path, glb_path) do
       {:ok, fbx_path}
     end
   end
@@ -234,6 +235,69 @@ defmodule Oneme.Exports do
     end
   rescue
     error in ErlangError -> {:error, "assimp_unavailable", Exception.message(error)}
+  end
+
+  defp convert_to_fbx(workspace, output_path, source_path) do
+    case System.get_env("ONEME_FBX_BACKEND", "assimp") |> String.downcase() do
+      "assimp" -> convert_with_assimp(workspace, output_path, "fbx", source_path)
+      "blender" -> convert_with_blender(output_path, source_path)
+      backend -> {:error, "unsupported_fbx_backend", "Unsupported FBX backend: #{backend}"}
+    end
+  end
+
+  defp ensure_fbx_backend_available do
+    case System.get_env("ONEME_FBX_BACKEND", "assimp") |> String.downcase() do
+      "assimp" ->
+        :ok
+
+      "blender" ->
+        if is_binary(blender_path()) do
+          :ok
+        else
+          {:error, "blender_unavailable",
+           "Set ONEME_BLENDER_BIN or install Blender to use the Blender FBX backend."}
+        end
+
+      backend ->
+        {:error, "unsupported_fbx_backend", "Unsupported FBX backend: #{backend}"}
+    end
+  end
+
+  defp convert_with_blender(output_path, source_path) do
+    with blender when is_binary(blender) <- blender_path() do
+      script = Path.join(:code.priv_dir(:oneme), "exporter/export_fbx_blender.py")
+
+      args = [
+        "--background",
+        "--factory-startup",
+        "--python",
+        script,
+        "--",
+        "--input",
+        source_path,
+        "--output",
+        output_path
+      ]
+
+      case System.cmd(blender, args, stderr_to_stdout: true) do
+        {_, 0} ->
+          if File.exists?(output_path) do
+            :ok
+          else
+            {:error, "blender_failed", "Blender completed without creating an FBX file."}
+          end
+
+        {output, status} ->
+          {:error, "blender_failed",
+           "Blender FBX export failed (#{status}): #{String.slice(output, 0, 500)}"}
+      end
+    else
+      nil ->
+        {:error, "blender_unavailable",
+         "Set ONEME_BLENDER_BIN or install Blender to use the Blender FBX backend."}
+    end
+  rescue
+    error in ErlangError -> {:error, "blender_unavailable", Exception.message(error)}
   end
 
   defp validate_glb(path, require_vrm \\ false) do
@@ -286,6 +350,13 @@ defmodule Oneme.Exports do
     case System.get_env("ONEME_ASSIMP_BIN") do
       path when is_binary(path) and path != "" -> path
       _ -> System.find_executable("assimp")
+    end
+  end
+
+  defp blender_path do
+    case System.get_env("ONEME_BLENDER_BIN") do
+      path when is_binary(path) and path != "" -> if(File.exists?(path), do: path)
+      _ -> System.find_executable("blender")
     end
   end
 

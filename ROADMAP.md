@@ -207,11 +207,14 @@ oneme/
 2. [x] AssimpのFBX exporterで出力する
 3. [x] スケール、軸、マテリアル、テクスチャの変換経路を固定する
 4. [x] 同意済みの場合はGLB由来の顔写真派生テクスチャをFBXへ引き継ぐ
-5. [x] Three.js FBXLoaderでエクスポートFBXを読み込み検証する
-6. [ ] Unity、Blender、主要DCCで読み込みを検証する
-7. [x] `format=fbx` としてエクスポート状態・成果物URLを返す
+5. [x] `ONEME_FBX_BACKEND=blender`で切り替えられるBlenderエクスポートアダプターを用意する
+6. [x] Three.js FBXLoaderでエクスポートFBXを読み込み検証する
+7. [ ] Unity、Blender、主要DCCで読み込みを検証する
+8. [x] `format=fbx` としてエクスポート状態・成果物URLを返す
 
-現段階のサーバー変換は実行環境で検証できるAssimpを使う。Blender固有の書き出し差分とDCC検証は本番用アダプターとして残す。
+現段階の既定サーバー変換はAssimpを使う。Blenderを導入した環境では
+`ONEME_FBX_BACKEND=blender`と`ONEME_BLENDER_BIN`で、`priv/exporter/export_fbx_blender.py`を
+使うヘッドレス変換へ切り替えられる。Blender固有の書き出し差分とDCC実機検証は残課題である。
 
 ### API
 
@@ -253,6 +256,7 @@ oneme/
 - [x] 再試行とAPIバージョンヘッダーを定義する
 - [x] UnityのglTFランタイムへ取得バイト列を接続する
 - [x] SDKの最小サンプルと互換性テストを用意する
+- [x] Package ManagerのAvatar Viewerサンプルでモデル取得からglTFast展開までを接続する
 
 ## Phase 7: VRM
 

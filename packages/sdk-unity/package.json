@@ -6,5 +6,12 @@
   "unity": "2021.3",
   "dependencies": {
     "com.atteneder.gltfast": "https://github.com/atteneder/glTFast.git#v5.0.0"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Avatar Viewer",
+      "description": "Load an oneme GLB or VRM model from the public model API.",
+      "path": "Samples~/Avatar Viewer"
+    }
+  ]
 }
