@@ -86,10 +86,25 @@ defmodule OnemeWeb.BuilderLive do
     config = socket.assigns.config
     face_texture = Map.get(config, "faceTexture", %{})
 
+    estimated_colors =
+      normalize_face_colors(Map.get(params, "face_colors", %{}))
+
+    colors =
+      Map.merge(
+        Map.get(config, "colors", %{}),
+        estimated_colors
+      )
+
+    face_detected = Map.get(params, "face_detected", false)
+
     next_config =
       config
       |> Map.put("faceMorph", Map.merge(Map.get(config, "faceMorph", %{}), face_morph))
-      |> Map.put("faceAnalysis", %{"detected" => Map.get(params, "face_detected", false)})
+      |> Map.put("colors", colors)
+      |> Map.put("faceAnalysis", %{
+        "detected" => face_detected,
+        "colorsEstimated" => map_size(estimated_colors) > 0
+      })
       |> Map.put(
         "faceTexture",
         Map.merge(face_texture, %{"enabled" => true, "source" => "session"})
@@ -98,7 +113,7 @@ defmodule OnemeWeb.BuilderLive do
     {:noreply,
      socket
      |> assign(:config, next_config)
-     |> assign(:status, "顔の比率を疑似3Dパラメータへ反映しました。")}
+     |> assign(:status, "顔の比率と肌色・髪色を推定してプレビューへ反映しました。")}
   end
 
   def handle_event("clear_face", _params, socket) do
@@ -308,6 +323,19 @@ defmodule OnemeWeb.BuilderLive do
   end
 
   defp normalize_face_morph(_params), do: %{}
+
+  defp normalize_face_colors(params) when is_map(params) do
+    params
+    |> Map.take(["skin", "hair"])
+    |> Map.new(fn {key, value} -> {key, if(valid_hex?(value), do: value, else: nil)} end)
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
+  end
+
+  defp normalize_face_colors(_params), do: %{}
+
+  defp valid_hex?(value) when is_binary(value), do: Regex.match?(~r/^#[0-9a-fA-F]{6}$/, value)
+  defp valid_hex?(_value), do: false
 
   defp parse_number(value) when is_number(value), do: value
 

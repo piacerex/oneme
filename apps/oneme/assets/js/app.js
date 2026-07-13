@@ -161,8 +161,10 @@ function handleFacePhoto(input, hook) {
     URL.revokeObjectURL(objectUrl)
     window.onemeThreePreview?.setFaceImage(canvas.toDataURL("image/png"))
     const ratio = image.width / image.height
+    const faceColors = estimateFaceColors(context)
     hook.pushEvent("face_analyzed", {
       face_detected: Boolean(bounds),
+      face_colors: faceColors,
       face_morph: {
         widthScale: clamp(0.96 + (ratio - 0.75) * 0.16, 0.88, 1.14),
         heightScale: clamp(1.08 + (0.9 - ratio) * 0.12, 0.94, 1.2),
@@ -180,6 +182,44 @@ function handleFacePhoto(input, hook) {
     if (status) status.textContent = "写真を読み込めませんでした。別の画像を試してください。"
   }
   image.src = objectUrl
+}
+
+function estimateFaceColors(context) {
+  const skin = averageRegion(context, 150, 180, 212, 210, pixel => {
+    const [red, green, blue] = pixel
+    return red > 55 && green > 30 && blue > 20 && red >= green * 0.9 && green >= blue * 0.82 && red - blue > 18
+  })
+  const hair = averageRegion(context, 130, 42, 252, 150, pixel => {
+    const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3
+    return brightness < 155
+  })
+
+  return {
+    skin: rgbToHex(skin || [201, 143, 111]),
+    hair: rgbToHex(hair || [47, 33, 24])
+  }
+}
+
+function averageRegion(context, x, y, width, height, include) {
+  const pixels = context.getImageData(x, y, width, height).data
+  const total = [0, 0, 0]
+  let count = 0
+
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 3] < 20) continue
+    const pixel = [pixels[index], pixels[index + 1], pixels[index + 2]]
+    if (!include(pixel)) continue
+    total[0] += pixel[0]
+    total[1] += pixel[1]
+    total[2] += pixel[2]
+    count += 1
+  }
+
+  return count ? total.map(value => Math.round(value / count)) : null
+}
+
+function rgbToHex(rgb) {
+  return `#${rgb.map(value => clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0")).join("")}`
 }
 
 async function detectFaceBounds(image) {

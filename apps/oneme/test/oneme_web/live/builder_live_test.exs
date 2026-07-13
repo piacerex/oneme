@@ -109,10 +109,12 @@ defmodule OnemeWeb.BuilderLiveTest do
     html =
       render_hook(view, "face_analyzed", %{
         "face_detected" => true,
-        "face_morph" => %{"widthScale" => 1.08, "heightScale" => 1.12, "depth" => 0.55}
+        "face_morph" => %{"widthScale" => 1.08, "heightScale" => 1.12, "depth" => 0.55},
+        "face_colors" => %{"skin" => "#d5a083", "hair" => "#332211"}
       })
 
-    assert html =~ "顔の比率を疑似3Dパラメータへ反映しました。"
+    assert html =~ "顔の比率と肌色・髪色を推定してプレビューへ反映しました。"
+    assert html =~ "value=\"#d5a083\""
     refute html =~ "data:image"
 
     html = render_click(view, "clear_face")
