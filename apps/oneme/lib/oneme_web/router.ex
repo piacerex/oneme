@@ -40,6 +40,7 @@ defmodule OnemeWeb.Router do
     get "/audit-logs", AuditController, :index
     post "/audit-logs/retention", AuditController, :prune
     get "/parts", AssetsController, :index
+    get "/assets/integrity", AssetsController, :integrity
     post "/avatars", AvatarController, :create
     patch "/avatars/:id", AvatarController, :update
     post "/generation-jobs", GenerationJobController, :create

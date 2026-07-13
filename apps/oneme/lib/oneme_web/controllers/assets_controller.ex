@@ -1,6 +1,7 @@
 defmodule OnemeWeb.AssetsController do
   use OnemeWeb, :controller
 
+  alias Oneme.Access
   alias Oneme.Assets
 
   def index(conn, _params) do
@@ -28,4 +29,18 @@ defmodule OnemeWeb.AssetsController do
 
     conn |> json(%{parts: parts})
   end
+
+  def integrity(conn, _params) do
+    case conn.assigns[:principal] do
+      principal when is_map(principal) ->
+        if Access.authorized?(principal, "admin"),
+          do: json(conn, Assets.integrity_report()),
+          else: forbidden(conn)
+
+      _ ->
+        forbidden(conn)
+    end
+  end
+
+  defp forbidden(conn), do: conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 end

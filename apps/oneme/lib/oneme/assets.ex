@@ -53,6 +53,37 @@ defmodule Oneme.Assets do
 
   def get_asset!(asset_key), do: Repo.get_by!(AssetFile, asset_key: asset_key)
 
+  def integrity_report do
+    ensure_seeded()
+
+    assets =
+      Repo.all(from asset in AssetFile, order_by: [asc: asset.asset_key])
+      |> Enum.map(fn asset ->
+        source_ok = source_available?(asset.source_path)
+
+        license_ok =
+          asset.license_name != "" and
+            (asset.redistributable == false or is_binary(asset.license_url))
+
+        %{
+          assetKey: asset.asset_key,
+          sourcePath: asset.source_path,
+          sourceAvailable: source_ok,
+          licenseValid: license_ok,
+          status: if(source_ok and license_ok, do: "ok", else: "review")
+        }
+      end)
+
+    review_count = Enum.count(assets, &(&1.status == "review"))
+
+    %{
+      status: if(review_count == 0, do: "ok", else: "review"),
+      assetCount: length(assets),
+      reviewCount: review_count,
+      assets: assets
+    }
+  end
+
   defp ensure_seeded do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -93,4 +124,8 @@ defmodule Oneme.Assets do
     Repo.insert_all(AvatarPart, part_rows, on_conflict: :nothing, conflict_target: [:part_id])
     :ok
   end
+
+  defp source_available?("procedural://" <> _asset_key), do: true
+  defp source_available?(path) when is_binary(path), do: File.exists?(path)
+  defp source_available?(_path), do: false
 end
