@@ -58,6 +58,10 @@ legend { margin-bottom: 11px; color: #243330; font-size: 12px; font-weight: 800;
 .button-quiet:hover { background: #f4f8f6; }
 .privacy-note { display: flex; gap: 9px; padding-top: 4px; color: #87938f; font-size: 10px; line-height: 1.5; }
 .privacy-icon { color: #4f8c88; font-size: 16px; line-height: 1; }
+.export-section { display: flex; flex-direction: column; gap: 9px; padding-top: 4px; border-top: 1px solid #e5ece8; }
+.export-section h3 { margin: 0; color: #243330; font-size: 15px; }
+.export-section .button { width: 100%; }
+.export-status { min-height: 17px; margin: 0; color: #7d8b87; font-size: 10px; line-height: 1.45; }
 @media (max-width: 900px) {
   .builder-shell { padding: 20px 16px 28px; }
   .builder-topbar { align-items: flex-start; flex-direction: column; gap: 12px; }

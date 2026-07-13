@@ -122,6 +122,19 @@
         <span class="privacy-icon" aria-hidden="true">◌</span>
         <span>写真は一時的な顔テクスチャに変換され、保存データには元画像を含めません。</span>
       </div>
+
+      <section class="export-section" aria-label="モデルの保存">
+        <div>
+          <p class="section-kicker">EXPORT</p>
+          <h3>モデルを保存</h3>
+        </div>
+        <button id="export-glb" type="button" class="button button-primary" phx-hook="ExportGlb">
+          GLBをダウンロード
+        </button>
+        <p id="export-status" class="export-status" role="status">
+          顔テクスチャは同意した場合だけGLBへ含まれます。
+        </p>
+      </section>
     </aside>
   </section>
 </main>

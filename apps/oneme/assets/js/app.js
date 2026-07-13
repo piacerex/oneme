@@ -53,6 +53,27 @@ const hooks = {
     destroyed() {
       this.el.removeEventListener("change", this.handleChange)
     }
+  },
+  ExportGlb: {
+    mounted() {
+      this.handleClick = async () => {
+        const status = document.querySelector("#export-status")
+        const config = window.onemeAvatarConfig || {}
+        if (status) status.textContent = "GLBを生成しています..."
+
+        try {
+          await window.onemeThreePreview?.exportGlb(config, "oneme-avatar.glb")
+          if (status) status.textContent = "GLBを保存しました。"
+        } catch (error) {
+          console.error(error)
+          if (status) status.textContent = "GLBの生成に失敗しました。"
+        }
+      }
+      this.el.addEventListener("click", this.handleClick)
+    },
+    destroyed() {
+      this.el.removeEventListener("click", this.handleClick)
+    }
   }
 }
 

@@ -5,6 +5,7 @@ defmodule OnemeWeb.BuilderLive do
 
   @default_config %{
     "parts" => %{
+      "baseBody" => "body.basic_01",
       "face" => "face.soft_01",
       "hair" => "hair.short_01",
       "top" => "top.basic_01",

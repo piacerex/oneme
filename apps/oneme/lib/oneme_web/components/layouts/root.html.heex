@@ -10,6 +10,9 @@
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
+    <script type="importmap">
+      {raw(~s({"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}))}
+    </script>
     <script type="module" src={~p"/js/avatar_preview.js"}>
     </script>
   </head>

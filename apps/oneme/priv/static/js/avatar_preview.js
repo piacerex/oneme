@@ -1,4 +1,5 @@
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+import {GLTFExporter} from "https://unpkg.com/three@0.160.0/examples/jsm/exporters/GLTFExporter.js";
 
 const container = document.querySelector("#avatar-preview");
 
@@ -93,6 +94,7 @@ if (container) {
       materials.shoes.color.set(shoePalette[config?.parts?.shoes] || "#232323");
 
       const morph = config?.faceMorph || {};
+      avatar.userData.oneme = {config};
       head.scale.set(morph.widthScale || 1, morph.heightScale || 1.06, 0.82 + (morph.depth || 0.5) * 0.18);
       faceOverlay.scale.set(morph.widthScale || 1, morph.heightScale || 1.06, 1);
       eyes.position.y = 1.81 + (morph.eyeOffsetY || 0) / 120;
@@ -118,6 +120,45 @@ if (container) {
       materials.face.map = null;
       materials.face.opacity = 0;
       materials.face.needsUpdate = true;
+    },
+    exportGlb(config, filename) {
+      return new Promise((resolve, reject) => {
+        const includeFaceTexture = config?.faceTexture?.exportConsent === true;
+        const previousMap = materials.face.map;
+        const previousOpacity = materials.face.opacity;
+
+        const restoreFaceMaterial = () => {
+          materials.face.map = previousMap;
+          materials.face.opacity = previousOpacity;
+          materials.face.needsUpdate = true;
+        };
+
+        if (!includeFaceTexture) {
+          materials.face.map = null;
+          materials.face.opacity = 0;
+          materials.face.needsUpdate = true;
+        }
+
+        new GLTFExporter().parse(
+          avatar,
+          result => {
+            restoreFaceMaterial();
+            const blob = new Blob([result], {type: "model/gltf-binary"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename || "oneme-avatar.glb";
+            link.click();
+            URL.revokeObjectURL(url);
+            resolve({bytes: blob.size, includesFaceTexture: includeFaceTexture});
+          },
+          error => {
+            restoreFaceMaterial();
+            reject(error);
+          },
+          {binary: true, includeCustomExtensions: true}
+        );
+      });
     }
   };
 
