@@ -16,10 +16,16 @@ config :oneme, Oneme.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+bind_ip =
+  case :inet.parse_address(to_charlist(System.get_env("ONEME_BIND", "127.0.0.1"))) do
+    {:ok, ip} -> ip
+    {:error, :einval} -> raise "ONEME_BIND must be an IPv4 or IPv6 address"
+  end
+
 config :oneme, OnemeWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Set ONEME_BIND=0.0.0.0 for a browser running outside WSL or a container.
+  http: [ip: bind_ip],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
